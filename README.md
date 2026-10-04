@@ -14,7 +14,7 @@ L'applicazione converte automaticamente le dosi espresse in cucchiai, bicchieri 
 ## 🌐 Link Applicazione Live / Web App
 
 > 🔗 **Accedi all'App Nutrizionale**:  
-> **[INSERISCI QUI IL LINK PER L'APP]** *(es. https://tuousername.github.io/DietaDrBasta/)*
+> **[https://m4nu0w2.github.io/](https://m4nu0w2.github.io/)**
 
 ---
 
