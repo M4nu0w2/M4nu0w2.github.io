@@ -56,6 +56,72 @@ Durante l'analisi del PDF, l'applicazione applica le seguenti regole automatiche
 
 ---
 
+## Lista della spesa
+
+Il pulsante **Esporta lista della spesa** apre un’anteprima con giorni selezionabili
+(inizialmente tutta la settimana). Gli alimenti con lo stesso nome e unità compatibili
+vengono sommati; i titoli delle ricette con sottoingredienti vengono esclusi.
+Le quantità non sommabili restano esplicite, con il numero di ripetizioni quando necessario.
+
+Le alternative esplicite restano su una sola riga, con la quantità di ciascuna scelta:
+`Vitello — 150 g oppure Pollo — 180 g`. Non vengono suggerite sostituzioni assenti dal piano.
+Il parser riconosce alternative sulla stessa riga o introdotte da «oppure», «o»,
+«in alternativa» e «Alt:», e collega i codici della colonna **Alt.** alle tabelle
+**Alternative alimentari** in appendice. Le alternative di ricette includono tutti
+gli ingredienti nella stessa voce; non vengono sommate agli ingredienti obbligatori.
+Quando presente, la tabella **Unità di misura** del PDF prevale sui coefficienti
+generici per cucchiai, cucchiaini, bicchieri e porzioni. Le equivalenze restano
+indicative; per i legumi l’app mantiene la conversione esistente in peso cotto
+sgocciolato (fattore 2,5), indicandola nel nome e nelle note del piano.
+Il risultato va confrontato con il PDF originale:
+altri impaginati possono richiedere adattamenti. Per piani importati prima di questa
+funzione, ricaricare il PDF se le alternative sono state perse.
+
+La lista si può **copiare**, **condividere** sui dispositivi che lo consentono, o
+**scaricare come `.txt`**. L’esportazione contiene una voce per riga, senza caselle
+Unicode: per ottenere caselle interattive occorre attivarle nell’app di destinazione.
+
+- **Note di Apple:** incollare la lista, selezionare le righe e applicare Checklist.
+- **Google Keep:** incollare in una nota e scegliere «Mostra caselle di controllo».
+
+La disponibilità di Note/Keep nel menu Condividi dipende dal dispositivo.
+L’export non modifica il piano o le spunte e non invia automaticamente dati a servizi esterni.
+Le quantità seguono il piano e le conversioni esistenti: non si ricavano automaticamente
+ingredienti da ricette prive di sottoingredienti né pesi di acquisto da descrizioni di piatti cotti.
+
+### Test della funzione
+
+Test del motore e del parser, senza dipendenze aggiuntive (Node.js 22+):
+
+```powershell
+node --test tests/shopping-list.test.cjs
+```
+
+Test browser con Playwright installato e Chromium disponibile:
+
+```powershell
+node --test tests/shopping-export.e2e.cjs
+```
+
+Se Playwright è installato in un’altra cartella, impostare prima
+`$env:PLAYWRIGHT_MODULE` al percorso assoluto del modulo. Il test browser verifica
+anteprima mobile, selezione giorni, copia e fallback, download, persistenza e
+condivisione simulata, con la CSP prevista per NutriPro. Le dipendenze CDN sono
+simulate nel test: non verifica il worker reale di pdf.js né le app native Note/Keep.
+
+`tests/progeo-pdf.e2e.cjs` verifica anche l’importazione del PDF di riferimento
+tramite il worker reale di pdf.js, con collegamento delle appendici, quantità e
+ricaricamento del piano. Il documento privato resta fuori dal repository.
+Impostare `REAL_PROGEO_PDF` al percorso del documento e `PDFJS_ASSET_DIR` alla
+cartella contenente `pdf.min.js` e `pdf.worker.min.js` versione 3.11.174, poi eseguire:
+
+```powershell
+node --test tests/progeo-pdf.e2e.cjs
+```
+
+Questo test usa gli asset locali al posto delle richieste CDN e confronta quantità
+note del documento di riferimento; non è un test generico per qualsiasi dieta.
+
 ## 🛠️ Struttura Tecnologica
 
 ```
