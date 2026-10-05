@@ -1,0 +1,143 @@
+name: NutriPro CI e deploy
+
+# Push su `dev` -> test qui -> SOLO SE passano, richiesta di deploy a Hermes.
+#
+# Il deploy non avviene in questo repo: questo workflow chiede al workflow
+# `deploy-nutripro.yml` del repo Thegoldendice/JirachiBotOrchestrator di
+# distribuire lo SHA ESATTO che ha appena superato i test. Quel workflow gira sul
+# runner self-hosted di Hermes, prende il lock host-wide e verifica che lo SHA
+# appartenga a `dev` e non sostituisca un commit piu' recente.
+#
+# Serve UN secret, creato dal proprietario del repo (vedi HANDOFF.md, sezione
+# "Autodeploy"): ORCHESTRATOR_DISPATCH_TOKEN. E' un fine-grained PAT limitato al
+# solo repo JirachiBotOrchestrator con il solo permesso "Actions: read and
+# write". Non e' scritto in nessun file e non finisce nei log.
+#
+# Il deploy manuale resta disponibile dal repo dell'Orchestrator
+# (`gh workflow run deploy-nutripro.yml --repo Thegoldendice/JirachiBotOrchestrator`).
+
+on:
+  push:
+    branches: [dev]
+
+# Nessun permesso di scrittura sul repo: i job leggono e basta.
+permissions:
+  contents: read
+
+# Push ravvicinati: un run piu' vecchio ancora in corso viene annullato quando
+# ne arriva uno piu' recente, cosi' un commit superato non arriva nemmeno al
+# deploy. E' solo il primo livello: la garanzia vera (mai un commit vecchio
+# sopra uno nuovo, anche con run che finiscono fuori ordine) e' nel workflow
+# dell'Orchestrator, dentro il lock.
+concurrency:
+  group: nutripro-dev
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Azioni fissate per SHA del commit (la versione e' nel commento): il job
+      # di deploy qui sotto maneggia un secret, un tag mobile non basta.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # Motore della lista della spesa e parser PDF: nessuna dipendenza.
+      - name: Test del motore e del parser
+        run: node --test tests/shopping-list.test.cjs
+
+      # Playwright fuori dal repo (nessun package.json da mantenere qui): i test
+      # leggono PLAYWRIGHT_MODULE. Versione fissata, e' quella con cui i test
+      # sono stati scritti e provati.
+      - name: Installa Playwright e Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.61.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Test browser (esportazione lista della spesa, con la CSP di produzione)
+        run: node --test tests/shopping-export.e2e.cjs
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright
+
+      # NON eseguito qui di proposito: tests/progeo-pdf.e2e.cjs richiede il PDF
+      # di riferimento PRIVATO (REAL_PROGEO_PDF), che non sta nel repository, e
+      # lancia un errore all'avvio se manca. Resta un controllo LOCALE da fare
+      # prima di pushare modifiche al parser: la CI NON lo copre.
+
+  deploy:
+    name: richiedi deploy su Hermes
+    needs: test
+    # Solo push su dev di questo repo (mai fork, mai altri branch).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && github.repository == 'M4nu0w2/M4nu0w2.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Consigliato al proprietario: tenere il secret in questo Environment e
+    # limitare gli "Deployment branches" a `dev`, cosi' un workflow su un branch
+    # qualunque non puo' leggerlo. Se il secret e' a livello di repository
+    # funziona lo stesso. L'Environment viene creato da GitHub al primo uso.
+    environment: nutripro-deploy
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Controllo indipendente: lo SHA che ha superato i test deve appartenere a
+      # `dev`. Su un push e' vero per costruzione, ma NON lo e' per un "Re-run"
+      # di un run vecchio dopo un force-push: li' lo SHA puo' non essere piu'
+      # nella storia di dev.
+      - name: Verifica che lo SHA appartenga a dev
+        run: |
+          git fetch --quiet origin dev
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
+            echo "::error::lo SHA $GITHUB_SHA non appartiene piu' a dev (history riscritta?): deploy NON richiesto"
+            exit 1
+          fi
+          tip="$(git rev-parse origin/dev)"
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::notice::dev e' gia' avanti (${tip:0:12}). Si richiede comunque il deploy di ${GITHUB_SHA:0:12}: ha passato i test, e l'Orchestrator rifiuta di sostituire un commit piu' recente."
+          fi
+
+      - name: Richiedi il deploy a Hermes
+        env:
+          GH_TOKEN: ${{ secrets.ORCHESTRATOR_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Il secret ORCHESTRATOR_DISPATCH_TOKEN non e' configurato: i test sono passati ma il deploy NON e' partito. Vedi HANDOFF.md, sezione 'Autodeploy'."
+            exit 1
+          fi
+          if ! gh workflow run deploy-nutripro.yml \
+              --repo Thegoldendice/JirachiBotOrchestrator --ref main \
+              -f sha="$GITHUB_SHA" -f branch=dev -f source_run_id="$GITHUB_RUN_ID"; then
+            echo "::error::Richiesta di deploy rifiutata. Controllare che il token non sia scaduto o revocato, e che abbia accesso al repo JirachiBotOrchestrator col permesso 'Actions: read and write'."
+            exit 1
+          fi
+          echo "Deploy richiesto per $GITHUB_SHA"
+
+      # Comodita': trova il run appena creato (il titolo contiene lo SHA) e ne
+      # mette il link nel riepilogo. Non blocca nulla se non lo trova.
+      - name: Link al run di deploy
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ORCHESTRATOR_DISPATCH_TOKEN }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            sleep 5
+            url="$(gh run list --repo Thegoldendice/JirachiBotOrchestrator --workflow deploy-nutripro.yml \
+              --limit 10 --json displayTitle,url \
+              --jq ".[] | select(.displayTitle | contains(\"$GITHUB_SHA\")) | .url" | head -1)"
+            if [ -n "$url" ]; then
+              echo "### Deploy richiesto" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "SHA \`$GITHUB_SHA\` — [run su Hermes]($url)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo "::notice::run di deploy non ancora visibile: controllare la tab Actions del repo JirachiBotOrchestrator"

@@ -14,7 +14,8 @@ created: 2026-10-04
 Definire una specifica condivisa per login Google, archivio personale dei piani
 alimentari e chatbot Gemini dentro l’app, per domande sul piano e sulla nutrizione
 in generale, e sostituzioni rapide degli ingredienti con quantità adattate a calorie
-e macronutrienti quasi equivalenti. La mappa raccoglie
+e macronutrienti quasi equivalenti, più una pagina settaggi per funzioni e tracking
+opzionali. La mappa raccoglie
 decisioni prima dell’implementazione; potrà essere ampliata con le prossime idee del PO.
 
 ## Notes
@@ -33,7 +34,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
   nutrizionale del piano come obiettivo; equivalenza e tolleranze vanno definite.
 - Stato di partenza: app client-side, un solo piano in localStorage, nessun
   backend. La preview della lista della spesa è online; branch locale `dev`,
-  modifiche non committate. Questa mappa non cambia codice o deploy.
+  commit locale `1252f93`, push bloccato per permessi di scrittura al 2026-10-04.
+  Questa mappa non cambia codice o deploy.
+- Requisito del 2026-10-05: pagina settaggi con attivazione facoltativa del
+  tracking acqua e olio; ulteriori opzioni sono proposte da valutare.
 - Modello richiesto presente nel catalogo ufficiale come `gemini-3.7-flash`,
   verificato il 2026-10-04: [documentazione Google](https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash).
   Disponibilità nel progetto API, credenziale, quote e costi restano da verificare

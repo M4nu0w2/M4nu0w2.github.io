@@ -20,6 +20,77 @@
   Lì c'è un `HANDOFF.md` con le "Regole assolute" in cima: leggile se tocchi
   qualunque cosa di deploy.
 
+## Autodeploy da `dev` — PREPARATO il 2026-10-05, NON ancora attivo
+
+**Obiettivo**: un push di qualsiasi collaboratore su `dev` fa girare i test qui e,
+**solo se passano**, distribuisce su `https://nutriprobasta.jirachibot.eu` lo
+**SHA esatto** che li ha superati. Finché non è attivo, vale ancora il deploy a
+comando descritto in "Come si pubblica una modifica".
+
+**Cosa c'è in questo repo**: `.github/workflows/nutripro-ci-deploy.yml`
+(incluso nel commit richiesto dal PO il 2026-10-05). Due job: `test` (ubuntu-latest) e `deploy`, che
+**non distribuisce direttamente**: chiede al workflow `deploy-nutripro.yml` del
+repo `Thegoldendice/JirachiBotOrchestrator` di distribuire quello SHA su Hermes,
+con un token limitato salvato come secret. Il deploy vero, il lock, il guard
+sull'ordine dei commit e il rollback vivono nell'Orchestrator: **leggi la sezione
+"2026-10-05, autodeploy NutriPro da dev" del suo `HANDOFF.md`** per funzionamento
+completo, verifiche, rollback e rischi. Qui solo ciò che serve a chi sviluppa.
+
+**Cosa testa la CI e cosa NO — importante per chi tocca il parser**:
+
+| Test | In CI | Come lanciarlo |
+|---|---|---|
+| `tests/shopping-list.test.cjs` (20 test, motore e parser) | sì | `node --test tests/shopping-list.test.cjs` |
+| `tests/shopping-export.e2e.cjs` (browser, CSP di produzione) | sì | `node --test tests/shopping-export.e2e.cjs` con `PLAYWRIGHT_MODULE` |
+| `tests/progeo-pdf.e2e.cjs` (PDF di riferimento **privato**) | **NO** | solo in locale, con `REAL_PROGEO_PDF` e `PDFJS_ASSET_DIR` |
+
+**La CI copre 21 test su 22. Il test sul PDF reale NON fa da cancello al deploy**:
+richiede un documento che non sta nel repo e lancia un errore all'avvio se manca.
+**Prima di pushare modifiche al parser PDF, lancialo in locale.**
+
+**Cosa deve configurare il proprietario del repo (`M4nu0w2`, serve essere admin)**
+— il PO ha solo permesso `push`:
+1. Ricevere in modo sicuro (mai in chiaro in chat/issue/email) dal PO un
+   fine-grained PAT limitato al repo `JirachiBotOrchestrator` con il solo permesso
+   *Actions: Read and write* (creazione e scadenza descritte nell'HANDOFF
+   dell'Orchestrator).
+2. Settings → Environments → **New environment** `nutripro-deploy` → *Deployment
+   branches*: **Selected branches → `dev`** → secret **`ORCHESTRATOR_DISPATCH_TOKEN`**
+   con il valore del token.
+3. Actions abilitate sul repo. Facoltativo: proteggere `dev` (PR/review).
+
+**Senza il secret** i test passano e il job `deploy` **fallisce con un messaggio
+che lo dice**, senza distribuire nulla: non rompe niente. Il token scade (consigliati
+90 giorni): a scadenza il deploy si ferma con un errore esplicito e va rigenerato.
+
+**Cosa viene servito (whitelist)**: solo asset web (`html css js webmanifest png
+jpg jpeg gif svg ico webp woff2`). **`HANDOFF.md`, `WAYFINDER.md`, `CONTEXT.md`,
+`.wayfinder/`, `tests/`, `.github/`, `package*.json`, ogni `.md/.cjs/.pdf/.txt` e
+ogni dotfile NON vengono mai serviti**, anche se stanno nel repo. Un file nuovo di
+tipo non in elenco (es. un `.json` di dati) **non** arriva online: se serve,
+va aggiunta l'estensione al Dockerfile nell'Orchestrator (`services/nutripro/Dockerfile`).
+
+**Dove vedere cosa gira**: `https://nutriprobasta.jirachibot.eu/deploy-version.txt`
+contiene lo SHA in produzione (è lo stesso del commit su `dev`).
+
+**Rollback** (dettagli e SHA completi nell'HANDOFF dell'Orchestrator):
+`gh workflow run deploy-nutripro.yml --repo Thegoldendice/JirachiBotOrchestrator -f sha=<SHA completo> -f allow_older=true`.
+Per fermare tutto subito il PO revoca il token (effetto immediato).
+
+**La preview su Hermes** (sezione "Preview Hermes pre-commit") **verrà sostituita
+dal primo autodeploy**. Nessuna regressione: l'`index.html` della preview è
+identico a quello del commit `1252f93` a meno dei fine riga (CRLF nella copia di
+lavoro su Windows, LF nel repo; normalizzati hanno lo stesso SHA256 `6c789d28…`).
+Dopo il primo deploy lo script di rollback della preview rifiuta di girare: è atteso.
+
+**Ordine di attivazione — non invertire**: (1) il PO committa e pusha i file
+dell'Orchestrator; (2) prova a secco `-f dry_run=true -f branch=main` sul runner
+vero; (3) PAT consegnato e secret configurato; (4) **solo allora** si committa e
+si pusha questo workflow su `dev`. Pushare `dev` prima del punto 1 farebbe
+fallire il dispatch (il workflow dell'Orchestrator non conoscerebbe gli input).
+**Attenzione**: `.github/` è oggi una cartella non tracciata in questo repo: non
+fare `git add .` alla cieca, o l'autodeploy parte prima di essere pronto.
+
 ## Goal
 
 Il PO vuole **lavorare sull'app NutriPro** (evolutive sue, non ancora
@@ -177,7 +248,8 @@ modalità di gestione dei dati vanno valutati prima dell’attivazione.
 1. Modifichi qui e **provi in locale** (vedi sotto).
 2. Il PO decide se/quando committare e pushare su `M4nu0w2/M4nu0w2.github.io`
    (serve il permesso di scrittura).
-3. **Il deploy NON parte da solo al push.** Va lanciato a comando:
+3. **Finché l'autodeploy non è attivo (sezione "Autodeploy da dev"), il deploy NON
+   parte da solo al push.** Va lanciato a comando:
    ```
    gh workflow run deploy-nutripro.yml --repo Thegoldendice/JirachiBotOrchestrator
    ```
@@ -270,11 +342,13 @@ Il font Outfit risulta `unloaded` finché non serve: forza
 - Un primo tentativo di CSP (quella stretta di PixelPets) è stato scartato
   **prima** di andare in produzione perché l'app non partiva (niente pdf.js,
   niente script inline, niente font).
-- Il Dockerfile copia tutto il clone nell'immagine: se un `.md` o altro file di
-  lavoro finisse nel repo upstream verrebbe **servito pubblicamente**. Il
-  Dockerfile ora toglie `.git` e ogni `.md` in radice (modifica pushata, ma
-  **non ancora in produzione**: serve il redeploy, vedi Next Steps): finché non
-  è applicata, **non pushare mai file di lavoro in questo repo**.
+- Il Dockerfile copiava tutto il clone nell'immagine, togliendo solo `.git` e i
+  `.md` **in radice**: con `.wayfinder/` e `tests/` ora nel repo, i file
+  `.wayfinder/*.md` sarebbero stati **serviti pubblicamente**. **Sostituito il
+  2026-10-05 da una whitelist** (vedi "Autodeploy da dev"), provata sull'host
+  reale con un contesto ostile; **non ancora in produzione** (modifica
+  dell'Orchestrator non committata). Finché non è applicata, il container in
+  produzione serve ancora la copia di prima.
 
 ## Next Steps
 
@@ -283,14 +357,13 @@ Il font Outfit risulta `unloaded` finché non serve: forza
 2. **Verifica i permessi di scrittura** sul repo prima di promettere un push
    (comando sopra). Se non ci sono, le strade sono un fork + PR oppure chiedere
    l'accesso a `M4nu0w2`.
-3. **Rilancia il deploy per applicare il Dockerfile blindato.** Le modifiche
-   nell'Orchestrator sono già committate e pushate (`3e23a20`: `../NutriPro`
-   tra le directory autorizzate + rimozione di ogni `.md` dall'immagine), ma
-   il container in produzione gira ancora sull'immagine vecchia. Comando di
-   deploy sopra; poi verifica con `ssh hermes docker exec nutripro-frontend-1
-   ls /usr/share/nginx/html` (devono restare solo `50x.html icon-512.png
-   index.html`). Il build col nuovo `rm -f …/*.md` non è mai stato provato: se
-   fallisce, il container vecchio resta su e non c'è disservizio.
+3. **Attivare l'autodeploy** (sezione "Autodeploy da dev"): serve l'ok del PO a
+   committare/pushare, il token consegnato a `M4nu0w2` e il secret configurato.
+   Il **primo deploy applicherà anche la whitelist del Dockerfile** (il container
+   in produzione serve ancora la preview e l'immagine vecchia). Dopo, verifica
+   con `ssh hermes docker exec nutripro-frontend-1 find /usr/share/nginx/html
+   -type f` che non ci sia nessun `.md`, `tests/` o `.wayfinder/`.
+   (Il Dockerfile precedente con `rm -f *.md`, commit `3e23a20`, è superato.)
 4. Se la modifica introduce una nuova origine esterna: aggiorna prima
    `csp-nutripro.conf` (Orchestrator), provala nel browser con controprova, poi
    deploya.
@@ -326,3 +399,21 @@ codice, test, README, mappa Wayfinder, glossario e ticket. I 22 test sono passat
 Alla verifica preliminare GitHub indica viewerPermission READ: il push potrebbe
 essere negato. La preview Hermes resta quella gia distribuita; questo push non
 autorizza un nuovo deploy. PDF personali e credenziali restano fuori dal repository.
+
+### Raccolta evolutive: settaggi — 2026-10-05
+
+Creato il ticket locale
+[Definire pagina settaggi e tracking opzionali](.wayfinder/issues/WF-007-settaggi.md).
+Richiesti interruttori per tracking acqua e olio. Proposti, senza approvazione,
+promemoria, unità preferite, visibilità del riepilogo nutrizionale e preferenze
+per le sostituzioni. Nessuna implementazione. Commit precedente `1252f93`
+presente su `dev`; push negato con 403, il PO sta chiedendo accesso in scrittura.
+
+
+### Commit e push richiesti dal PO - 2026-10-05
+
+Verificato accesso WRITE. Inclusi workflow CI/deploy, ticket settaggi e aggiornamenti
+della mappa e di questo handoff. I 21 test previsti in CI passano anche in locale.
+Il workflow parte al push su dev; il deploy richiede ORCHESTRATOR_DISPATCH_TOKEN
+nell'environment nutripro-deploy. La configurazione del secret non viene
+verificata da questo commit.
