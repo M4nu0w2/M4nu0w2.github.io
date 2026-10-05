@@ -20,7 +20,20 @@
   Lì c'è un `HANDOFF.md` con le "Regole assolute" in cima: leggile se tocchi
   qualunque cosa di deploy.
 
-## Autodeploy da `dev` — PUSHATO il 2026-10-05, in attesa SOLO del secret
+## Autodeploy da `dev` — ATTIVO dal 2026-10-05 sera (secret configurato e provato)
+
+> **⚠ AGGIORNAMENTO (22:56) — prevale su quanto scritto sotto. L'AUTODEPLOY È
+> ARMATO.** Il secret `ORCHESTRATOR_DISPATCH_TOKEN` è configurato nell'Environment
+> `nutripro-deploy` e **la catena è stata provata**: il dispatch arriva
+> all'Orchestrator con lo SHA giusto. **Ogni push su `dev` che passa i test
+> pubblica davvero su `nutriprobasta.jirachibot.eu`**, anche una modifica a
+> `HANDOFF.md` o `WAYFINDER.md`. Il primo push reale **sostituisce la preview** con
+> `dev`, **senza il fix dell'olio di Manu** (`7904f4a` su `main`/`NP-01`, in
+> conflitto su `index.html`). **Prima di pushare su `dev` (o di far pushare altri)
+> decidere cosa deve andare online.** Per lavorare senza pubblicare usa un branch
+> diverso da `dev` (es. `NP-01`): i push su altri branch non fanno partire nulla.
+> I frammenti sotto che dicono "manca solo il secret" o "il job di deploy è rosso"
+> sono superati.
 
 **Stato (16:40)**: il workflow è **già su `dev`** (commit `3a266f8`) e ha già girato
 una volta: **test verdi su GitHub**, job di deploy **rosso come previsto** perché
