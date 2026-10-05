@@ -20,12 +20,32 @@
   Lì c'è un `HANDOFF.md` con le "Regole assolute" in cima: leggile se tocchi
   qualunque cosa di deploy.
 
-## Autodeploy da `dev` — PREPARATO il 2026-10-05, NON ancora attivo
+## Autodeploy da `dev` — PUSHATO il 2026-10-05, in attesa SOLO del secret
+
+**Stato (16:40)**: il workflow è **già su `dev`** (commit `3a266f8`) e ha già girato
+una volta: **test verdi su GitHub**, job di deploy **rosso come previsto** perché
+il secret `ORCHESTRATOR_DISPATCH_TOKEN` non è ancora configurato (messaggio chiaro,
+**nessun deploy partito**, Hermes intatto: la preview è ancora servita). Lato
+Orchestrator è tutto pushato e provato con tre dry-run. **Manca solo il secret.**
+Finché manca, ogni push su `dev` darà il job di deploy rosso (innocuo). **Quando
+ci sarà, ogni push su `dev` distribuirà**, anche i commit di sola documentazione.
 
 **Obiettivo**: un push di qualsiasi collaboratore su `dev` fa girare i test qui e,
 **solo se passano**, distribuisce su `https://nutriprobasta.jirachibot.eu` lo
-**SHA esatto** che li ha superati. Finché non è attivo, vale ancora il deploy a
+**SHA esatto** che li ha superati. Finché il secret non c'è, vale ancora il deploy a
 comando descritto in "Come si pubblica una modifica".
+
+**ATTENZIONE — `dev` e `main` sono divergenti e confliggono su `index.html`.**
+Manu ha pushato `7904f4a` *"fix oil valorization"* su `main` e su `NP-01` (non è in
+`dev`); `dev` ha la lista della spesa (non è in `main`). Una simulazione di merge dà
+*CONFLICT (content) in index.html*. **Il primo autodeploy servirà `dev`, cioè la
+stessa app della preview ma SENZA il fix dell'olio di Manu.** Prima di attivare il
+secret conviene riunire le due linee (con Manu): non è automatizzabile.
+
+**Cartella condivisa tra sessioni**: due chat sullo stesso working tree si
+committano a vicenda i file non tracciati (il commit `3a266f8` ha incluso questo
+workflow, lasciato non tracciato da un'altra sessione). Per lavorare in parallelo usa
+un worktree per sessione: `git worktree add ../NutriPro-<nome> -b <branch>`.
 
 **Cosa c'è in questo repo**: `.github/workflows/nutripro-ci-deploy.yml`
 (incluso nel commit richiesto dal PO il 2026-10-05). Due job: `test` (ubuntu-latest) e `deploy`, che
@@ -83,13 +103,11 @@ identico a quello del commit `1252f93` a meno dei fine riga (CRLF nella copia di
 lavoro su Windows, LF nel repo; normalizzati hanno lo stesso SHA256 `6c789d28…`).
 Dopo il primo deploy lo script di rollback della preview rifiuta di girare: è atteso.
 
-**Ordine di attivazione — non invertire**: (1) il PO committa e pusha i file
-dell'Orchestrator; (2) prova a secco `-f dry_run=true -f branch=main` sul runner
-vero; (3) PAT consegnato e secret configurato; (4) **solo allora** si committa e
-si pusha questo workflow su `dev`. Pushare `dev` prima del punto 1 farebbe
-fallire il dispatch (il workflow dell'Orchestrator non conoscerebbe gli input).
-**Attenzione**: `.github/` è oggi una cartella non tracciata in questo repo: non
-fare `git add .` alla cieca, o l'autodeploy parte prima di essere pronto.
+**Ordine di attivazione**: (1) ~~il PO committa e pusha i file dell'Orchestrator~~
+**fatto** (`7da3ff1`); (2) ~~prova a secco sul runner vero~~ **fatta**, tre dry-run
+con esito atteso; (3) **PAT consegnato a `M4nu0w2` e secret configurato — è l'UNICO
+passo aperto**; (4) ~~push di questo workflow su `dev`~~ **fatto** (`3a266f8`, in
+anticipo ma senza danni: senza secret non distribuisce nulla).
 
 ## Goal
 
