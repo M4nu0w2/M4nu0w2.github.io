@@ -1320,7 +1320,8 @@
        ========================================================================== */
     function parseSpoonCount(str) {
       if (!str) return null;
-      const s = str.toLowerCase();
+      // Progeo prints halves as the "½" glyph (e.g. "2 cucchiai e ½")
+      const s = str.toLowerCase().replace(/½/g, '1/2');
 
       // "2 cucchiai e 1/2", "2 1/2", "2 e 1/2"
       let match = s.match(/(\d+)\s*(?:cucchiai|cucchiaini|bicchieri)?\s*(?:e|\+)?\s*1\/2/);
@@ -1330,7 +1331,7 @@
       if (match) return parseFloat(match[1]) + 0.5;
 
       if (s.includes("mezzo") || s.includes("1/2")) {
-        if (!s.match(/\d+/)) return 0.5;
+        if (!s.replace('1/2', '').match(/\d+/)) return 0.5;
       }
 
       // Decimals like "2,5" or "2.5"
@@ -1751,14 +1752,16 @@
         { key: 'dom', regex: /domenic[a]/i }
       ];
 
+      // Anchored to the whole line: meal headers stand alone on their row.
+      // Unanchored patterns matched food names (e.g. "Olio extra vergine" -> "extra").
       const mealKeywords = [
-        { id: 'colazione', name: 'Colazione', icon: '🌅', regex: /colazione/i },
-        { id: 'meta_mattina', name: 'Metà mattina', icon: '🍎', regex: /meta['\s]*mattina|spuntino.*matt|spuntino.*1|mattina/i },
-        { id: 'pranzo', name: 'Pranzo', icon: '🥗', regex: /pranzo/i },
-        { id: 'merenda', name: 'Merenda', icon: '🍇', regex: /merenda|spuntino.*pomeri|spuntino.*2|pomeriggio/i },
-        { id: 'cena', name: 'Cena', icon: '🍲', regex: /cena/i },
-        { id: 'spuntino_serale', name: 'Spuntino serale', icon: '🌙', regex: /spuntino.*sera|dopocena|serale|notturno/i },
-        { id: 'arco_giornata', name: 'Arco della giornata', icon: '💧', regex: /arco.*giornata|condimenti|nella.*giornata|extra/i }
+        { id: 'colazione', name: 'Colazione', icon: '🌅', regex: /^(?:prima\s+)?colazione$/i },
+        { id: 'meta_mattina', name: 'Metà mattina', icon: '🍎', regex: /^(?:meta['\s]*mattina|spuntino.*matt\w*|spuntino\s*1|mattina)$/i },
+        { id: 'pranzo', name: 'Pranzo', icon: '🥗', regex: /^pranzo$/i },
+        { id: 'merenda', name: 'Merenda', icon: '🍇', regex: /^(?:merenda|spuntino.*pomeri\w*|spuntino\s*2|pomeriggio)$/i },
+        { id: 'cena', name: 'Cena', icon: '🍲', regex: /^cena$/i },
+        { id: 'spuntino_serale', name: 'Spuntino serale', icon: '🌙', regex: /^(?:spuntino.*sera\w*|dopocena|serale|notturno)$/i },
+        { id: 'arco_giornata', name: 'Arco della giornata', icon: '💧', regex: /^(?:arco.*giornata|condimenti|nella.*giornata|extra)$/i }
       ];
 
       const metadataBlacklistRegex = /personalizzato|elaborato da|dott\.|dottor|biologo nutrizionista|ph\.d|indirizzo:|cellulare:|telefono:|email:|codice fiscale|fabbisogno|ripartizione|consigli generali|norme generali|avvertenze|pag\.\s*\d+|progeo medical|via\s+[a-z]|\b\d{5}\b|\b\d{9,10}\b/i;
