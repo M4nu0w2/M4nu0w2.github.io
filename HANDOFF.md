@@ -1,5 +1,34 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Gestione dei piani — 2026-10-06
+
+Il PO conferma login Google reale locale funzionante e richiede di implementare
+primo PDF, nuovo piano che archivia senza cancellare il precedente, sostituzione
+del piano attivo con doppia conferma, stati attivo/inattivo (uno attivo al massimo)
+e ticket separato per consultare lo storico.
+
+Preparato su `dev`, codice non committato o pubblicato:
+
+- `assets/plans.js`: archivio atomico in localStorage per account, identificativi
+  stabili, date, activeId, contenuto e tracking distinti per piano. Migrazione una
+  volta del precedente piano autenticato, mantenendo le chiavi legacy come backup.
+- Menu Gestisci piani: nuovo piano, sostituzione, rendi attivo e disattiva.
+  Il PDF viene validato prima della conferma finale; annullamento, quota, PDF
+  invalido e revisione cambiata in altra scheda non sovrascrivono il piano.
+- Due conferme: prima dell'import e dopo la lettura, con checkbox esplicita.
+  La sostituzione mantiene l'identità del piano e azzera il suo tracking dopo avviso.
+- WF-001 risolto per questo flusso; WF-009 aperto per consultazione dello storico
+  senza riattivazione. Sincronizzazione, PDF sorgenti e modifica dei pasti non
+  sono inclusi: conservazione nel browser, senza trasferimento al server.
+- 32 test Node e 7 browser passati. Test caricamento simulano il parser PDF;
+  parser reale invariato. Screenshot mobili verificati, nessun overflow.
+- Aggiunta route pubblica esplicita del modulo; whitelist Docker/preflight
+  Orchestrator includono il nuovo asset. Nessun cambiamento di produzione.
+
+Server locale riavviato su `http://localhost:8080` con codice aggiornato:
+il riavvio termina la sessione e richiede una nuova login Google.
+WF-008 resta aperto per verifica finale in produzione; il PO ha validato locale.
+
 ## Login Google e home protetta — 2026-10-06
 
 Il PO richiede una login reale e home accessibile soltanto dopo autenticazione;
