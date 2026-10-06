@@ -2,6 +2,45 @@
 
 
 
+
+## WF-010 Gemini - base locale preparata, decisioni pendenti - 2026-10-06
+
+PO revoca rinvio e chiede continuare qui con altro ticket: preso WF-010.
+Implementazione locale (NON committata/pushata/deployata): /chat React per
+sole domande generali, status e POST autenticati + Origin/CSRF, keyserver,
+modulo server/gemini.cjs REST generateContent. Default disattivato.
+Modello verificato ufficialmente gemini-3.5-flash-lite (pricing Google attuale).
+Termini Google ai.google.dev/gemini-api/terms richiedono Paid Services per
+API clients disponibili a utenti SEE. Non attivare in pubblico free-tier.
+
+Opzioni config .env.example: GEMINI_API_KEY, GEMINI_ENABLED=false, GEMINI_MODEL,
+GEMINI_ACCESS_MODE. local-dev accettato sololocalhost; paid-services richiede
+una decisione/configurazione esplicita. Non abilitato billing; nessuna keyGemini
+fornita, nessuna chiamata API reale. Non copiare le credenziali OAuth come key.
+
+Frontend src/components/ChatPage.jsx +src/chat.css; cronologia solo memoria,
+20 messaggi ebudget24000char con coppievecchie rimosse; niente piani/PDF/account
+nel payloadGoogle. Renderingtesto, textarea2000char, timeout30s/manualretry.
+Backend5/min30/day/account120/dayglobal4concurrent, timer20s noretries,
+128KBbodyJSON10sread; counterprocessmemory resetrestart. Errorisanificati.
+API GET/api/chat/status -> {enabled,configured,model,reason}; POST/api/chat
+{message,history:[{role:user|model,text}]} -> {text,model}.
+
+Build e56test PASS:44unit/integration +12browser, inclusi8backendGemini,
+4routing/chatAPI e4Reactchat; regressioni auth/parser/archive/spesa passate.
+Provider simulato, qualita/availability reale non verificate. Reviewsecurity
+nessunleak/bypass; bug longreplyhistory corretto. BodyproviderJSON non ha hard
+bytecap, endpointGooglefisso emaxOutputTokens1024; futuro hardeningse necessario.
+Serverlocale8080 riavviato con questa build, Gemini disattivato. Prodresta2e360a9.
+
+PENDENTI domande PO inviate async: pianoattivooptin vs generalonly; keyprogetto
+vsBYOK; disattivato vs alternativafree vspaidbudget. Non sono decisioni approvate.
+Preparata solo parte indipendente: generalchatdisattivata. WF-010 open, assignee
+codex; non chiudere finche attivazione/verifica reale decise e completate.
+Non spacchettare ora evoluzioni non concordate. Changes tracker/docs locali
+restano nonpushati; questoHANDOFF pubblicato solo docs [skip ci].
+
+
 ## Prossima sessione: Gemini gratuito e veloce - 2026-10-06
 
 ULTIMA INDICAZIONE PO: "worka" conferma che NutriPro e login Google pubblica
