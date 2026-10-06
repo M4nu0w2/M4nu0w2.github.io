@@ -4,22 +4,18 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const http = require('node:http');
+const { startFixture } = require('./auth-fixture.cjs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const pdfPath = process.env.REAL_PROGEO_PDF;
-const assetDir = process.env.PDFJS_ASSET_DIR;
-if (!pdfPath || !assetDir) throw new Error('Set REAL_PROGEO_PDF and PDFJS_ASSET_DIR for the private reference PDF and pdf.js 3.11.174 assets.');
+if (!pdfPath) throw new Error('Set REAL_PROGEO_PDF to the private reference PDF.');
 
 test('real reference PDF: appendix links, complete recipes, accurate shopping totals, reload', async () => {
-  const csp = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cdnjs.cloudflare.com; worker-src blob: https://cdnjs.cloudflare.com; manifest-src data:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': csp });
-    res.end(fs.readFileSync('index.html'));
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const fixture = await startFixture();
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const login = await fixture.login();
+    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -27,16 +23,12 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
       window.cspViolations = [];
       document.addEventListener('securitypolicyviolation', event => window.cspViolations.push(event.violatedDirective));
     });
-    await page.route('https://**/*', async route => {
-      const url = route.request().url();
-      if (/\/pdf(?:\.worker)?\.min\.js$/.test(url)) {
-        await route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync(path.join(assetDir, url.split('/').pop())) });
-      } else await route.fulfill({ status: 200, contentType: 'text/css', body: '' });
-    });
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
-    await page.locator('#pdf-file-input').setInputFiles(pdfPath);
-    await page.waitForFunction(() => JSON.parse(localStorage.getItem('diet_plan_data') || 'null')?.metadata.alternativesImported, { timeout: 15000 });
-    const data = await page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_data')));
+    await page.goto(fixture.config.origin);
+    await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
+    await page.getByLabel('PDF del piano').setInputFiles(pdfPath);
+    await page.getByRole('button', { name: 'Importa e attiva' }).click();
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1') || 'null')?.plans[0]?.data.metadata.alternativesImported, { timeout: 15000 });
+    const data = await page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')).plans[0].data);
     const assigned = Object.values(data.days).flatMap(day => day.meals.flatMap(meal => meal.items));
     const coded = assigned.filter(item => item.alternativeCode);
     assert.ok(coded.length > 30);
@@ -73,6 +65,6 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
     await context.close();
   } finally {
     await browser.close();
-    await new Promise(resolve => server.close(resolve));
+    await fixture.close();
   }
 });

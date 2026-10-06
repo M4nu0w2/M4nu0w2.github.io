@@ -5,6 +5,30 @@ lista della spesa. Le definizioni descrivono il dominio, non l’implementazione
 
 ## Language
 
+**Piano attivo**:
+Piano mostrato dalla home e utilizzato per pasti, spunte, acqua ed esportazione.
+Ogni account può avere un solo piano attivo alla volta, oppure nessuno.
+
+**Piano inattivo**:
+Piano conservato nell'archivio, con contenuto e tracking propri, che non guida
+la home. Può essere riattivato senza cancellare il precedente piano attivo.
+_Avoid_: Inattivo come sinonimo di eliminato.
+
+**Sostituzione del piano**:
+Reimportazione distruttiva del PDF nel piano attivo, protetta da due conferme.
+Sovrascrive contenuto e tracking di quel piano; non archivia la versione sostituita.
+_Avoid_: Caricamento di un nuovo piano, che conserva invece il precedente.
+
+**Account Google**:
+Identità verificata da Google per accedere a NutriPro, riconosciuta tramite
+l'identificativo stabile `sub`. L'email è un attributo, non la chiave dei piani.
+_Avoid_: Token API Gemini come credenziale per la login.
+
+**Sessione NutriPro**:
+Accesso temporaneo creato dal server dopo la verifica Google; termina alla
+scadenza, al logout o al riavvio del servizio.
+_Avoid_: Login come sinonimo di archivio remoto o sincronizzazione dei piani.
+
 **Piano alimentare**:
 Entità personale corrispondente al contenuto di un singolo PDF del piano
 nutrizionale, distinguibile dagli altri piani dello stesso utente nel tempo.

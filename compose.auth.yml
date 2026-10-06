@@ -1,0 +1,17 @@
+# Standalone reference. In Hermes, integrate this service into the existing proxy network.
+services:
+  frontend:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    mem_limit: 128m
+    cpus: 0.25

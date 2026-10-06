@@ -1,20 +1,13 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const vm = require('node:vm');
-
-const source = fs.readFileSync('index.html', 'utf8').match(/<script>\s*([\s\S]*?)<\/script>/)[1];
+const engine = require('../src/lib/dietEngine.mjs');
 function app(pdfLines = [], extraPages = []) {
   const pages = [pdfLines, ...extraPages];
-  const context = vm.createContext({
-    document: { addEventListener() {} }, navigator: {}, console,
-    pdfjsLib: { GlobalWorkerOptions: {}, getDocument: () => ({ promise: Promise.resolve({
-      numPages: pages.length, getPage: async pageNum => ({ getTextContent: async () => ({ items: pages[pageNum - 1].flatMap((line, i) =>
-        line.map(([x, str]) => ({ str, transform: [1, 0, 0, 1, x, 800 - i * 20] }))) }) })
-    }) }) }
-  });
-  vm.runInContext(source, context);
-  return context;
+  const pdf = { getDocument: () => ({ promise: Promise.resolve({
+    numPages: pages.length, getPage: async pageNum => ({ getTextContent: async () => ({ items: pages[pageNum - 1].flatMap((line, i) =>
+      line.map(([x, str]) => ({ str, transform: [1, 0, 0, 1, x, 800 - i * 20] }))) }) })
+  }) }) };
+  return { ...engine, parseProgeoPdf: buffer => engine.parseProgeoPdf(buffer, undefined, pdf) };
 }
 const food = (name, qty, extras = {}) => ({ name, qty, rawName: name, rawQty: qty, ...extras });
 const diet = (...items) => ({ days: { lun: { dayName: 'Lunedì', meals: [{ items }] } } });

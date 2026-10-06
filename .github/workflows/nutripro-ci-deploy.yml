@@ -49,11 +49,13 @@ jobs:
         with:
           node-version: 22
 
-      # Motore della lista della spesa e parser PDF: nessuna dipendenza.
-      - name: Test del motore e del parser
-        run: node --test tests/shopping-list.test.cjs
+      - name: Installa dipendenze del servizio login
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
-      # Playwright fuori dal repo (nessun package.json da mantenere qui): i test
+      - name: Test autenticazione, motore e parser
+        run: npm test
+
+      # Playwright fuori dal repo: i test
       # leggono PLAYWRIGHT_MODULE. Versione fissata, e' quella con cui i test
       # sono stati scritti e provati.
       - name: Installa Playwright e Chromium
@@ -61,8 +63,8 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.61.1
           "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
 
-      - name: Test browser (esportazione lista della spesa, con la CSP di produzione)
-        run: node --test tests/shopping-export.e2e.cjs
+      - name: Test browser (login e lista della spesa, con CSP)
+        run: npm run test:browser
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright
 

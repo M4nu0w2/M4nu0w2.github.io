@@ -20,6 +20,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
 
 ## Notes
 
+- Richiesta del PO del 2026-10-06: implementare ora la login Google reale e
+  rendere la home accessibile soltanto dopo login. Supera il limite di sola
+  raccolta per questa funzionalità; archivio e chatbot restano da specificare.
+
 - Richiesta del PO del 2026-10-04: iniziare a segnare evolutive, non implementarle.
 - Obiettivi acquisiti: autenticazione Google e piani persistenti, uno per PDF,
   catalogati nel tempo con CRUD e menu dedicato; chatbot per domande sul piano e
@@ -59,6 +63,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
 
 ## Decisions so far
 
+- [Archivio e gestione dei piani](.wayfinder/issues/WF-001-archivio.md): nuovo
+  piano conserva il precedente inattivo; sostituzione con doppia conferma;
+  un solo piano attivo, con tracking distinto per piano.
+
 - [Definire canale e ambito del chatbot](.wayfinder/issues/WF-005-canale-ambito.md):
   chatbot nell’app, con domande sul proprio piano e sulla nutrizione generale.
 
@@ -83,3 +91,15 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 - Implementare, attivare login o Gemini, creare credenziali, committare o distribuire
   nuove funzionalità in questa sessione di raccolta.
+
+Eccezione autorizzata il 2026-10-06: preparare login Google e protezione della
+home, compresa l'infrastruttura necessaria; l'attivazione richiede configurazione
+OAuth e verifica reale. La richiesta non chiude le decisioni aperte sull'archivio.
+
+## React e storico - 2026-10-06
+
+Il PO richiede il refactor completo del frontend in React e una pagina moderna
+per i piani precedenti. Implementati `/plans` con ricerca/filtri e `/plans/:id`
+in sola lettura; consultare non modifica il piano attivo. WF-009 completato.
+Login, parser PDF, conversioni e archivio per account conservati.
+Codice locale su dev; pubblicazione non eseguita.

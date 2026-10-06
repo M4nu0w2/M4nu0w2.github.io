@@ -1,0 +1,76 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { createStore } = require('../src/lib/planStore.mjs');
+const diet = name => ({ days: { lun: { meals: [{ items: [{ name, qty: '100 g' }] }] } } });
+function fixture() {
+  const values = new Map(); let sequence = 0; let fail = false;
+  const storage = { getItem: k => values.get(k) ?? null, setItem(k, v) { if (fail) throw new Error('QuotaExceeded'); values.set(k, v); } };
+  const store = createStore(storage, 'user1', { id: () => `plan-${++sequence}`, now: () => '2026-10-06T10:00:00.000Z' });
+  return { values, storage, store, failWrites() { fail = true; } };
+}
+test('first plan active, newer plan archives old data and independent tracking', () => {
+  const f = fixture();
+  let a = f.store.importPlan(diet('Riso'), { sourceName: 'Settembre.pdf' });
+  const firstId = a.activeId;
+  f.store.saveTracking(firstId, 'water', { lun: 3 });
+  f.store.saveTracking(firstId, 'checked', { lun: { item1: true } });
+  a = f.store.importPlan(diet('Pasta'), { sourceName: 'Ottobre.pdf' });
+  assert.equal(a.plans.length, 2);
+  assert.notEqual(a.activeId, firstId);
+  assert.equal(a.plans[0].name, 'Settembre');
+  assert.equal(a.plans[0].data.days.lun.meals[0].items[0].name, 'Riso');
+  assert.deepEqual(a.plans[0].water, { lun: 3 });
+  assert.deepEqual(a.plans[1].water, {});
+  a = f.store.setActive(firstId);
+  assert.deepEqual(a.plans.find(p => p.id === a.activeId).checked, { lun: { item1: true } });
+  a = f.store.setActive(null);
+  assert.equal(a.activeId, null);
+  assert.equal(a.plans.length, 2);
+  assert.throws(() => f.store.setActive('missing'));
+});
+test('replacement overwrites only selected active plan and resets its tracking', () => {
+  const f = fixture();
+  f.store.importPlan(diet('Old'));
+  let a = f.store.importPlan(diet('Current'));
+  const oldSnapshot = JSON.stringify(a.plans[0]);
+  const activeId = a.activeId;
+  a = f.store.saveTracking(activeId, 'water', { lun: 2 });
+  a = f.store.importPlan(diet('Updated'), { mode: 'replace', targetId: activeId, expectedRevision: a.revision, sourceName: 'Correzione.pdf' });
+  assert.equal(a.activeId, activeId);
+  assert.equal(a.plans.length, 2);
+  assert.equal(JSON.stringify(a.plans[0]), oldSnapshot);
+  assert.deepEqual(a.plans[1].water, {});
+  assert.equal(a.plans[1].data.days.lun.meals[0].items[0].name, 'Updated');
+});
+test('invalid PDF, quota failure, stale import and wrong replacement target preserve archive', () => {
+  const f = fixture();
+  const first = f.store.importPlan(diet('Old'));
+  f.store.importPlan(diet('New'));
+  const snapshot = f.storage.getItem(f.store.key);
+  assert.throws(() => f.store.importPlan({ days: {} }));
+  assert.throws(() => f.store.importPlan(diet('X'), { mode: 'replace', targetId: first.activeId }));
+  assert.throws(() => f.store.importPlan(diet('X'), { expectedRevision: first.revision }));
+  assert.throws(() => f.store.saveTracking(first.activeId, 'water', { lun: 4 }));
+  assert.throws(() => f.store.setActive(null, first.revision));
+  assert.equal(f.storage.getItem(f.store.key), snapshot);
+  f.failWrites();
+  assert.throws(() => f.store.importPlan(diet('X')), /spazio/);
+  assert.equal(f.storage.getItem(f.store.key), snapshot);
+});
+test('migrates authenticated account once, keeps backups and isolates accounts', () => {
+  const f = fixture();
+  f.storage.setItem('diet_plan_data:user1', JSON.stringify(diet('Legacy')));
+  f.storage.setItem('diet_water_tracker:user1', JSON.stringify({ lun: 7 }));
+  f.storage.setItem('diet_plan_data', JSON.stringify(diet('Unowned')));
+  const a = f.store.migrate();
+  assert.equal(a.plans.length, 1);
+  assert.deepEqual(a.plans[0].water, { lun: 7 });
+  assert.ok(f.storage.getItem('diet_plan_data:user1'));
+  assert.deepEqual(f.store.migrate(), a);
+  const other = createStore(f.storage, 'user2');
+  assert.equal(other.migrate().plans.length, 0);
+  f.storage.setItem(f.store.key, '{broken');
+  assert.throws(() => f.store.read(), /non leggibile/);
+  assert.throws(() => f.store.importPlan(diet('X')));
+  assert.equal(f.storage.getItem(f.store.key), '{broken');
+});

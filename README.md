@@ -1,11 +1,10 @@
 # 🌱 NutriPro Basta — Piano Nutrizionale PWA (Progeo Medical Converter)
 
 [![PWA Ready](https://img.shields.io/badge/PWA-Mobile--First-10b981?style=for-the-badge&logo=pwa)](./index.html)
-[![JavaScript](https://img.shields.io/badge/Vanilla_JS-ES6+-f7df1e?style=for-the-badge&logo=javascript)](./index.html)
+[![React](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react)](./src/App.jsx)
 [![Client Side PDF Engine](https://img.shields.io/badge/PDF.js-Client--Side-ff6b6b?style=for-the-badge&logo=mozilla)](https://mozilla.github.io/pdf.js/)
-[![Privacy 100%](https://img.shields.io/badge/Privacy-100%25_Offline-06b6d4?style=for-the-badge)](#-privacy--zero-backend)
 
-Una **Single Page Web Application (PWA / Mobile-First)** in un unico file per l'analisi locale dei piani alimentari generati dal software gestionale **Progeo Medical**. 
+Una **Single Page Web Application (PWA / Mobile-First)** per l'analisi locale dei piani alimentari generati dal software gestionale **Progeo Medical**, con servizio Node per autenticazione Google e protezione della home.
 
 L'applicazione converte automaticamente le dosi espresse in cucchiai, bicchieri e legumi secchi nelle corrispondenti grammature esatte (o peso del cotto in scatola sgocciolato) e le memorizza nel browser per consultarle ed aggiornarle ogni giorno dalla schermata Home dello smartphone.
 
@@ -14,17 +13,35 @@ L'applicazione converte automaticamente le dosi espresse in cucchiai, bicchieri 
 ## 🌐 Link Applicazione Live / Web App
 
 > 🔗 **Accedi all'App Nutrizionale**:  
-> **[https://m4nu0w2.github.io/](https://m4nu0w2.github.io/)**
+> **[NutriPro su Hermes](https://nutriprobasta.jirachibot.eu)**
+
+La login è preparata nel codice ma non ancora attivata in produzione. GitHub
+Pages non esegue il servizio Node; nel rollout la vecchia app su Pages deve
+essere disabilitata o sostituita da un redirect al dominio protetto.
 
 ---
 
 ## ✨ Caratteristiche Principali
 
-### 🔒 Privacy & Zero Backend
-- **100% Client-Side**: Nessun server backend, nessuna API esterna, nessun dato inviato online.
+### 🔒 PDF locale e login Google
+- **Login sul server**: identità verificata da Google; home disponibile soltanto con sessione NutriPro valida. Google riceve i dati necessari all'autenticazione; non riceve il PDF o il piano.
 - **Mozilla `pdf.js` Integrato**: Il PDF viene analizzato localmente direttamente nel browser.
-- **Persistenza Locale**: Memorizza il piano alimentazione parsato in `localStorage` (`diet_plan_data`). Ai successivi accessi l'app si apre istantaneamente senza dover ricaricare il file.
-- **Cambio Dieta Rapido**: Nella navbar è presente il pulsante **"Aggiorna PDF"** per caricare un nuovo file in qualsiasi momento sovrascrivendo i dati precedenti.
+- **Persistenza Locale**: piani e tracking sono salvati in `localStorage` in un archivio distinto per account (`diet_plan_archive:<Google sub>`). Questo non è un archivio remoto e non sincronizza dispositivi. Chi ha accesso al profilo del browser può leggere lo storage locale.
+- **Piani precedenti**: le chiavi senza account sono conservate ma non importate automaticamente. Al primo accesso autenticato ricaricare il PDF; nessun piano precedente viene cancellato.
+- **Sessione**: cookie HttpOnly, Secure in produzione, durata iniziale 12 ore, logout revocato sul server. I riavvii del servizio terminano le sessioni. Login e verifica della sessione richiedono connessione; nessuna cache offline della home.
+- **Risorse locali**: React, CSS, font di sistema e PDF.js/worker sono serviti dal backend, senza CDN.
+- **I miei piani** (`/plans`): pagina React con schede, ricerca e filtri.
+  Consulta un piano precedente senza attivarlo (`/plans/:id`). Importare un nuovo
+  PDF conserva il precedente. Sostituire il piano attivo richiede due conferme
+  e azzera solamente le sue spunte e acqua.
+- **Attivazione**: un piano attivo alla volta oppure nessuno. Rendi attivo
+  ripristina anche spunte e acqua di quel piano; Disattiva conserva tutti i dati.
+- **Archivio locale**: chiave `diet_plan_archive:<Google sub>`, indipendente per
+  account, con migrazione automatica del precedente piano dell'account e backup
+  delle vecchie chiavi. Rimane nel browser; PDF originali e sincronizzazione
+  fra dispositivi non sono inclusi. La consultazione dello storico e implementata
+  nel ticket WF-009.
+
 
 ---
 
@@ -91,7 +108,7 @@ ingredienti da ricette prive di sottoingredienti né pesi di acquisto da descriz
 
 ### Test della funzione
 
-Test del motore e del parser, senza dipendenze aggiuntive (Node.js 22+):
+Test del motore e del parser, senza dipendenze aggiuntive (Node.js >=22.14):
 
 ```powershell
 node --test tests/shopping-list.test.cjs
@@ -106,32 +123,32 @@ node --test tests/shopping-export.e2e.cjs
 Se Playwright è installato in un’altra cartella, impostare prima
 `$env:PLAYWRIGHT_MODULE` al percorso assoluto del modulo. Il test browser verifica
 anteprima mobile, selezione giorni, copia e fallback, download, persistenza e
-condivisione simulata, con la CSP prevista per NutriPro. Le dipendenze CDN sono
-simulate nel test: non verifica il worker reale di pdf.js né le app native Note/Keep.
+condivisione simulata, con la CSP prevista per NutriPro. Il test
+`tests/pdf-import.e2e.cjs` verifica il worker incluso usando un PDF di test reale.
+Non vengono testate le app native Note/Keep.
 
-`tests/progeo-pdf.e2e.cjs` verifica anche l’importazione del PDF di riferimento
-tramite il worker reale di pdf.js, con collegamento delle appendici, quantità e
-ricaricamento del piano. Il documento privato resta fuori dal repository.
-Impostare `REAL_PROGEO_PDF` al percorso del documento e `PDFJS_ASSET_DIR` alla
-cartella contenente `pdf.min.js` e `pdf.worker.min.js` versione 3.11.174, poi eseguire:
-
-```powershell
-node --test tests/progeo-pdf.e2e.cjs
-```
-
-Questo test usa gli asset locali al posto delle richieste CDN e confronta quantità
-note del documento di riferimento; non è un test generico per qualsiasi dieta.
+`tests/progeo-pdf.e2e.cjs` e un controllo facoltativo sul documento privato di
+riferimento: impostare `REAL_PROGEO_PDF` ed eseguire il file. Nessun PDF privato
+viene incluso nel repository.
 
 ## 🛠️ Struttura Tecnologica
 
 ```
-DietaDrBasta/
-├── index.html       # Single Page Application completa (HTML5 + CSS3 Glassmorphism + Vanilla JS)
-└── README.md        # Documentazione del progetto
+NutriPro/
+  src/App.jsx             # Componenti React, login, Home, Piani e Dettaglio
+  src/styles.css          # Interfaccia responsive
+  src/lib/dietEngine.mjs  # Parser e calcoli
+  src/lib/planStore.mjs   # Archivio locale per account
+  public/                 # Icona e manifest
+  server/                 # OAuth Google e sessioni Node
+  tests/                  # Test unitari e browser
+  dist/                   # Build Vite generata, esclusa da Git
 ```
 
-- **CSS Moderno**: Palette Dark Smeraldo / Slate (`#0f172a`, `#1e293b`, `#10b981`), glassmorphism con `backdrop-filter`, font Google 'Outfit', transizioni fluide ed elementi touch-friendly.
-- **Zero Dipendenze Pesanti**: Unicamente la libreria leggera `pdf.js` di Mozilla.
+Frontend React 19 con React Router e Vite. `npm start` compila e avvia il
+backend su 8080; durante lo sviluppo `npm run dev` aggiorna la build in watch
+(ricaricare il browser; riavviare il backend se cambiano i nomi degli asset).
+Docker usa una build multistadio e serve soltanto dist e backend.
 
 ---
 
@@ -154,11 +171,45 @@ DietaDrBasta/
 Per eseguire ed esplorare l'applicazione in locale:
 
 1. Clona o scarica il repository.
-2. Avvia un qualsiasi server HTTP locale (es. con Python):
-   ```bash
-   python -m http.server 8080
+2. Installa le dipendenze (Node.js >=22.14):
+   ```powershell
+   npm ci --ignore-scripts
+   Copy-Item .env.example .env
    ```
-3. Apri il browser all'indirizzo `http://localhost:8080/index.html`.
+3. Configura `.env` con Client ID e Client Secret di un client Google OAuth
+   di tipo **Web application**, registrando anche il redirect
+   `http://localhost:8080/auth/google/callback` per lo sviluppo locale.
+4. Esegui `npm start` e apri `http://localhost:8080`.
+
+Senza credenziali appare la pagina di login non disponibile e la home resta
+bloccata. Un server statico non è sufficiente per la login.
+
+Configurazione OAuth ufficiale: [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect).
+Non serve una API key Google o un token Gemini: servono Client ID e Client Secret;
+il token d'identità viene emesso durante ciascun accesso e verificato dal backend.
+
+`ALLOWED_EMAILS` limita facoltativamente gli accessi a email Google verificate,
+separate da virgole. Se vuoto, sono ammessi tutti gli account Google verificati.
+In Testing aggiungere gli account nella schermata Audience del progetto Google.
+
+Verifiche senza credenziali reali:
+
+```powershell
+npm test
+npm run test:browser
+```
+
+I test di flusso simulano il provider Google, mantenendo il server e i cookie
+reali; un test separato verifica firme RSA con la libreria Google. La verifica
+con un progetto Google reale è necessaria prima dell'attivazione.
+
+Docker standalone: `docker compose -f compose.auth.yml up --build -d`.
+In produzione impostare `APP_ORIGIN=https://nutriprobasta.jirachibot.eu` e
+redirect `https://nutriprobasta.jirachibot.eu/auth/google/callback`.
+Su Hermes l'Orchestrator usa un file credenziali esterno:
+`/home/hermes/.config/nutripro/auth.env`, fuori dal clone ripulito dal deploy.
+Il rollout richiede il nuovo container Node e il proxy sulla porta 8080;
+il precedente container nginx sulla porta 80 non è compatibile.
 
 ---
 
