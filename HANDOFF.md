@@ -1,5 +1,32 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Frontend React e pagina piani - 2026-10-06
+
+Richiesta PO: refactor completo in React e pagina moderna per i precedenti.
+Implementato localmente su dev, nessun commit/push del codice o deploy:
+
+- React 19, React Router, Vite; login, home, `/plans`, `/plans/:id`.
+- Piani: schede responsive, ricerca, filtri, dettaglio readonly, attivazione e
+  disattivazione esplicite. WF-009 completato; consultare non muta activeId.
+- Parser e calcoli estratti in `src/lib/dietEngine.mjs`, archivio stesso schema
+  e chiavi in `src/lib/planStore.mjs`. Migrazione/backups preservati.
+- PDF.js e worker inclusi nella build, zero CDN. Server serve solo dist con
+  CSP self; tutte le pagine dei piani protette da sessione. Login React.
+- Rimossi login.html e assets legacy. Docker multistadio, Node >=22.14.
+- Acqua conservata a 200ml/bicchiere, 12=2.4L; shopping tutti giorni iniziali,
+  fallback selezione testo e focus ripristinato chiudendo dialogo.
+- Build e 32 test unitari/integration + 8 browser passati (40 totali), incluso
+  PDF sintetico reale tramite worker, conflitti schede, doppia conferma,
+  account separati, mobile/login/logout, esportazione e CSP.
+- npm audit: zero vulnerabilita. Docker daemon spento: container non costruito;
+  test PDF privato facoltativo non eseguito in questa evolutiva.
+- Server locale su http://localhost:8080, richiede nuova login dopo riavvio;
+  piani del browser conservati. Script dev: build watch + backend da riavviare
+  al cambio dei nomi degli asset.
+- Orchestrator aggiornato localmente per build React, preflight asset moderni,
+  smoke route protette/hashed assets e CSP senza CDN. Produzione invariata.
+
+
 ## Gestione dei piani — 2026-10-06
 
 Il PO conferma login Google reale locale funzionante e richiede di implementare
