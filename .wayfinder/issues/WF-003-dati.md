@@ -46,3 +46,11 @@ ha deciso che le stime Gemini per alimento (ruolo nel pasto, calorie e macro per
 100 g) sono salvate con il piano e riusate. Includerle nel perimetro dei dati
 persistenti. Per la bacchetta si inviano a Gemini solo nomi degli alimenti e
 grammature, senza dati identificativi.
+
+## Update from WF-007 - 2026-10-06
+
+[Definire pagina settaggi e tracking opzionali](WF-007-settaggi.md) ha deciso
+settaggi globali per account (interruttori acqua e olio, unità preferite) e
+quantità effettive dell'olio registrate per voce del pasto, con storico
+conservato alla disattivazione. Includere settaggi account e quantità effettive
+nel perimetro: salvataggio locale o sincronizzato fra dispositivi.

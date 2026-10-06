@@ -3,8 +3,8 @@ id: WF-007
 title: Definire pagina settaggi e tracking opzionali
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
-assignee: null
+status: closed
+assignee: manu
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -41,3 +41,35 @@ nutrizionali e notifiche non è assunta.
 La scelta di dove salvare queste preferenze dipende dal ticket
 [Definire persistenza e dati condivisi con l’assistente](WF-003-dati.md);
 la definizione iniziale delle funzioni opzionali può procedere indipendentemente.
+
+## Resolution comment
+
+2026-10-06, decisioni del PO raccolte in grilling con Manu.
+
+- Settaggi globali per account, validi per tutti i piani; cambiare piano attivo
+  non li modifica.
+- Perimetro: tracking acqua, tracking olio, unità preferite. Promemoria e
+  riepilogo calorie e macro non approvati; preferenze alimentari restano legate
+  alle sostituzioni rapide.
+- Disattivare un tracking lo nasconde e ne conserva lo storico; riattivandolo
+  lo storico ricompare.
+- Valori iniziali: tracking acqua attivo, tracking olio disattivo.
+- Olio: quantità effettiva registrata sulla voce olio del pasto. La spunta usa la
+  quantità prevista, modificabile; il totale del giorno è la somma ed è
+  confrontato con il previsto. Unica fonte, nessun doppio conteggio.
+- Contano le voci olio spuntate, compresi gli ingredienti di una ricetta
+  spuntata; le alternative non scelte restano escluse.
+- Voci olio spuntate mentre il tracking era spento contano la quantità prevista
+  quando il tracking viene attivato.
+- Inserimento olio in cucchiaini a passi di ½ con equivalente in grammi
+  (1 cucchiaino = 4 g); con preferenza grammi, passi da 2 g.
+- Unità preferite: menu dei pasti e olio. Default unità del PDF con nota in
+  grammi; opzione grammi dove la conversione è supportata. Lista della spesa
+  invariata.
+- Obiettivo acqua dal piano quando il PDF lo indica, altrimenti 2,4 L; nessun
+  obiettivo personale.
+- Cancellazione dello storico: azione nei settaggi, per singolo tracking, su
+  tutti i piani, con doppia conferma.
+- Pagina settaggi accessibile solo dopo login, come la home. Dove salvare i
+  settaggi resta nel ticket
+  [Definire persistenza e dati condivisi con l’assistente](WF-003-dati.md).

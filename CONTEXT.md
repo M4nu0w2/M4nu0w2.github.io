@@ -70,6 +70,21 @@ Funzione nutrizionale prevalente di un alimento nel pasto: fonte di carboidrati,
 proteica, di grassi, verdura o frutta.
 _Avoid_: Categoria merceologica come sinonimo.
 
+**Settaggi account**:
+Preferenze dell'utente valide per tutti i suoi piani; cambiare piano attivo non
+le modifica.
+_Avoid_: Impostazioni del piano.
+
+**Tracking opzionale**:
+Registrazione di consumi attivabile dai settaggi account, come acqua e olio.
+Disattivarlo lo nasconde senza cancellarne lo storico.
+_Avoid_: Disattivazione come sinonimo di cancellazione.
+
+**Quantità effettiva**:
+Quantità realmente consumata registrata su una voce del pasto; di default
+coincide con la quantità prevista dal piano.
+_Avoid_: Quantità prevista come sinonimo.
+
 **Valori stimati**:
 Calorie e macronutrienti per 100 g di un alimento stimati dal modello, non
 presenti nel PDF sorgente né verificati da un professionista.

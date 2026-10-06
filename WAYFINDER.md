@@ -79,6 +79,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
   solo alimenti del piano con stesso ruolo nel pasto; stime Gemini per 100 g,
   calorie ±5%, macro ±5 g/15%; sola consultazione.
 
+- [Definire pagina settaggi e tracking opzionali](.wayfinder/issues/WF-007-settaggi.md):
+  settaggi globali per account; acqua attiva, olio spento, unità preferite; olio
+  come quantità effettiva sulla voce del pasto; disattivare nasconde, storico conservato.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
@@ -91,6 +95,8 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
 - Conversazioni nel tempo e collegamento ai pasti e alle alternative.
 - Gestione delle preferenze personali e dei vincoli alimentari nelle
   sostituzioni rapide.
+- Promemoria facoltativi per acqua e pasti e riepilogo di calorie e macro nei
+  settaggi, non ancora approvati.
 - Eventuali altre evolutive che il PO aggiungerà alla raccolta iniziale.
 
 ## Out of scope
