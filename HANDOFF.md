@@ -3,6 +3,17 @@
 
 
 
+
+## Modello Gemini confermato: Flash - 2026-10-06
+
+PO richiede "Usa flash": modello locale cambiato a `gemini-3.7-flash`,
+non Flash-Lite. 12 test backend/API mirati passati. Codice non pushato.
+Chiarito: il requisito Paid Services riguarda la fatturazione API del progetto
+Google, non un abbonamento per gli utenti NutriPro. Nessun paywall introdotto.
+Chiave API, autorizzazione costi/budget e attivazione restano pendenti;
+GEMINI_ENABLED resta false, zero chiamate reali o addebiti avviati.
+
+
 ## WF-010 Gemini - base locale preparata, decisioni pendenti - 2026-10-06
 
 PO revoca rinvio e chiede continuare qui con altro ticket: preso WF-010.
