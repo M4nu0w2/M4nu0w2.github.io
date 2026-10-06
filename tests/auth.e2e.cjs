@@ -88,7 +88,7 @@ test('different Google accounts use separate local plans; legacy unowned storage
   // Revocation also protects previously opened tabs when reloaded.
   const other = await context.newPage();
   await other.goto(fixture.config.origin);
-  await other.locator('#account-name').filter({ hasText: 'Claudio' }).waitFor();
+  await other.locator('#account-name').filter({ hasText: 'Claudio' }).waitFor({ state: 'attached' });
   await page.bringToFront();
   await page.getByRole('button', { name: 'Esci', exact: true }).filter({ visible: true }).first().click();
   await page.waitForURL('**/login');
