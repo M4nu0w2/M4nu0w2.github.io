@@ -5,6 +5,25 @@
 
 
 
+
+## Diagnosi chat Gemini503 e messaggi corretti - 2026-10-06
+
+PO segnala errore nella chatlocale. Verifica reale con solo prompt artificiale
+minimo tramite moduloNode: HTTP503UNAVAILABLE dal provider, overloadtrue, ~3.3s.
+Chiave/trasporto raggiungono Google; non e errore di login/CSRF o del testoPO.
+Capacita Google3.7Flash temporaneamente insufficiente; nessun fallback o
+retryautomatico aggiunto, modello mantenuto come richiesto.
+
+Corretto anche difettoUI: diversierrori tutti mostrati come genericaunavailable.
+Ora codeprovider_unavailable distingue sovraccarico; quota/timeout/blocco/input
+hanno messaggi curati, nienteerrorraw. Draftconservata, retry solo manuale.
+Backend503codealigned; frontendprovider_quotaaligned. Build+13testbackend/API
++5browserchatPASS, incluso503 endtoend mock noautoRetry/manualretry.
+Serverlocale8080 riavviato con nuovabuild; loginnecessaria di nuovo.
+Google503 reale non risolto da Codex; risposta reale chatApp ancora pendente.
+Codechangeslocalnonpushati, prodinvariata. HANDOFFsolodocs skipci.
+
+
 ## Gemini key verificata e chat locale attivata - 2026-10-06
 
 PO "ok fatto" conferma completamento dei passaggi progetto/APIkey/billing.
