@@ -1,5 +1,22 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Produzione React - 2026-10-06
+
+PO autorizza SSH e configurazione OAuth in produzione. Credenziali locali
+trasferite via stdin SSH, mai stampate o committate, nel file esterno
+`/home/hermes/.config/nutripro/auth.env` con mode600 ownerhermes.
+Deploy rieseguito tramite workflow per SHA2e360a99d98faa504a3a6d8b5bd6e097ca7bcf3a:
+https://github.com/Thegoldendice/JirachiBotOrchestrator/actions/runs/37465867055
+SUCCESS. Containerhealthy, Reactlogin200, home/plans303login, api/session401,
+fileprivati404; healthloginConfiguredtrue, deploy-version SHAcorretto.
+Controllo pubblico con User-Agentbrowser; Pythondefault riceve403 dal filtro.
+Google effettivamente risponde redirect_uri_mismatch: il PO deve aggiungere al
+client OAuth il redirect autorizzato esatto
+`https://nutriprobasta.jirachibot.eu/auth/google/callback` nella Google Cloud
+Console, mantenendo anche localhost. Nessuna sessione browserconsole accessibile
+a Codex. Login Google reale sul dominio ancora da verificare dopo quella modifica.
+Non serve altro deploy per aggiungere il redirect nella console.
+
 ## Release React - 2026-10-06
 
 PO autorizza commit e push con messaggio `rework in React`.
