@@ -1,5 +1,21 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Release React - 2026-10-06
+
+PO autorizza commit e push con messaggio `rework in React`.
+NutriPro: codice `2e360a99d98faa504a3a6d8b5bd6e097ca7bcf3a`, push riuscito su
+`origin/dev`. Orchestrator: supporto runtime/build/proxy
+`e8732d1132dfe5edcb4642ee0929d62c1afc8dd1`, push riuscito su `origin/main`
+prima del prodotto; gate preserva il proxy legacy finche il backend e pronto.
+Verifiche raccolte: 32 test unit/integration, 8 browser, smoke HTTP PASS;
+nessuna modifica ai sorgenti dopo i controlli. Segreti/PDF privati/dist esclusi.
+CI prodotto avviata, stato iniziale `in_progress`:
+https://github.com/M4nu0w2/M4nu0w2.github.io/actions/runs/37465041973
+Deploy automatico previsto solo dopo CI verde; esito produzione non ancora
+verificato. Nessun deploy manuale. Stato Actions infrastruttura non disponibile
+via API da questo ambiente; nessun fallimento osservato.
+Questo aggiornamento HANDOFF e pubblicato separatamente con `[skip ci]`.
+
 ## Frontend React e pagina piani - 2026-10-06
 
 Richiesta PO: refactor completo in React e pagina moderna per i precedenti.
