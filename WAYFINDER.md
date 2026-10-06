@@ -47,6 +47,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
   dato del piano trasferito per questa attività di pianificazione.
 - Skill: `wayfinder`; `grilling` per decisioni del PO; `domain-modeling` per
   [glossario](CONTEXT.md); `research` quando serviranno indagini documentali.
+- Requisito del PO del 2026-10-06: i ticket possono essere assegnati a Manu o
+  Claudio, anche in modo vincolante su richiesta esplicita. I campi `assignment`
+  e `assignment_mode` seguono le regole del tracker; `assignee` registra chi
+  lavora effettivamente il ticket. Nessun ticket è stato assegnato d'ufficio.
 - Tracker locale: [.wayfinder/TRACKER.md](.wayfinder/TRACKER.md). Non è stato
   configurato un tracker esterno; nessuna issue pubblica creata. Per configurarne
   uno si può usare `/setup-matt-pocock-skills`.

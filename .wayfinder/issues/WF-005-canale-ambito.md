@@ -5,6 +5,8 @@ parent: WF-MAP-001
 labels: [wayfinder:grilling]
 status: closed
 assignee: codex
+assignment: null
+assignment_mode: flexible
 blocked_by: []
 resolved: 2026-10-04
 ---
