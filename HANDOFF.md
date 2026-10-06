@@ -1,5 +1,19 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Release Gemini Flash e stop PO - 2026-10-06
+
+PO richiede commit/push e stop per ora. Codice pubblicato su origin/dev:
+`5297ce2312bc6d05b7771fd0377a2a03a087012c`, messaggio
+`feat: integrazione Gemini Flash e gestione errori`. Push riuscito.
+WF-010 resta esplicitamente OPEN: chat reale ancora non funzionante, Google
+503 UNAVAILABLE. Base implementata e messaggi errori corretti non chiudono ticket.
+Verifiche raccolte: 56 baseline PASS; ultimi 13 backend/API + 5 chat browser
+PASS dopo fix errori. Segreti, PDF, node_modules e dist esclusi dal commit.
+Key solo nel .env locale ignorato, nessun trasferimento a Hermes. Produzione
+Gemini disattivata in assenza della configurazione privata. Nessun deploy
+manuale, SSH, monitoraggio pipeline o ulteriori test: stop richiesto dal PO.
+Handoff pubblicato separatamente con skip ci; stato deploy non verificato.
+
 
 
 
