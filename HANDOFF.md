@@ -1,5 +1,35 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+
+## Punto di ripresa - 2026-10-06
+
+Stato corrente; questa sezione prevale sulle note storiche successive.
+
+- Codice Gemini committato e pushato su `dev`: `5297ce2`.
+  Handoff della release: `014b659`. Working tree pulito alla verifica.
+- WF-010 resta OPEN per richiesta esplicita del PO: la chat reale non funziona.
+  Ultima prova Node: Google risponde HTTP503 UNAVAILABLE per domanda elevata.
+  Una precedente prova REST minima era riuscita; non considerare il problema
+  risolto e non attribuire tutte le future anomalie allo stesso errore senza
+  riprodurle. Prossima sessione: ripartire dalla diagnosi della chat WF-010.
+- Modello scelto dal PO: `gemini-3.7-flash`. Nessun cambio modello o retry
+  automatico introdotto. UI distingue sovraccarico, quota, timeout e blocchi;
+  domanda conservata per riprovare manualmente.
+- Chat generale: nessun piano/PDF o identita account nel payload Gemini;
+  cronologia solo memoria della pagina. Contesto del piano e successive
+  evoluzioni restano da concordare e dividere in ticket dopo la base.
+- Chiave nel solo `.env` locale ignorato, mai in Git/log. Config locale:
+  GEMINI_ENABLED=true, GEMINI_ACCESS_MODE=paid-services, modello3.7Flash.
+  Server8080 avviato durante la sessione; verificarne il processo al ritorno.
+- Nessuna chiave Gemini trasferita a Hermes. Stato del deploy automatico dopo
+  push NON verificato; nessun deploy manuale. Non dichiarare chat funzionante
+  in produzione e non attivarla senza completare configurazione/verifica.
+- Verifiche:56 test baseline;13backend/API e5chatbrowser dopo fix, tutti PASS.
+  I test simulati non provano disponibilita o qualita della chat Gemini reale.
+- PO chiede stop per ora; non proseguire implementazione o monitoraggio deploy.
+  Le ultime richieste sono commit/push e questo handoff, entrambi completati.
+
+
 ## Release Gemini Flash e stop PO - 2026-10-06
 
 PO richiede commit/push e stop per ora. Codice pubblicato su origin/dev:
