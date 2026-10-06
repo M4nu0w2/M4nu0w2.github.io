@@ -1,8 +1,28 @@
+// Safari (iOS included) lacks async iteration of ReadableStream, which PDF.js uses in
+// getTextContent(); the legacy build does not polyfill it.
+function polyfillReadableStreamIteration() {
+  if (typeof ReadableStream === 'undefined' || ReadableStream.prototype[Symbol.asyncIterator]) return;
+  ReadableStream.prototype[Symbol.asyncIterator] = async function* () {
+    const reader = this.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
+}
+
 // PDF.js and its worker are bundled locally and loaded only when importing a PDF.
+// The legacy build supports older Safari versions found on iOS devices.
 async function loadPdfEngine() {
+  polyfillReadableStreamIteration();
   const [engine, worker] = await Promise.all([
-    import('pdfjs-dist/build/pdf.mjs'),
-    import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+    import('pdfjs-dist/legacy/build/pdf.mjs'),
+    import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
   ]);
   engine.GlobalWorkerOptions.workerSrc = worker.default;
   return engine;

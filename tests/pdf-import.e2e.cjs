@@ -32,3 +32,23 @@ test('bundled PDF worker imports real PDF bytes without external requests or CSP
   assert.equal(archive.plans[0].data.days.lun.meals[0].items[0].qty, '50 g');
   assert.deepEqual(external, []); assert.deepEqual(errors, []); assert.deepEqual(await page.evaluate(() => window.violations), []);
 });
+
+test('imports a PDF on browsers without ReadableStream async iteration, as Safari on iOS', async t => {
+  const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
+  t.after(async () => { await browser.close(); await fixture.close(); });
+  const context = await browser.newContext(); const login = await fixture.login();
+  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  const page = await context.newPage(); const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => { delete ReadableStream.prototype[Symbol.asyncIterator]; delete ReadableStream.prototype.values; });
+  await page.goto(fixture.config.origin);
+  await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
+  await page.getByLabel('PDF del piano').setInputFiles({ name: 'Piano ottobre.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
+  await page.getByRole('alert').or(page.locator('button:not([disabled])', { hasText: 'Importa e attiva' })).first().waitFor();
+  assert.deepEqual(await page.getByRole('alert').allTextContents(), []);
+  await page.getByRole('button', { name: 'Importa e attiva' }).click();
+  await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
+  const archive = await page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
+  assert.equal(archive.plans[0].data.days.lun.meals[0].items[0].name, 'Pane');
+  assert.deepEqual(errors, []);
+});
