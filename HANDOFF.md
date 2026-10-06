@@ -1,5 +1,48 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+
+## Stato attuale per la prossima sessione ? 2026-10-06
+
+Questa sezione prevale sulle note storiche successive.
+
+- NutriPro online su https://nutriprobasta.jirachibot.eu/: frontend React 19,
+  Vite e React Router, backend Node per login Google. Home e piani protetti.
+- SHA codice in produzione: `2e360a99d98faa504a3a6d8b5bd6e097ca7bcf3a`
+  (`rework in React`), branch `dev`. Infrastruttura Orchestrator su `main`.
+- CI prodotto riuscita: https://github.com/M4nu0w2/M4nu0w2.github.io/actions/runs/37465041973
+  Primo deploy fallito per auth.env assente; corretto via SSH autorizzato.
+  Deploy finale riuscito: https://github.com/Thegoldendice/JirachiBotOrchestrator/actions/runs/37465867055
+- Credenziali sul server in `/home/hermes/.config/nutripro/auth.env`, permessi
+  600, proprietario hermes; file fuori dai repository. Non stampare o copiare
+  nei log. `.env` locale escluso da Git. Nessun PDF privato committato.
+- PO ha aggiunto callback Google pubblico. Verifica HTTP raggiunge la pagina
+  Google di accesso: `redirect_uri_mismatch` risolto. **Da confermare dal PO:
+  login completa con account reale sul dominio pubblico e uso dei piani.**
+  Login reale locale era gi? stata confermata funzionante.
+- `/plans`: pagina moderna con ricerca, filtri, schede e stato; `/plans/:id`:
+  consultazione in sola lettura, senza cambiare activeId o tracking. WF-009 chiuso.
+- Nuovo PDF conserva i precedenti; sostituzione del solo piano attivo con due
+  conferme, azzera il suo tracking. Al massimo un piano attivo, anche nessuno.
+- Archivio locale `diet_plan_archive:<Google sub>`, dati separati per account e
+  tracking per piano. Nessuna sincronizzazione dispositivi o archivio remoto;
+  PDF sorgente non conservato. Migrazione delle vecchie chiavi per account
+  con backup; chiavi senza account non importate automaticamente.
+- Parser/calcoli: `src/lib/dietEngine.mjs`; store: `src/lib/planStore.mjs`;
+  UI: `src/App.jsx`, `src/styles.css`. PDF.js e worker inclusi, niente CDN.
+- Verifiche: build, 32 unit/integration + 8 browser, smoke HTTP locale e in
+  produzione; container healthy, SHA corretto, sessione assente 401,
+  pagine private 303 login, documentazione privata 404. Audit zero vulnerabilit?.
+- Sviluppo locale: Node >=22.14, `npm ci --ignore-scripts`, `npm start`.
+  Browser test: `PLAYWRIGHT_MODULE` punta all'installazione Playwright esistente
+  oppure installarlo; `npm test`, `npm run test:browser`. Server locale 8080
+  avviato durante questa sessione, durata del processo da verificare al ritorno.
+- WF-008 login: mantenere aperto finch? login reale pubblica non ? confermata;
+  gli altri ticket Wayfinder e relative assegnazioni restano come nel tracker.
+- Regole: italiano Caveman Ultra; commit/push codice solo con richiesta PO;
+  HANDOFF sempre commit/push separato `[skip ci]`. Deploy host serializzati con
+  lock condiviso e gap 150s, niente interventi di sistema/domotica da questo repo.
+
+
 ## Callback Google pubblico verificato - 2026-10-06
 
 PO conferma aggiunta URI autorizzato. Verifica HTTP dal dominio: OAuth raggiunge
