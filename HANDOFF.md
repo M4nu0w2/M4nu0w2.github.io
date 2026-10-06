@@ -1,5 +1,47 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Login Google e home protetta — 2026-10-06
+
+Il PO richiede una login reale e home accessibile soltanto dopo autenticazione;
+preparare tutto il necessario e poi chiedere la configurazione mancante.
+Ticket operativo [WF-008](.wayfinder/issues/WF-008-login-google.md), aperto e
+in carico a Codex. WF-001 rimane aperto per archivio remoto e CRUD.
+
+Preparato localmente su `dev`, senza commit/push del codice o deploy:
+
+- Node 22 con `google-auth-library` 11.1.0; OAuth authorization code, PKCE,
+  state/nonce, verifica firma e identità. Solo scope openid/email/profile.
+- `/` e `/index.html` protetti sul server; pagina login pubblica, logout con
+  CSRF e revoca, cookie HttpOnly e Secure su HTTPS, sessioni opache in memoria
+  per 12 ore. Riavvio = nuove login. Verifica sessione al ritorno nelle schede.
+- Storage browser distinto per `sub` Google. Le vecchie chiavi non vengono
+  eliminate o importate: al primo accesso autenticato ricaricare il PDF.
+- Nessun token nel frontend; nessun trasferimento dei piani o archivio remoto.
+  Rimosso il vecchio tentativo di service worker cache-first: la home richiede rete.
+- Limiti login, callback concorrenti e timeout Google; file pubblici in whitelist.
+- Docker/Compose di riferimento e CI aggiornati. README e glossario aggiornati.
+- 28 test Node + 4 browser passati; flusso Google simulato, verificatore reale
+  provato con firme RSA. Audit npm: zero vulnerabilità. Parser invariato.
+  Test con PDF privato non eseguito perché documento/asset non disponibili;
+  build Docker non eseguita perché il daemon locale non è attivo.
+
+Infrastruttura preparata nel clone locale
+`C:/Users/thego/Desktop/NUTRIPRO/JirachiBotOrchestrator`, `main`:
+Node 8080, memoria 128 MB, segreti in
+`/home/hermes/.config/nutripro/auth.env`, proxy aggiornato, callback senza log,
+preflight credenziali e smoke autenticazione sotto lock. Primo rollout coordinato:
+il deploy Orchestrator rinvia il nuovo proxy finché il vecchio container è statico;
+il deploy NutriPro ricrea il solo proxy dopo health Node. Breve riconnessione delle
+rotte condivise durante la ricreazione; nessun altro prodotto riavviato.
+Validazioni infra e guard/smoke locali passati; Docker/nginx runtime non verificati.
+
+Mancano Client ID e Client Secret di un client OAuth Web, consenso Google e
+redirect esatto `https://nutriprobasta.jirachibot.eu/auth/google/callback`.
+Confermare policy: tutti gli account Google (default) oppure ALLOWED_EMAILS.
+La produzione resta quella precedente. Prima di chiudere il requisito, pubblicare
+le modifiche coordinate, configurare segreti su Hermes, provare Google reale e
+disabilitare o convertire in redirect la vecchia app pubblica su GitHub Pages.
+
 > Contesto operativo per chi riprende il progetto. Il PO ha autorizzato
 > esplicitamente commit e push su `dev`, incluso questo handoff, il 2026-10-04.
 > Questa autorizzazione supera il precedente divieto di pubblicare il file.
