@@ -28,3 +28,9 @@ Non è una decisione approvata; il canale in-app è invece richiesto dal PO.
 Caso concreto da discutere: con due piani salvati, «cosa posso mangiare stasera?»
 si riferisce al piano selezionato, a quello attivo o a un piano scelto nella chat?
 Conservazione delle conversazioni da definire in seguito.
+
+## Updated model requirement - 2026-10-06
+
+Il PO richiede ora una opzione Gemini gratuita e veloce ("turbo").
+La vecchia indicazione 3.7 Flash non e una scelta tecnica confermata.
+Verificare modello e quote ufficiali nella prossima sessione, tramite WF-010.

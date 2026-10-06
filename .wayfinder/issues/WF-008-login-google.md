@@ -3,11 +3,12 @@ id: WF-008
 title: Implementare login Google e proteggere la home
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
+status: closed
 assignee: codex
 assignment: null
 assignment_mode: flexible
 blocked_by: []
+resolved: 2026-10-06
 ---
 
 # Implementare login Google e proteggere la home
@@ -71,3 +72,8 @@ Il PO ha testato la login Google reale e confermato in conversazione «worka».
 Questo valida la login in locale; logout manuale e dominio di produzione non
 risultano ancora verificati. Il ticket resta aperto per il rollout e la prova
 sul dominio finale, come richiesto dagli acceptance criteria.
+
+## Production confirmation
+
+2026-10-06 - il PO conferma che funziona dopo aggiunta del callback Google
+pubblico e deploy React. Login reale in produzione confermata; ticket chiuso.

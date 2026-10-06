@@ -216,3 +216,32 @@ il precedente container nginx sulla porta 80 non è compatibile.
 ## 📄 Licenza
 
 Distribuito con licenza MIT. Libero da utilizzare e personalizzare.
+
+## Assistente Gemini - prima integrazione locale
+
+Pagina React `/chat` protetta dalla login; API `/api/chat/status` e POST
+`/api/chat` autenticate, con Origin e CSRF. Prima versione: domande generali,
+nessun PDF, piano o attributo account nel payload inviato a Google. Cronologia
+solo in memoria nella pagina, cancellata quando si cambia pagina o account.
+
+Modello previsto: `gemini-3.7-flash`. API key sul server tramite
+`GEMINI_API_KEY`, mai nel frontend o nel repository. Disabilitato per default
+(`GEMINI_ENABLED=false`). Per un test locale autorizzato, impostare esplicitamente
+`GEMINI_ENABLED=true` e `GEMINI_ACCESS_MODE=local-dev` con APP_ORIGIN localhost.
+Questa modalita viene rifiutata su origini pubbliche. Verificare in AI Studio
+che il progetto sia nel tier desiderato: la chiave non prova da sola il tier.
+
+Per client pubblici in Italia/SEE i termini Google richiedono Paid Services:
+https://ai.google.dev/gemini-api/terms
+L'attivazione pubblica richiede decisione esplicita del PO e configurazione
+`GEMINI_ACCESS_MODE=paid-services`; il codice non attiva billing o fallback.
+Modello e prezzi: https://ai.google.dev/gemini-api/docs/pricing
+Nessuna API key fornita e nessuna chiamata reale eseguita in questo incremento.
+
+Limiti iniziali: 5 richieste/minuto e 30/giorno per account, 120/giorno totali,
+4 richieste contemporanee; contatori in memoria, reset al riavvio. Timeout20s,
+nessun retry automatico; input2000 caratteri, history20 messaggi/24000 caratteri,
+body128KB. Risposta resa come testo React; niente strumenti o modifica piani.
+I test usano un provider simulato e non verificano qualita o disponibilita del
+modello nel progetto Google reale. Scope dati, credenziale e attivazione da
+confermare; WF-010 resta aperto fino alla verifica reale concordata.

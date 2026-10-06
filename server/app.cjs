@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { isIP } = require('node:net');
 const { OAuth2Client } = require('google-auth-library');
+const { createGeminiService } = require('./gemini.cjs');
 
 const ROOT = path.join(__dirname, '..', 'dist');
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
@@ -33,6 +34,12 @@ function configFromEnv(env) {
   if (clientId && !clientId.endsWith('.apps.googleusercontent.com')) throw new Error('Invalid Google OAuth client ID');
   return {
     origin: origin.origin, port, secure: origin.protocol === 'https:', clientId, clientSecret,
+    gemini: {
+      GEMINI_API_KEY: env.GEMINI_API_KEY || '',
+      GEMINI_ENABLED: env.GEMINI_ENABLED || 'false',
+      GEMINI_ACCESS_MODE: env.GEMINI_ACCESS_MODE || '',
+      GEMINI_MODEL: env.GEMINI_MODEL || 'gemini-3.7-flash'
+    },
     ready: Boolean(clientId && clientSecret), sessionTtl, flowTtl: 10 * 60000,
     allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     deploySha: /^[a-f0-9]{40}$/.test(env.NUTRIPRO_SHA || '') ? env.NUTRIPRO_SHA : 'unknown',
@@ -49,8 +56,38 @@ function cookies(req) {
   return result;
 }
 
+function readChatBody(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0, done = false;
+    const chunks = [];
+    const fail = (status, code) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(Object.assign(new Error(code), { status, code }));
+    };
+    const timer = setTimeout(() => fail(408, 'request_timeout'), 10000);
+    req.on('data', chunk => {
+      if (done) return;
+      size += chunk.length;
+      if (size > 131072) { chunks.length = 0; fail(413, 'payload_too_large'); }
+      else chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (done) return;
+      try {
+        const input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        done = true; clearTimeout(timer); resolve(input);
+      } catch { fail(400, 'invalid_json'); }
+    });
+    req.on('aborted', () => fail(400, 'request_aborted'));
+    req.on('error', () => fail(400, 'request_error'));
+  });
+}
+
 // The OAuth client and clock can be injected by tests only. Production always uses Google's verifier.
-function createAuthServer(config, { oauthClient, now = Date.now } = {}) {
+function createAuthServer(config, { oauthClient, now = Date.now, geminiService } = {}) {
+  const chat = geminiService || createGeminiService({ env: config.gemini || {}, origin: config.origin, now });
   const client = oauthClient || new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret,
     redirectUri: `${config.origin}/auth/google/callback`,
     transporterOptions: { timeout: 10000, retryConfig: { retry: 0 } } });
@@ -194,6 +231,23 @@ function createAuthServer(config, { oauthClient, now = Date.now } = {}) {
         }
       }
       const session = sessionFor(req);
+      if (route === '/api/chat/status' && req.method === 'GET') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        return json(res, 200, chat.status());
+      }
+      if (route === '/api/chat' && req.method === 'POST') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        if (req.headers.origin !== config.origin || !equal(session.csrf, req.headers['x-csrf-token'])) return json(res, 403, { error: 'forbidden' });
+        if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return json(res, 415, { error: 'unsupported_media_type' });
+        try {
+          const input = await readChatBody(req);
+          return json(res, 200, await chat.generate(session.sub, input));
+        } catch (error) {
+          const status = Number.isInteger(error.status) ? error.status : 500;
+          if (status === 429) res.setHeader('Retry-After', '60');
+          return json(res, status, { error: error.code || 'chat_error', message: error.safeMessage || 'Messaggio non inviato. Riprova piu tardi.' });
+        }
+      }
       if (route === '/api/session' && req.method === 'GET') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
         return json(res, 200, { sub: session.sub, name: session.name, email: session.email,
@@ -208,7 +262,7 @@ function createAuthServer(config, { oauthClient, now = Date.now } = {}) {
         return json(res, 200, { ok: true });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'method_not_allowed' });
-      const appRoute = route === '/' || route === '/index.html' || route === '/plans' || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
+      const appRoute = route === '/' || route === '/index.html' || route === '/plans' || route === '/chat' || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
       if (appRoute && !session) return redirect(res, '/login');
       if (appRoute || route === '/login') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
