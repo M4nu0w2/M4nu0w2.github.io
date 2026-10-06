@@ -26,6 +26,10 @@ Implementato localmente su dev, nessun commit/push del codice o deploy:
 - Orchestrator aggiornato localmente per build React, preflight asset moderni,
   smoke route protette/hashed assets e CSP senza CDN. Produzione invariata.
 
+Smoke HTTP finale React con OAuth fittizio e SHA controllato: PASS. Home,
+piani e dettaglio protetti (303 login), sessione assente 401, asset React200,
+file privati404, health configurato e SHA corretto. Nessun deploy.
+
 
 ## Gestione dei piani — 2026-10-06
 
