@@ -4,6 +4,27 @@
 
 
 
+
+## Gemini key verificata e chat locale attivata - 2026-10-06
+
+PO "ok fatto" conferma completamento dei passaggi progetto/APIkey/billing.
+GEMINI_API_KEY presente in .env ignorato, mai stampata. models.list ufficiale
+conferma3.7Flash disponibile e una chiamata REST minima restituisce OK.
+Configurati nel solo .env locale GEMINI_ENABLED=true, GEMINI_MODEL=gemini-3.7-flash,
+GEMINI_ACCESS_MODE=paid-services; serverlocale8080 riavviato. StatusAPIautenticato
+HTTP200 enabled/configuredtrue reasonnull. Loginutente locale da rifare.
+
+Le successive chiamate moduloNode/APIapp ottengono503UNAVAILABLE. Messaggio
+Google: modelhighdemandtemporaneo. Chiave non invalidata, non cambiare modello
+ne aggiungere retryautomatici. Mappatura503unavailable corretta;12testmirati
+passati. Una risposta reale attraverso chatApp non ancora confermata: PO puo
+provare /chat quandoproviderdisponibile. WF-010 open finche verificata.
+
+Key soltanto locale, NON trasferita suHermes; codiceGemini ancora noncommittato/
+pushato/deployato. Produzione invariata2e360a9. Handoffpubblicatosolodocs skipci.
+Nessun piano/PDF/identita mandato aGemini, solo prompt artificiale RispondiOK.
+
+
 ## Modello Gemini confermato: Flash - 2026-10-06
 
 PO richiede "Usa flash": modello locale cambiato a `gemini-3.7-flash`,
