@@ -1,5 +1,12 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Callback Google pubblico verificato - 2026-10-06
+
+PO conferma aggiunta URI autorizzato. Verifica HTTP dal dominio: OAuth raggiunge
+la pagina Google sign-in, redirect_uri_mismatch risolto; auth/statusconfiguredtrue,
+deployedSHA2e360a9. Il controllo non completa una login utente reale: il PO puo
+ora accedere dal sito e verificarla. Nessun ulteriore deploy necessario.
+
 ## Produzione React - 2026-10-06
 
 PO autorizza SSH e configurazione OAuth in produzione. Credenziali locali
