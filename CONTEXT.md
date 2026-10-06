@@ -53,6 +53,11 @@ Assistente conversazionale disponibile dentro NutriPro per domande sul proprio
 piano alimentare e sulla nutrizione in generale.
 _Avoid_: Bot Telegram come sinonimo.
 
+**Piano di riferimento**:
+Piano alimentare che il chatbot nutrizionale usa come contesto di una conversazione:
+di default il piano attivo, oppure un altro piano dell'archivio, oppure nessuno.
+_Avoid_: Piano selezionato.
+
 **Sostituzione rapida**:
 Proposta occasionale di un ingrediente alternativo con peso adattato, cercando
 calorie e macronutrienti quasi equivalenti alla porzione originale del pasto.

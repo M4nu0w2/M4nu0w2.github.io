@@ -70,6 +70,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
 - [Definire canale e ambito del chatbot](.wayfinder/issues/WF-005-canale-ambito.md):
   chatbot nell’app, con domande sul proprio piano e sulla nutrizione generale.
 
+- [Definire contesto delle risposte del chatbot](.wayfinder/issues/WF-002-assistente.md):
+  piano attivo di default, cambiabile in chat; invio solo con interruttore per
+  conversazione, spento di default; fonte citata; prescrizioni mai modificate.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
@@ -79,10 +83,7 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
   della consultazione offline quando l’utente non è collegato.
 - Architettura concreta, servizio di persistenza, deploy e operatività futura
   dell’app autenticata: dipendono dal perimetro dei dati concordato.
-- Conversazioni nel tempo, collegamento ai pasti e alle alternative, modalità
-  con cui l’assistente indica da dove ricava una risposta.
-- Comportamento delle risposte nutrizionali generali e distinzione rispetto ai
-  contenuti del PDF personale.
+- Conversazioni nel tempo e collegamento ai pasti e alle alternative.
 - Interazione tra sostituzioni occasionali, piano salvato e lista della spesa;
   gestione delle preferenze personali e dei vincoli alimentari.
 - Eventuali altre evolutive che il PO aggiungerà alla raccolta iniziale.

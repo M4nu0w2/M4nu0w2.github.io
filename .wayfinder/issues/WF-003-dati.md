@@ -29,3 +29,12 @@ quando l’identità non serve alla risposta. La scelta definitiva richiede il P
 Da questa decisione dipendono la valutazione dell’architettura, la gestione degli
 accessi e la verifica delle condizioni applicabili al servizio Gemini scelto.
 Nessun invio di PDF o contenuti del piano è autorizzato da questo ticket aperto.
+
+## Update from WF-002 - 2026-10-06
+
+Sbloccato: [Definire contesto delle risposte del chatbot](WF-002-assistente.md)
+ha deciso che il **piano di riferimento** (attivo di default, cambiabile in chat)
+viene inviato solo con l'interruttore per conversazione acceso, spento di default,
+insieme a giorno della settimana e ora locale. Resta da decidere qui quali campi
+del piano di riferimento si inviano: pasti, quantità, alternative, ricette,
+equivalenze delle unità, tracking e spunte, metadati del PDF come nome e date.
