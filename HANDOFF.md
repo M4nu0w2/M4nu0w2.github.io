@@ -1,6 +1,29 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
 
+
+## Prossima sessione: Gemini gratuito e veloce - 2026-10-06
+
+ULTIMA INDICAZIONE PO: "worka" conferma che NutriPro e login Google pubblica
+funzionano. WF-008 chiuso nel tracker locale. Prossimo lavoro, nella PROSSIMA
+sessione: integrazione Gemini con "versione gratuita turbo", poi divisione
+in ulteriori ticket delle evoluzioni. Non implementare Gemini oggi.
+
+Ticket locale creato: `.wayfinder/issues/WF-010-integrazione-gemini.md`, open,
+assignee/assignment null, flexible. Prima verificare modello veloce con API
+free tier effettivo, quote e condizioni ufficiali; "turbo" non e un ID modello.
+Requisito aggiornato prevale sulla precedente indicazione non verificata di
+Gemini 3.7 Flash. Non attivare billing o fallback a pagamento automaticamente.
+Decisioni contesto piano/dati inviati/credenziale ancora in WF-002/003/004:
+risolvere solo quanto necessario alla base, poi spacchettare i ticket successivi
+con il PO. Credenziale sul backend, fuori da frontend/Git. WF-005 mantiene
+chat nell'app per domande sul piano e nutrizionali generali.
+
+Modifiche tracker WF-008/002/004/010 locali non ancora committate/pushate:
+questa sezione HANDOFF conserva la richiesta anche per un nuovo clone.
+Nessun codice Gemini, credenziale Gemini o chiamata API aggiunti.
+
+
 ## Stato attuale per la prossima sessione ? 2026-10-06
 
 Questa sezione prevale sulle note storiche successive.
