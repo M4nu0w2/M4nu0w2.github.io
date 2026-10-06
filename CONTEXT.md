@@ -59,6 +59,18 @@ di default il piano attivo, oppure un altro piano dell'archivio, oppure nessuno.
 _Avoid_: Piano selezionato.
 
 **Sostituzione rapida**:
-Proposta occasionale di un ingrediente alternativo con peso adattato, cercando
-calorie e macronutrienti quasi equivalenti alla porzione originale del pasto.
+Proposta occasionale, solo consultiva, di un altro alimento dello stesso piano
+con lo stesso ruolo nel pasto e peso adattato, con calorie e macronutrienti
+quasi equivalenti alla porzione originale. Non modifica piano, tracking o lista
+della spesa.
 _Avoid_: Alternativa prescritta nel PDF come sinonimo di proposta generata.
+
+**Ruolo nel pasto**:
+Funzione nutrizionale prevalente di un alimento nel pasto: fonte di carboidrati,
+proteica, di grassi, verdura o frutta.
+_Avoid_: Categoria merceologica come sinonimo.
+
+**Valori stimati**:
+Calorie e macronutrienti per 100 g di un alimento stimati dal modello, non
+presenti nel PDF sorgente né verificati da un professionista.
+_Avoid_: Valori del piano o valori prescritti.

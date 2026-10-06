@@ -38,3 +38,11 @@ viene inviato solo con l'interruttore per conversazione acceso, spento di defaul
 insieme a giorno della settimana e ora locale. Resta da decidere qui quali campi
 del piano di riferimento si inviano: pasti, quantità, alternative, ricette,
 equivalenze delle unità, tracking e spunte, metadati del PDF come nome e date.
+
+## Update from WF-006 - 2026-10-06
+
+[Definire equivalenza nutrizionale delle sostituzioni rapide](WF-006-sostituzioni.md)
+ha deciso che le stime Gemini per alimento (ruolo nel pasto, calorie e macro per
+100 g) sono salvate con il piano e riusate. Includerle nel perimetro dei dati
+persistenti. Per la bacchetta si inviano a Gemini solo nomi degli alimenti e
+grammature, senza dati identificativi.

@@ -35,7 +35,8 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
 - Nuovo requisito del PO: bacchetta magica accanto a ogni elemento del pasto,
   con 2-3 sostituti e rispettive quantità, calorie e macro quasi identici.
   Serve per sostituzioni occasionali in extremis, mantenendo il risultato
-  nutrizionale del piano come obiettivo; equivalenza e tolleranze vanno definite.
+  nutrizionale del piano come obiettivo; equivalenza e tolleranze definite in
+  [Definire equivalenza nutrizionale delle sostituzioni rapide](.wayfinder/issues/WF-006-sostituzioni.md).
 - Stato di partenza: app client-side, un solo piano in localStorage, nessun
   backend. La preview della lista della spesa è online; branch locale `dev`,
   commit locale `1252f93`, push bloccato per permessi di scrittura al 2026-10-04.
@@ -74,6 +75,10 @@ decisioni prima dell’implementazione; potrà essere ampliata con le prossime i
   piano attivo di default, cambiabile in chat; invio solo con interruttore per
   conversazione, spento di default; fonte citata; prescrizioni mai modificate.
 
+- [Definire equivalenza nutrizionale delle sostituzioni rapide](.wayfinder/issues/WF-006-sostituzioni.md):
+  solo alimenti del piano con stesso ruolo nel pasto; stime Gemini per 100 g,
+  calorie ±5%, macro ±5 g/15%; sola consultazione.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
@@ -84,8 +89,8 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
 - Architettura concreta, servizio di persistenza, deploy e operatività futura
   dell’app autenticata: dipendono dal perimetro dei dati concordato.
 - Conversazioni nel tempo e collegamento ai pasti e alle alternative.
-- Interazione tra sostituzioni occasionali, piano salvato e lista della spesa;
-  gestione delle preferenze personali e dei vincoli alimentari.
+- Gestione delle preferenze personali e dei vincoli alimentari nelle
+  sostituzioni rapide.
 - Eventuali altre evolutive che il PO aggiungerà alla raccolta iniziale.
 
 ## Out of scope
