@@ -1,5 +1,24 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Cambio modello Gemini Flash-Lite - 2026-10-12
+
+Stato corrente; questa sezione prevale sul modello nelle note storiche.
+
+- Richiesta PO: usare `gemini-3.5-flash-lite`. Preparato localmente su `dev`,
+  base `b854017` dopo fetch e fast-forward del clone pulito.
+- Aggiornati modello unico ammesso, default server, `.env.example`, README e
+  messaggi di sovraccarico UI/backend. Nessun fallback o retry automatico.
+- Restano obbligatori flag, key e access mode; default disattivato. Un env
+  esplicito con `gemini-3.7-flash` ora produce `unsupported_model`: all'attivazione
+  futura occorre impostare `GEMINI_MODEL=gemini-3.5-flash-lite`.
+- Aggiornato solo GEMINI_MODEL nel `.env` locale ignorato da 3.7 a 3.5 Flash-Lite; key, flag e access mode invariati. Produzione non modificata. Nel precedente inventario SSH
+  Gemini risultava disattivato su Hermes (flag e key assenti).
+- Build PASS; 13 test backend/API e 5 chat browser PASS con provider simulato,
+  incluso rifiuto del vecchio modello senza richieste e endpoint nuovo esatto.
+- Nessuna chiamata Google, key, commit, push o deploy. Disponibilita, quote,
+  costi e qualita del modello reale non provati da questi test. WF-010 OPEN.
+
+
 
 ## Punto di ripresa - 2026-10-06
 
