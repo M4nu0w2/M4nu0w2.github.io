@@ -7,7 +7,7 @@ const { startFixture } = require('./auth-fixture.cjs');
 test('home and session fail closed; only explicit public assets are served', async t => {
   const f = await startFixture({ GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '' });
   t.after(() => f.close());
-  for (const route of ['/', '/index.html', '/?any=query', '/plans', '/plans/previous-plan']) {
+  for (const route of ['/', '/index.html', '/?any=query', '/plans', '/plans/previous-plan', '/settings']) {
     const r = await f.request(route);
     assert.equal(r.status, 303);
     assert.equal(r.headers.get('location'), '/login');

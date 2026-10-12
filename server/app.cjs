@@ -286,7 +286,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
         return json(res, 200, { ok: true });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'method_not_allowed' });
-      const appRoute = route === '/' || route === '/index.html' || route === '/plans' || route === '/chat' || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
+      const appRoute = route === '/' || route === '/index.html' || route === '/plans' || route === '/chat' || route === '/settings' || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
       if (appRoute && !session) return redirect(res, '/login');
       if (appRoute || route === '/login') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
