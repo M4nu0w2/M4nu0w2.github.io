@@ -25,9 +25,11 @@ function configFromEnv(env) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
   if (origin.protocol !== 'https:' && !local) throw new Error('APP_ORIGIN requires HTTPS outside localhost');
   const port = Number(env.PORT || 8080);
-  const sessionTtl = Number(env.SESSION_TTL_SECONDS || 43200) * 1000;
+  const sessionTtl = Number(env.SESSION_TTL_SECONDS || 7776000) * 1000;
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid PORT');
-  if (!Number.isSafeInteger(sessionTtl) || sessionTtl < 60000 || sessionTtl > 7 * 86400000) throw new Error('Invalid session duration');
+  if (!Number.isSafeInteger(sessionTtl) || sessionTtl < 60000 || sessionTtl > 180 * 86400000) throw new Error('Invalid session duration');
+  const sessionSecret = env.SESSION_SECRET || '';
+  if (sessionSecret && sessionSecret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters');
   const clientId = (env.GOOGLE_CLIENT_ID || '').trim();
   const clientSecret = (env.GOOGLE_CLIENT_SECRET || '').trim();
   if (Boolean(clientId) !== Boolean(clientSecret)) throw new Error('Configure both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
@@ -40,7 +42,7 @@ function configFromEnv(env) {
       GEMINI_ACCESS_MODE: env.GEMINI_ACCESS_MODE || '',
       GEMINI_MODEL: env.GEMINI_MODEL || 'gemini-3.7-flash'
     },
-    ready: Boolean(clientId && clientSecret), sessionTtl, flowTtl: 10 * 60000,
+    ready: Boolean(clientId && clientSecret), sessionTtl, sessionSecret, flowTtl: 10 * 60000,
     allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     deploySha: /^[a-f0-9]{40}$/.test(env.NUTRIPRO_SHA || '') ? env.NUTRIPRO_SHA : 'unknown',
     trustProxy: env.TRUST_PROXY === 'true'
@@ -91,7 +93,11 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
   const client = oauthClient || new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret,
     redirectUri: `${config.origin}/auth/google/callback`,
     transporterOptions: { timeout: 10000, retryConfig: { retry: 0 } } });
-  const sessions = new Map();
+  // Sessions are signed cookies, so they survive restarts when SESSION_SECRET is configured.
+  // Without it a per-process key keeps the previous behaviour: a restart signs everyone out.
+  if (!config.sessionSecret && config.secure) console.warn('SESSION_SECRET not set: sessions end at every restart.');
+  const sessionKey = config.sessionSecret || random();
+  const revoked = new Map();
   const flows = new Map();
   const attempts = new Map();
   let totalAttempts = { count: 0, expires: 0 };
@@ -111,18 +117,41 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
   }
   const cookie = (name, value, ttl) => `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ttl / 1000)}${config.secure ? '; Secure' : ''}`;
   function prune() {
-    for (const collection of [sessions, flows, attempts]) {
+    for (const collection of [revoked, flows, attempts]) {
       for (const [key, item] of collection) if (item.expires <= now()) collection.delete(key);
     }
   }
   const sweep = setInterval(prune, 60000);
   sweep.unref();
-  function sessionFor(req) {
-    const id = cookies(req)[sessionName];
-    if (!id || !/^[\w-]{43}$/.test(id)) return null;
-    const session = sessions.get(digest(id));
-    if (!session || session.expires <= now()) { sessions.delete(digest(id)); return null; }
+  const sign = data => crypto.createHmac('sha256', sessionKey).update(data).digest('base64url');
+  function issueSession(identity) {
+    const session = { ...identity, issued: now(), expires: now() + config.sessionTtl };
+    const data = Buffer.from(JSON.stringify(session)).toString('base64url');
+    return { session, value: `${data}.${sign(data)}` };
+  }
+  function readSession(value) {
+    if (!value || value.length > 2048 || !/^[\w-]+\.[\w-]{43}$/.test(value)) return null;
+    const [data, signature] = value.split('.');
+    if (!equal(signature, sign(data)) || revoked.has(digest(value))) return null;
+    let session;
+    try { session = JSON.parse(Buffer.from(data, 'base64url').toString('utf8')); } catch { return null; }
+    if (!session || typeof session.sub !== 'string' || typeof session.email !== 'string' || typeof session.csrf !== 'string' ||
+        !Number.isFinite(session.expires) || session.expires <= now()) return null;
+    if (config.allowedEmails.length && !config.allowedEmails.includes(session.email.toLowerCase())) return null;
     return session;
+  }
+  function revoke(value) {
+    const session = readSession(value);
+    if (session) revoked.set(digest(value), { expires: session.expires });
+  }
+  // Sliding expiry: renewed at most once a day so the cookie is not rewritten on every request.
+  function sessionFor(req, res) {
+    const session = readSession(cookies(req)[sessionName]);
+    if (!session || now() - session.issued < 86400000) return session;
+    const { sub, email, name, csrf } = session;
+    const renewed = issueSession({ sub, email, name, csrf });
+    res.setHeader('Set-Cookie', cookie(sessionName, renewed.value, config.sessionTtl));
+    return renewed.session;
   }
   function json(res, status, body) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -213,15 +242,10 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
               !['accounts.google.com', 'https://accounts.google.com'].includes(identity.iss) ||
               !Number.isFinite(identity.exp) || identity.exp * 1000 <= now()) throw new Error('Invalid identity');
           if (config.allowedEmails.length && !config.allowedEmails.includes(identity.email.toLowerCase())) return loginError(res, 'not_allowed');
-          prune();
-          if (sessions.size >= 10000) return json(res, 503, { error: 'busy' });
-          const oldId = cookies(req)[sessionName];
-          if (oldId) sessions.delete(digest(oldId));
-          const sessionId = random();
-          sessions.set(digest(sessionId), { sub: identity.sub, email: identity.email,
-            name: typeof identity.name === 'string' ? identity.name.slice(0, 200) : identity.email,
-            csrf: random(), expires: now() + config.sessionTtl });
-          res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(sessionName, sessionId, config.sessionTtl)]);
+          revoke(cookies(req)[sessionName]);
+          const { value } = issueSession({ sub: identity.sub, email: identity.email,
+            name: typeof identity.name === 'string' ? identity.name.slice(0, 200) : identity.email, csrf: random() });
+          res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
           return redirect(res, '/');
         } catch {
           // Do not log provider responses, codes, tokens or personal data.
@@ -230,7 +254,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
           activeCallbacks--;
         }
       }
-      const session = sessionFor(req);
+      const session = sessionFor(req, res);
       if (route === '/api/chat/status' && req.method === 'GET') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
         return json(res, 200, chat.status());
@@ -256,7 +280,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
       if (route === '/auth/logout' && req.method === 'POST') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
         if (req.headers.origin !== config.origin || !equal(session.csrf, req.headers['x-csrf-token'])) return json(res, 403, { error: 'forbidden' });
-        sessions.delete(digest(cookies(req)[sessionName]));
+        revoke(cookies(req)[sessionName]);
         res.setHeader('Set-Cookie', cookie(sessionName, '', 0));
         res.setHeader('Clear-Site-Data', '"cache"');
         return json(res, 200, { ok: true });

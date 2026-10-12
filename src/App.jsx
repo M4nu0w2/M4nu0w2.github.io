@@ -47,7 +47,8 @@ function Protected() {
         if (identity.current && identity.current.sub !== value.sub) { leave('account_changed'); return; }
         if (disposed || loggingOut.current) return;
         identity.current = value; setSession(value); setLocked(document.visibilityState === 'hidden');
-        clearTimeout(expiry); expiry = setTimeout(leave, Math.max(0, value.expiresAt - Date.now()));
+        // Browsers fire timers above 2^31-1 ms immediately; the periodic check covers longer sessions.
+        clearTimeout(expiry); expiry = setTimeout(leave, Math.min(2 ** 31 - 1, Math.max(0, value.expiresAt - Date.now())));
       } catch { if (!disposed) leave(); } finally { pending = false; }
     }
     const returnToPage = () => { setLocked(true); if (document.visibilityState !== 'hidden') verify(); };
