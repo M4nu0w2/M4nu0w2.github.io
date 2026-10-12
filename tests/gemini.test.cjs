@@ -6,7 +6,7 @@ const env = { GEMINI_ENABLED: 'true', GEMINI_API_KEY: 'test-private-key', GEMINI
 const good = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Risposta informativa.' }] } }] }) });
 const service = overrides => createGeminiService({ env, origin: 'http://localhost:8080', fetchImpl: good, ...overrides });
 test('disabled and public unpaid configuration never contact provider', async () => {
-  for (const options of [{ env: {} }, { origin: 'https://nutriprobasta.jirachibot.eu' }, { env: { ...env, GEMINI_ACCESS_MODE: '' } }, { env: { ...env, GEMINI_MODEL: '../other' } }]) {
+  for (const options of [{ env: {} }, { origin: 'https://nutriprobasta.jirachibot.eu' }, { env: { ...env, GEMINI_ACCESS_MODE: '' } }, { env: { ...env, GEMINI_MODEL: '../other' } }, { env: { ...env, GEMINI_MODEL: 'gemini-3.7-flash' } }]) {
     let calls = 0;
     const app = service({ ...options, fetchImpl: async () => { calls++; } });
     assert.equal(app.status().enabled, false);
@@ -17,6 +17,7 @@ test('disabled and public unpaid configuration never contact provider', async ()
   assert.equal(service({ origin: 'https://nutriprobasta.jirachibot.eu', env: { ...env, GEMINI_ACCESS_MODE: 'paid-services' } }).status().enabled, true);
 });
 test('transport keeps key in header and sends bounded Italian instruction and explicit messages only', async () => {
+  assert.equal(MODEL, 'gemini-3.5-flash-lite');
   let request;
   const app = service({ fetchImpl: async (url, options) => { request = { url, options }; return good(); } });
   assert.deepEqual(await app.generate('account', { message: ' Ciao ', history: [{ role: 'user', text: 'Prima' }, { role: 'model', text: 'Risposta' }] }), { text: 'Risposta informativa.', model: MODEL });

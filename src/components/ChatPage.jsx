@@ -13,7 +13,7 @@ function requestHistory(messages, message) {
 }
 const errors = {
   rate_limited: 'Hai raggiunto il limite temporaneo. Attendi e riprova.',
-  provider_unavailable: 'Gemini Flash è temporaneamente sovraccarico. Attendi qualche minuto e riprova.',
+  provider_unavailable: 'Gemini Flash-Lite è temporaneamente sovraccarico. Attendi qualche minuto e riprova.',
   provider_quota: 'La quota disponibile di Gemini è esaurita. Attendi prima di riprovare.',
   invalid_request: 'La domanda non può essere inviata. Controlla il testo e riprova.',
   blocked_response: 'Gemini non ha restituito una risposta a questa domanda. Prova a riformularla.',

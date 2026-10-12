@@ -224,7 +224,7 @@ Pagina React `/chat` protetta dalla login; API `/api/chat/status` e POST
 nessun PDF, piano o attributo account nel payload inviato a Google. Cronologia
 solo in memoria nella pagina, cancellata quando si cambia pagina o account.
 
-Modello previsto: `gemini-3.7-flash`. API key sul server tramite
+Modello previsto: `gemini-3.5-flash-lite`. API key sul server tramite
 `GEMINI_API_KEY`, mai nel frontend o nel repository. Disabilitato per default
 (`GEMINI_ENABLED=false`). Per un test locale autorizzato, impostare esplicitamente
 `GEMINI_ENABLED=true` e `GEMINI_ACCESS_MODE=local-dev` con APP_ORIGIN localhost.

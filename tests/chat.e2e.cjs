@@ -104,7 +104,7 @@ test('provider overload explains the failure, preserves the draft and only retri
   await page.goto(`${fixture.config.origin}/chat`);
   await page.getByLabel('La tua domanda').fill('Domanda conservata');
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
-  await page.getByRole('alert').filter({ hasText: 'Gemini Flash è temporaneamente sovraccarico' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Gemini Flash-Lite è temporaneamente sovraccarico' }).waitFor();
   assert.equal(await page.getByLabel('La tua domanda').inputValue(), 'Domanda conservata');
   assert.equal(await page.locator('.chat-message').count(), 0);
   assert.equal(calls, 1);

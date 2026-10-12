@@ -38,7 +38,7 @@ function configFromEnv(env) {
       GEMINI_API_KEY: env.GEMINI_API_KEY || '',
       GEMINI_ENABLED: env.GEMINI_ENABLED || 'false',
       GEMINI_ACCESS_MODE: env.GEMINI_ACCESS_MODE || '',
-      GEMINI_MODEL: env.GEMINI_MODEL || 'gemini-3.7-flash'
+      GEMINI_MODEL: env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
     },
     ready: Boolean(clientId && clientSecret), sessionTtl, flowTtl: 10 * 60000,
     allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
