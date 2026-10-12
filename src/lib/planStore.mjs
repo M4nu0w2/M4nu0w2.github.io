@@ -1,5 +1,14 @@
   'use strict';
   const copy = value => JSON.parse(JSON.stringify(value));
+  const DEFAULT_SETTINGS = Object.freeze({ water: true, oil: false, units: 'pdf' });
+  const UNITS = ['pdf', 'grams'];
+  // Account settings live in the same archive so one revision covers plans and preferences.
+  function settingsOf(archive) {
+    const saved = archive?.settings || {};
+    return { water: typeof saved.water === 'boolean' ? saved.water : DEFAULT_SETTINGS.water,
+      oil: typeof saved.oil === 'boolean' ? saved.oil : DEFAULT_SETTINGS.oil,
+      units: UNITS.includes(saved.units) ? saved.units : DEFAULT_SETTINGS.units };
+  }
   function validData(data) {
     return data && typeof data.days === 'object' && data.days !== null &&
       Object.values(data.days).some(day => Array.isArray(day.meals) && day.meals.some(meal => Array.isArray(meal.items) && meal.items.length));
@@ -15,7 +24,8 @@
       if (archive.version !== 1 || !Array.isArray(archive.plans) || !Number.isInteger(archive.revision) ||
           archive.plans.some(p => !p.id || !validData(p.data)) ||
           new Set(archive.plans.map(p => p.id)).size !== archive.plans.length ||
-          (archive.activeId !== null && !archive.plans.some(p => p.id === archive.activeId))) {
+          (archive.activeId !== null && !archive.plans.some(p => p.id === archive.activeId)) ||
+          (archive.settings !== undefined && (typeof archive.settings !== 'object' || archive.settings === null))) {
         throw new Error('Archivio non valido. I dati salvati non sono stati modificati.');
       }
       return archive;
@@ -32,7 +42,7 @@
       const date = now();
       return { id: id(), name: (sourceName || 'Piano alimentare').replace(/\.pdf$/i, ''),
         sourceName: sourceName || null, createdAt: date, updatedAt: date,
-        data: copy(data), checked: {}, water: {} };
+        data: copy(data), checked: {}, water: {}, oil: {} };
     }
     function migrate() {
       if (storage.getItem(key) !== null) return read();
@@ -70,14 +80,28 @@
       return write(archive);
     }
     function saveTracking(planId, field, value) {
-      if (!['checked', 'water'].includes(field)) throw new Error('Tracking non valido.');
+      if (!['checked', 'water', 'oil'].includes(field)) throw new Error('Tracking non valido.');
       const archive = read();
       const plan = archive.plans.find(p => p.id === planId);
       if (!plan || archive.activeId !== planId) throw new Error('Il piano attivo è cambiato. Ricarica la pagina.');
       plan[field] = copy(value);
       return write(archive);
     }
-    return { key, read, migrate, importPlan, setActive, saveTracking };
+    function saveSettings(changes) {
+      const archive = read();
+      const next = { ...settingsOf(archive), ...changes };
+      if (typeof next.water !== 'boolean' || typeof next.oil !== 'boolean' || !UNITS.includes(next.units)) throw new Error('Settaggi non validi.');
+      archive.settings = next;
+      return write(archive);
+    }
+    // Clearing history is separate from switching a tracking off, and spans every plan.
+    function clearTracking(field) {
+      if (!['water', 'oil'].includes(field)) throw new Error('Tracking non valido.');
+      const archive = read();
+      archive.plans.forEach(plan => { plan[field] = {}; });
+      return write(archive);
+    }
+    return { key, read, migrate, importPlan, setActive, saveTracking, saveSettings, clearTracking };
   }
 
-export { createStore, validData };
+export { createStore, validData, settingsOf, DEFAULT_SETTINGS };

@@ -45,7 +45,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const lastCard = await page.locator('.water-card').boundingBox();
   assert.ok(lastCard.y + lastCard.height <= bar.y, 'last card hidden behind the tab bar');
 
-  for (const route of ['/plans', '/chat']) {
+  for (const route of ['/plans', '/chat', '/settings']) {
     await page.goto(fixture.config.origin + route);
     await nav.waitFor();
     assert.ok(await noHorizontalScroll(page), `horizontal scroll on ${route}`);

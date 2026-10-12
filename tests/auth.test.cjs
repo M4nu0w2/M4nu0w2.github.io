@@ -7,7 +7,7 @@ const { startFixture } = require('./auth-fixture.cjs');
 test('home and session fail closed; only explicit public assets are served', async t => {
   const f = await startFixture({ GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '' });
   t.after(() => f.close());
-  for (const route of ['/', '/index.html', '/?any=query', '/plans', '/plans/previous-plan']) {
+  for (const route of ['/', '/index.html', '/?any=query', '/plans', '/plans/previous-plan', '/settings']) {
     const r = await f.request(route);
     assert.equal(r.status, 303);
     assert.equal(r.headers.get('location'), '/login');
@@ -95,6 +95,50 @@ test('sessions expire, fabricated cookies fail and successful login rotates the 
   const rotated = await f.request(`/auth/google/callback?code=test-code&state=${next.url.searchParams.get('state')}`, { headers: { Cookie: `${next.cookie}; ${first.cookie}` } });
   assert.equal(rotated.status, 303);
   assert.equal((await f.request('/api/session', { headers: { Cookie: first.cookie } })).status, 401);
+});
+
+test('signed sessions survive a restart with the same key and renew on use for 90 days', async t => {
+  const secret = 'k'.repeat(32);
+  const first = await startFixture({ SESSION_SECRET: secret }); t.after(() => first.close());
+  const login = await first.login();
+  assert.match(login.response.headers.getSetCookie().find(c => c.startsWith('nutripro_session=')), /Max-Age=7776000/);
+  // A new process with the same key accepts the cookie; a different key does not.
+  const restarted = await startFixture({ SESSION_SECRET: secret }); t.after(() => restarted.close());
+  const session = await restarted.request('/api/session', { headers: { Cookie: login.cookie } });
+  assert.equal(session.status, 200);
+  assert.equal((await session.json()).sub, 'google-user-1');
+  const otherKey = await startFixture({ SESSION_SECRET: 'z'.repeat(32) }); t.after(() => otherKey.close());
+  assert.equal((await otherKey.request('/api/session', { headers: { Cookie: login.cookie } })).status, 401);
+  const removed = await startFixture({ SESSION_SECRET: secret, ALLOWED_EMAILS: 'claudio@example.test' }); t.after(() => removed.close());
+  assert.equal((await removed.request('/api/session', { headers: { Cookie: login.cookie } })).status, 401);
+
+  // Same-day requests do not rewrite the cookie; later use moves the expiry forward.
+  const sameDay = await first.request('/api/session', { headers: { Cookie: login.cookie } });
+  assert.equal(sameDay.headers.get('set-cookie'), null);
+  first.advance(60 * 86400000);
+  const renewed = await first.request('/api/session', { headers: { Cookie: login.cookie } });
+  assert.equal(renewed.status, 200);
+  const renewedCookie = renewed.headers.get('set-cookie').split(';')[0];
+  assert.ok((await renewed.json()).expiresAt > Date.now() + 140 * 86400000);
+  first.advance(60 * 86400000);
+  assert.equal((await first.request('/api/session', { headers: { Cookie: login.cookie } })).status, 401);
+  assert.equal((await first.request('/api/session', { headers: { Cookie: renewedCookie } })).status, 200);
+  first.advance(91 * 86400000);
+  assert.equal((await first.request('/api/session', { headers: { Cookie: renewedCookie } })).status, 401);
+});
+
+test('tampered session cookies fail and logout revokes the signed cookie', async t => {
+  const f = await startFixture({ SESSION_SECRET: 'k'.repeat(32) }); t.after(() => f.close());
+  const login = await f.login();
+  const [data, signature] = login.cookie.split('=')[1].split('.');
+  const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url')), sub: 'someone-else' })).toString('base64url');
+  assert.equal((await f.request('/api/session', { headers: { Cookie: `nutripro_session=${forged}.${signature}` } })).status, 401);
+  const { csrf } = await (await f.request('/api/session', { headers: { Cookie: login.cookie } })).json();
+  const logout = await f.request('/auth/logout', { method: 'POST', headers: { Cookie: login.cookie, Origin: f.config.origin, 'X-CSRF-Token': csrf } });
+  assert.equal(logout.status, 200);
+  assert.equal((await f.request('/api/session', { headers: { Cookie: login.cookie } })).status, 401);
+  assert.throws(() => configFromEnv({ SESSION_SECRET: 'short' }), /SESSION_SECRET/);
+  assert.throws(() => configFromEnv({ SESSION_TTL_SECONDS: String(181 * 86400) }), /session duration/);
 });
 
 test('production requires HTTPS, sets host-only Secure cookies, and uses a fixed callback origin', async t => {

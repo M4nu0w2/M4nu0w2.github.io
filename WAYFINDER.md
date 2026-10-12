@@ -17,8 +17,17 @@ in generale, e sostituzioni rapide degli ingredienti con quantità adattate a ca
 e macronutrienti quasi equivalenti, più una pagina settaggi per funzioni e tracking
 opzionali. La mappa raccoglie
 decisioni prima dell’implementazione; potrà essere ampliata con le prossime idee del PO.
+Ampliata il 2026-10-10 con calendario aderenza, streak e badge, lista della spesa
+come checklist e per reparto, app installabile.
 
 ## Notes
+
+- Richiesta del 2026-10-10 (Manu, in sessione): ticket di implementazione per
+  settaggi, obiettivo acqua, sostituzioni rapide, calendario aderenza, streak e
+  badge, lista della spesa (checklist e reparti) e app installabile, più un
+  ticket di decisione sulle date reali del tracking. Tutti richiesti per `manu`
+  in modalità `flexible`. Le domande aperte per il PO stanno in ciascun ticket;
+  l'implementazione attende le risposte annotate lì.
 
 - Richiesta del PO del 2026-10-06: implementare ora la login Google reale e
   rendere la home accessibile soltanto dopo login. Supera il limite di sola
