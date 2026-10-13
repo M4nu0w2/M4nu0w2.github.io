@@ -1,5 +1,31 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Gemini 3.5 Flash-Lite: release e verifica Hermes - 2026-10-13
+
+Stato corrente; prevale sulle note storiche di codice solo locale e modello3.7.
+Codice committato e pushato su origin/dev:
+`63db1be18f0586972458e702f7d61fa874946220`.
+[Workflow 38254989897](https://github.com/M4nu0w2/M4nu0w2.github.io/actions/runs/38254989897)
+FAILURE: job test SUCCESS, richiesta deploy FAILURE allo step
+`Richiedi deploy Hermes`. Causa non diagnosticata.
+
+SSH attuale: `/app/server/gemini.cjs` nel container contiene solo
+`gemini-3.5-flash-lite`; flag e override modello assenti, Gemini DISABLED.
+Non attribuire il modello distribuito al workflow fallito: origine rollout
+non stabilita. Nessun deploy manuale SSH e nessuna chiamata reale provider.
+Verifiche locali della migrazione PASS come sotto; non provano quote o
+funzionamento chat reale. WF-010 resta OPEN; nessun fallback/retry automatico.
+
+origin/dev include la migrazione e tre commit successivi del collega:
+`f5373c86c6d1ce9a58ed9e2b77156e16031e5e63`,
+`33a9db93ed545ca38ab31c602480315ce1583e99`,
+`d7d31ff43f4fa30414f1dbe1b8e6773f081b9ef4` (merge).
+Clone aggiornato in fast-forward pulito al merge, lavoro altrui preservato.
+Prossimi passi: diagnosticare richiesta deploy fallita e verificare chat
+reale; attivazione produzione resta distinta. Handoff solo documentale
+pubblicato con `[skip ci]`, nessun nuovo test o deploy.
+
+
 ## Cambio modello Gemini Flash-Lite - 2026-10-12
 
 Stato corrente; questa sezione prevale sul modello nelle note storiche.
