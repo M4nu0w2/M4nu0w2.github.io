@@ -4,7 +4,7 @@ title: Consultare lo storico dei piani senza cambiare il piano attivo
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
 status: closed
-assignee: codex
+assignee: null
 assignment: null
 assignment_mode: flexible
 blocked_by: []

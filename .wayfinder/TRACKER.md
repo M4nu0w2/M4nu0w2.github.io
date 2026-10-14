@@ -30,6 +30,9 @@ locale per la mappa [NutriPro — archivio personale e assistente del piano](../
 
 ## Assegnazione dei ticket
 
+- `assignee` ammette soltanto `manu`, `claudio` oppure `null` (nessuno).
+  Codex non è un assegnatario. Correzione richiesta dal PO il 2026-10-14:
+  rimossi i cinque valori `codex`, senza attribuirli a una persona.
 - `assignment: null | manu | claudio` indica a chi il PO richiede di lavorare
   il ticket. `null` significa nessuna preferenza.
 - `assignment_mode: flexible | strict` distingue una preferenza da un vincolo.

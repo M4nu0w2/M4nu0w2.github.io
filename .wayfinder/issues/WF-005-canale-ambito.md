@@ -4,7 +4,7 @@ title: Definire canale e ambito del chatbot
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
 status: closed
-assignee: codex
+assignee: null
 assignment: null
 assignment_mode: flexible
 blocked_by: []

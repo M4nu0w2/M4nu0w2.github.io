@@ -4,7 +4,7 @@ title: Integrare Gemini con opzione gratuita e veloce
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
 status: open
-assignee: codex
+assignee: null
 assignment: null
 assignment_mode: flexible
 blocked_by: []
