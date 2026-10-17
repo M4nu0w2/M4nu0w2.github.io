@@ -6,7 +6,8 @@ export const WAITLIST_ENDPOINT = '/api/waitlist';
 
 // Placeholder: da sostituire con l'indirizzo reale prima della pubblicazione.
 export const CONTACT_EMAIL = 'ciao@nutra.it';
-export const SITE_URL = 'https://nutra.pages.dev';
+// Dominio pubblico: parametro di build (SITE_URL=https://... npm run build). Il default è il dominio demo temporaneo.
+export const SITE_URL = (globalThis.process?.env?.SITE_URL || 'https://nutriprobasta.jirachibot.eu').replace(/\/+$/, '');
 
 export const SEO = {
   title: `${BRAND_NAME} — La dieta che vive nel telefono dei tuoi pazienti`,

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "npm run build && node --env-file-if-exists=.env server/index.cjs",
-    "test": "npm run build && node --test tests/shopping-list.test.cjs tests/auth.test.cjs tests/plans.test.cjs tests/gemini.test.cjs tests/chat.test.cjs tests/settings.test.cjs",
+    "test": "npm run build && node --test tests/shopping-list.test.cjs tests/auth.test.cjs tests/plans.test.cjs tests/gemini.test.cjs tests/chat.test.cjs tests/settings.test.cjs tests/landing.test.cjs",
     "test:browser": "node --test tests/shopping-export.e2e.cjs tests/auth.e2e.cjs tests/plans.e2e.cjs tests/pdf-import.e2e.cjs tests/chat.e2e.cjs tests/mobile-layout.e2e.cjs tests/settings.e2e.cjs",
     "build": "vite build",
     "dev": "vite build --watch"

@@ -15,7 +15,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const context = await browser.newContext(iphone); const login = await fixture.login();
   await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage();
-  await page.goto(fixture.config.origin);
+  await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
   await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
@@ -46,7 +46,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   assert.ok(lastCard.y + lastCard.height <= bar.y, 'last card hidden behind the tab bar');
 
   for (const route of ['/plans', '/chat', '/settings']) {
-    await page.goto(fixture.config.origin + route);
+    await page.goto(fixture.config.origin + '/app' + route);
     await nav.waitFor();
     assert.ok(await noHorizontalScroll(page), `horizontal scroll on ${route}`);
   }

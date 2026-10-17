@@ -9,7 +9,7 @@ test('settings toggle water and oil, record effective oil, switch units and clea
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }); const login = await f.login();
   await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
   const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(f.config.origin);
+  await page.goto(f.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
   await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();

@@ -52,7 +52,12 @@ jobs:
       - name: Installa dipendenze del servizio login
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Test autenticazione, motore e parser
+      - name: Build della landing (servita dal backend alla radice)
+        run: |
+          npm ci --prefix landing_page_nutripro --ignore-scripts --no-audit --no-fund
+          npm run build --prefix landing_page_nutripro
+
+      - name: Test autenticazione, motore, parser, landing e waitlist
         run: npm test
 
       # Playwright fuori dal repo: i test

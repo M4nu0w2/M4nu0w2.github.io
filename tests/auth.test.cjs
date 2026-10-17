@@ -7,16 +7,16 @@ const { startFixture } = require('./auth-fixture.cjs');
 test('home and session fail closed; only explicit public assets are served', async t => {
   const f = await startFixture({ GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '' });
   t.after(() => f.close());
-  for (const route of ['/', '/index.html', '/?any=query', '/plans', '/plans/previous-plan', '/settings']) {
+  for (const route of ['/app/', '/app/index.html', '/app/?any=query', '/app/plans', '/app/plans/previous-plan', '/app/settings']) {
     const r = await f.request(route);
     assert.equal(r.status, 303);
-    assert.equal(r.headers.get('location'), '/login');
+    assert.equal(r.headers.get('location'), '/app/login');
     assert.ok(!(await r.text()).includes('meals-container'));
   }
   assert.equal((await f.request('/api/session')).status, 401);
-  assert.equal((await f.request('/login')).status, 200);
+  assert.equal((await f.request('/app/login')).status, 200);
   assert.deepEqual(await (await f.request('/auth/status')).json(), { configured: false });
-  assert.equal((await f.request('/auth/google')).headers.get('location'), '/login?error=not_configured');
+  assert.equal((await f.request('/auth/google')).headers.get('location'), '/app/login?error=not_configured');
   for (const route of ['/.env', '/package.json', '/server/app.cjs', '/tests/auth.test.cjs', '/README.md', '/.wayfinder/TRACKER.md', '/.git/config', '/assets/../server/app.cjs', '/anything']) {
     assert.equal((await f.request(route)).status, 404, route);
   }
@@ -31,7 +31,7 @@ test('OIDC code flow uses state, nonce, PKCE and a server-only session; logout r
   assert.equal(start.url.searchParams.get('access_type'), 'online');
   assert.ok(start.url.searchParams.get('nonce'));
   assert.equal(response.status, 303);
-  assert.equal(response.headers.get('location'), '/');
+  assert.equal(response.headers.get('location'), '/app/');
   const setCookie = response.headers.getSetCookie().find(s => s.startsWith('nutripro_session='));
   assert.match(setCookie, /HttpOnly; SameSite=Lax/);
   const headers = { Cookie: cookie };
@@ -40,8 +40,8 @@ test('OIDC code flow uses state, nonce, PKCE and a server-only session; logout r
   assert.equal(session.sub, 'google-user-1');
   assert.equal(sessionResponse.headers.get('cache-control'), 'no-store');
   assert.ok(!JSON.stringify(session).includes('test-id-token'));
-  assert.equal((await f.request('/', { headers })).status, 200);
-  assert.equal((await f.request('/index.html', { headers })).status, 200);
+  assert.equal((await f.request('/app/', { headers })).status, 200);
+  assert.equal((await f.request('/app/index.html', { headers })).status, 200);
   assert.equal((await f.request('/auth/logout', { headers })).status, 404);
   assert.equal((await f.request('/auth/logout', { method: 'POST', headers })).status, 403);
   assert.equal((await f.request('/auth/logout', { method: 'POST', headers: { ...headers, Origin: 'https://evil.test', 'X-CSRF-Token': session.csrf } })).status, 403);
@@ -49,22 +49,22 @@ test('OIDC code flow uses state, nonce, PKCE and a server-only session; logout r
   assert.equal(logout.status, 200);
   assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
   assert.equal((await f.request('/api/session', { headers })).status, 401);
-  assert.equal((await f.request('/', { headers })).status, 303);
+  assert.equal((await f.request('/app/', { headers })).status, 303);
 });
 
 test('callback rejects CSRF, missing browser binding, replay and expired attempts', async t => {
   const f = await startFixture(); t.after(() => f.close());
   const first = await f.begin();
   const callback = `/auth/google/callback?code=test-code&state=${first.url.searchParams.get('state')}`;
-  assert.equal((await f.request(callback)).headers.get('location'), '/login?error=invalid_login');
-  assert.equal((await f.request('/auth/google/callback?code=test-code&state=wrong', { headers: { Cookie: first.cookie } })).headers.get('location'), '/login?error=invalid_login');
-  assert.equal((await f.request(callback, { headers: { Cookie: first.cookie } })).headers.get('location'), '/login?error=invalid_login');
+  assert.equal((await f.request(callback)).headers.get('location'), '/app/login?error=invalid_login');
+  assert.equal((await f.request('/auth/google/callback?code=test-code&state=wrong', { headers: { Cookie: first.cookie } })).headers.get('location'), '/app/login?error=invalid_login');
+  assert.equal((await f.request(callback, { headers: { Cookie: first.cookie } })).headers.get('location'), '/app/login?error=invalid_login');
   const expired = await f.begin();
   f.advance(11 * 60000);
-  assert.equal((await f.request(`/auth/google/callback?code=test-code&state=${expired.url.searchParams.get('state')}`, { headers: { Cookie: expired.cookie } })).headers.get('location'), '/login?error=invalid_login');
+  assert.equal((await f.request(`/auth/google/callback?code=test-code&state=${expired.url.searchParams.get('state')}`, { headers: { Cookie: expired.cookie } })).headers.get('location'), '/app/login?error=invalid_login');
   const success = await f.login();
   assert.ok(success.cookie);
-  assert.equal((await f.request(`/auth/google/callback?code=test-code&state=${success.start.url.searchParams.get('state')}`, { headers: { Cookie: success.start.cookie } })).headers.get('location'), '/login?error=invalid_login');
+  assert.equal((await f.request(`/auth/google/callback?code=test-code&state=${success.start.url.searchParams.get('state')}`, { headers: { Cookie: success.start.cookie } })).headers.get('location'), '/app/login?error=invalid_login');
 });
 
 test('invalid Google identities, failed token verification and disallowed accounts never create sessions', async t => {
@@ -73,7 +73,7 @@ test('invalid Google identities, failed token verification and disallowed accoun
     try {
       f.setIdentity(identity);
       const result = await f.login();
-      assert.equal(result.response.headers.get('location'), '/login?error=invalid_login');
+      assert.equal(result.response.headers.get('location'), '/app/login?error=invalid_login');
       assert.equal(result.cookie, undefined);
     } finally { await f.close(); }
   }
@@ -81,7 +81,7 @@ test('invalid Google identities, failed token verification and disallowed accoun
   rejected.rejectTokens();
   assert.equal((await rejected.login()).cookie, undefined);
   const restricted = await startFixture({ ALLOWED_EMAILS: 'claudio@example.test' }); t.after(() => restricted.close());
-  assert.equal((await restricted.login()).response.headers.get('location'), '/login?error=not_allowed');
+  assert.equal((await restricted.login()).response.headers.get('location'), '/app/login?error=not_allowed');
 });
 
 test('sessions expire, fabricated cookies fail and successful login rotates the session', async t => {
@@ -165,7 +165,7 @@ test('login initiation rate limits expire and cannot be bypassed using an untrus
     assert.equal(new URL(response.headers.get('location')).hostname, 'accounts.google.com');
   }
   const limited = await f.request('/auth/google');
-  assert.equal(limited.headers.get('location'), '/login?error=too_many_attempts');
+  assert.equal(limited.headers.get('location'), '/app/login?error=too_many_attempts');
   assert.equal(limited.headers.get('retry-after'), '60');
   f.advance(61000);
   assert.equal(new URL((await f.request('/auth/google')).headers.get('location')).hostname, 'accounts.google.com');

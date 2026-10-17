@@ -22,7 +22,7 @@ test('bundled PDF worker imports real PDF bytes without external requests or CSP
   page.on('request', request => { if (!request.url().startsWith(fixture.config.origin)) external.push(request.url()); });
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => { window.violations = []; document.addEventListener('securitypolicyviolation', event => window.violations.push(event.violatedDirective)); });
-  await page.goto(fixture.config.origin);
+  await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
   await page.getByLabel('PDF del piano').setInputFiles({ name: 'Piano ottobre.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
@@ -41,7 +41,7 @@ test('imports a PDF on browsers without ReadableStream async iteration, as Safar
   const page = await context.newPage(); const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => { delete ReadableStream.prototype[Symbol.asyncIterator]; delete ReadableStream.prototype.values; });
-  await page.goto(fixture.config.origin);
+  await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
   await page.getByLabel('PDF del piano').setInputFiles({ name: 'Piano ottobre.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
   await page.getByRole('alert').or(page.locator('button:not([disabled])', { hasText: 'Importa e attiva' })).first().waitFor();

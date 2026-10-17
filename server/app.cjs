@@ -6,8 +6,17 @@ const crypto = require('node:crypto');
 const { isIP } = require('node:net');
 const { OAuth2Client } = require('google-auth-library');
 const { createGeminiService } = require('./gemini.cjs');
+const { validate: validateWaitlist, createWaitlistStore } = require('./waitlist.cjs');
 
 const ROOT = path.join(__dirname, '..', 'dist');
+const APP = '/app';
+// The landing loads Manrope from Google Fonts; nothing else leaves the origin.
+const LANDING_CSP = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
+const LANDING_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8', '.ico': 'image/x-icon' };
+const APP_ROUTES = new Set(['/login', '/plans', '/chat', '/settings']);
+const isAppRoute = route => APP_ROUTES.has(route) || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
 const random = () => crypto.randomBytes(32).toString('base64url');
 const digest = value => crypto.createHash('sha256').update(value).digest('base64url');
@@ -45,7 +54,9 @@ function configFromEnv(env) {
     ready: Boolean(clientId && clientSecret), sessionTtl, sessionSecret, flowTtl: 10 * 60000,
     allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     deploySha: /^[a-f0-9]{40}$/.test(env.NUTRIPRO_SHA || '') ? env.NUTRIPRO_SHA : 'unknown',
-    trustProxy: env.TRUST_PROXY === 'true'
+    trustProxy: env.TRUST_PROXY === 'true',
+    landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
+    waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite')
   };
 }
 
@@ -58,7 +69,7 @@ function cookies(req) {
   return result;
 }
 
-function readChatBody(req) {
+function readChatBody(req, { limit = 131072, parser = text => JSON.parse(text) } = {}) {
   return new Promise((resolve, reject) => {
     let size = 0, done = false;
     const chunks = [];
@@ -72,13 +83,13 @@ function readChatBody(req) {
     req.on('data', chunk => {
       if (done) return;
       size += chunk.length;
-      if (size > 131072) { chunks.length = 0; fail(413, 'payload_too_large'); }
+      if (size > limit) { chunks.length = 0; fail(413, 'payload_too_large'); }
       else chunks.push(chunk);
     });
     req.on('end', () => {
       if (done) return;
       try {
-        const input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        const input = parser(Buffer.concat(chunks).toString('utf8'));
         done = true; clearTimeout(timer); resolve(input);
       } catch { fail(400, 'invalid_json'); }
     });
@@ -99,25 +110,40 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
   const sessionKey = config.sessionSecret || random();
   const revoked = new Map();
   const flows = new Map();
-  const attempts = new Map();
-  let totalAttempts = { count: 0, expires: 0 };
+  const limiterMaps = [];
   let activeCallbacks = 0;
   const sessionName = config.secure ? '__Host-nutripro_session' : 'nutripro_session';
   const flowName = config.secure ? '__Host-nutripro_oauth' : 'nutripro_oauth';
   const shell = fs.readFileSync(path.join(ROOT, 'index.html'));
   const files = new Map([
-    ['/icon-512.png', { file: path.join(ROOT, 'icon-512.png'), type: 'image/png' }],
-    ['/manifest.webmanifest', { file: path.join(ROOT, 'manifest.webmanifest'), type: 'application/manifest+json' }],
+    [`${APP}/icon-512.png`, { file: path.join(ROOT, 'icon-512.png'), type: 'image/png' }],
+    [`${APP}/manifest.webmanifest`, { file: path.join(ROOT, 'manifest.webmanifest'), type: 'application/manifest+json' }],
   ]);
   for (const name of fs.readdirSync(path.join(ROOT, 'assets'))) {
     if (!/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(js|mjs|css|woff2|png|svg)$/.test(name)) continue;
     const type = { '.js': 'application/javascript; charset=utf-8', '.mjs': 'application/javascript; charset=utf-8',
       '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml' }[path.extname(name)];
-    files.set(`/assets/${name}`, { file: path.join(ROOT, 'assets', name), type });
+    files.set(`${APP}/assets/${name}`, { file: path.join(ROOT, 'assets', name), type });
   }
+  // Public landing: files of its own build, listed once at startup (allowlist, no path from the request is joined).
+  const landing = new Map();
+  function addLanding(dir, base) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { addLanding(full, `${base}/${entry.name}`); continue; }
+      const type = LANDING_TYPES[path.extname(entry.name)];
+      if (!entry.isFile() || !type) continue;
+      const item = { file: full, type, immutable: base === '/assets' };
+      landing.set(`${base}/${entry.name}`, item);
+      if (entry.name === 'index.html') landing.set(`${base}/`, item);
+    }
+  }
+  if (config.landingDir) addLanding(config.landingDir, '');
+  const waitlist = createWaitlistStore(config.waitlistDb, now);
   const cookie = (name, value, ttl) => `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ttl / 1000)}${config.secure ? '; Secure' : ''}`;
   function prune() {
-    for (const collection of [revoked, flows, attempts]) {
+    for (const collection of [revoked, flows, ...limiterMaps]) {
       for (const [key, item] of collection) if (item.expires <= now()) collection.delete(key);
     }
   }
@@ -158,23 +184,49 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
     res.end(JSON.stringify(body));
   }
   function redirect(res, location) { res.writeHead(303, { Location: location }); res.end(); }
-  function loginError(res, error) { redirect(res, `/login?error=${error}`); }
-  function allowLogin(req) {
-    const forwarded = req.headers['x-real-ip'];
-    // Enable only behind a proxy which overwrites X-Real-IP, never on a public port.
-    const ip = config.trustProxy && typeof forwarded === 'string' && isIP(forwarded) ? forwarded : req.socket.remoteAddress;
-    if (totalAttempts.expires <= now()) totalAttempts = { count: 0, expires: now() + 60000 };
-    let bucket = attempts.get(ip);
-    if (!bucket || bucket.expires <= now()) {
-      if (attempts.size >= 2048) prune();
-      if (attempts.size >= 2048) return false;
-      bucket = { count: 0, expires: now() + 60000 };
-      attempts.set(ip, bucket);
-    }
-    if (bucket.count >= 20 || totalAttempts.count >= 120) return false;
-    bucket.count++;
-    totalAttempts.count++;
-    return true;
+  function loginError(res, error) { redirect(res, `${APP}/login?error=${error}`); }
+  // Per-IP and global fixed-window limiter. IP comes from X-Real-IP only behind a proxy which overwrites it.
+  function makeLimiter(perIp, perWindow) {
+    const buckets = new Map();
+    let total = { count: 0, expires: 0 };
+    limiterMaps.push(buckets);
+    return req => {
+      const forwarded = req.headers['x-real-ip'];
+      const ip = config.trustProxy && typeof forwarded === 'string' && isIP(forwarded) ? forwarded : req.socket.remoteAddress;
+      if (total.expires <= now()) total = { count: 0, expires: now() + 60000 };
+      let bucket = buckets.get(ip);
+      if (!bucket || bucket.expires <= now()) {
+        if (buckets.size >= 2048) prune();
+        if (buckets.size >= 2048) return false;
+        bucket = { count: 0, expires: now() + 60000 };
+        buckets.set(ip, bucket);
+      }
+      if (bucket.count >= perIp || total.count >= perWindow) return false;
+      bucket.count++;
+      total.count++;
+      return true;
+    };
+  }
+  const allowLogin = makeLimiter(20, 120);
+  const allowWaitlist = makeLimiter(5, 60);
+  async function handleWaitlist(req, res) {
+    const form = !/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '');
+    const reply = (status, error, errors) => {
+      if (form) return redirect(res, `/?waitlist=${status === 200 ? 'ok' : 'errore'}#tester`);
+      return json(res, status, status === 200 ? { ok: true } : { ok: false, error, errors });
+    };
+    if (req.headers.origin && req.headers.origin !== config.origin) return reply(403, 'origin');
+    if (!allowWaitlist(req)) { res.setHeader('Retry-After', '60'); return reply(429, 'rate_limited'); }
+    let data;
+    try {
+      data = await readChatBody(req, { limit: 8192, parser: text => form ? Object.fromEntries(new URLSearchParams(text)) : JSON.parse(text) });
+    } catch (error) { return reply(Number.isInteger(error.status) ? error.status : 400, 'formato'); }
+    // Honeypot filled: pretend success without saving.
+    if (data && data.website) return reply(200);
+    const result = validateWaitlist(data);
+    if (!result.ok) return reply(422, 'validazione', result.errors);
+    try { waitlist.add(result.value); } catch { return reply(500, 'db'); }
+    return reply(200);
   }
   const server = http.createServer({ maxHeaderSize: 16384, requestTimeout: 15000, headersTimeout: 10000 }, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -246,13 +298,17 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
           const { value } = issueSession({ sub: identity.sub, email: identity.email,
             name: typeof identity.name === 'string' ? identity.name.slice(0, 200) : identity.email, csrf: random() });
           res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
-          return redirect(res, '/');
+          return redirect(res, `${APP}/`);
         } catch {
           // Do not log provider responses, codes, tokens or personal data.
           return loginError(res, 'invalid_login');
         } finally {
           activeCallbacks--;
         }
+      }
+      if (route === '/api/waitlist') {
+        if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return json(res, 405, { error: 'method_not_allowed' }); }
+        return await handleWaitlist(req, res);
       }
       const session = sessionFor(req, res);
       if (route === '/api/chat/status' && req.method === 'GET') {
@@ -286,21 +342,33 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
         return json(res, 200, { ok: true });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'method_not_allowed' });
-      const appRoute = route === '/' || route === '/index.html' || route === '/plans' || route === '/chat' || route === '/settings' || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
-      if (appRoute && !session) return redirect(res, '/login');
-      if (appRoute || route === '/login') {
+      if (route === APP) return redirect(res, `${APP}/`);
+      if (route === `${APP}/` || route === `${APP}/index.html` || (route.startsWith(`${APP}/`) && isAppRoute(route.slice(APP.length)))) {
+        const inner = route.slice(APP.length) || '/';
+        if (inner !== '/login' && !session) return redirect(res, `${APP}/login`);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         return res.end(req.method === 'HEAD' ? undefined : shell);
       }
+      // Bookmarks and links from before the app moved under /app.
+      if (route === '/index.html' || isAppRoute(route)) return redirect(res, `${APP}${route === '/index.html' ? '/' : route}`);
+      if (route === '/privacy') return redirect(res, '/privacy/');
       const file = files.get(route);
-      if (!file) return json(res, 404, { error: 'not_found' });
-      res.writeHead(200, { 'Content-Type': file.type });
-      return res.end(req.method === 'HEAD' ? undefined : fs.readFileSync(file.file));
+      if (file) {
+        res.writeHead(200, { 'Content-Type': file.type });
+        return res.end(req.method === 'HEAD' ? undefined : fs.readFileSync(file.file));
+      }
+      const page = landing.get(route);
+      if (!page) return json(res, 404, { error: 'not_found' });
+      res.setHeader('Content-Security-Policy', LANDING_CSP);
+      if (page.immutable) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      else if (page.type !== LANDING_TYPES['.html']) res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.writeHead(200, { 'Content-Type': page.type });
+      return res.end(req.method === 'HEAD' ? undefined : fs.readFileSync(page.file));
     } catch {
       return json(res, 500, { error: 'server_error' });
     }
   });
-  server.on('close', () => clearInterval(sweep));
+  server.on('close', () => { clearInterval(sweep); waitlist.close(); });
   return server;
 }
 

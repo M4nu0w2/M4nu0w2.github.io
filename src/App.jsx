@@ -35,7 +35,7 @@ function Protected() {
   const loggingOut = useRef(false);
   useEffect(() => {
     let disposed = false, pending = false, expiry;
-    const leave = (reason = 'expired') => { setLocked(true); location.replace(`/login?error=${reason}`); };
+    const leave = (reason = 'expired') => { setLocked(true); location.replace(`/app/login?error=${reason}`); };
     async function verify() {
       if (pending || disposed || loggingOut.current) return;
       pending = true;
@@ -60,7 +60,7 @@ function Protected() {
   async function logout() {
     loggingOut.current = true;
     setLocked(true);
-    try { const response = await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': identity.current.csrf }, signal: AbortSignal.timeout(10000) }); if (!response.ok && response.status !== 401) throw new Error(); location.replace('/login'); }
+    try { const response = await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': identity.current.csrf }, signal: AbortSignal.timeout(10000) }); if (!response.ok && response.status !== 401) throw new Error(); location.replace('/app/login'); }
     catch { setLogoutError('Uscita non riuscita. Controlla la connessione e riprova.'); }
   }
   const gate = <main className="login-page"><section className="login-card"><p role="status">{logoutError || 'Verifica della sessione…'}</p>{logoutError && <button className="btn secondary" onClick={logout}>Riprova uscita</button>}</section></main>;

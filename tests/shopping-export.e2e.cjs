@@ -25,7 +25,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     });
     await page.route('https://**/*', route => route.fulfill({ status: 200,
       contentType: route.request().url().endsWith('.js') ? 'application/javascript' : 'text/css', body: '' }));
-    await page.goto(origin);
+    await page.goto(origin + '/app/');
     await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
   await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
   await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();

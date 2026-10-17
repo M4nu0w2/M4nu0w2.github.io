@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import '../chat.css';
 
-const expired = () => window.location.replace('/login?error=expired');
+const expired = () => window.location.replace('/app/login?error=expired');
 function requestHistory(messages, message) {
   const history = messages.slice(-20).map(({ role, text }) => ({ role, text }));
   let length = history.reduce((sum, entry) => sum + entry.text.length, 0);

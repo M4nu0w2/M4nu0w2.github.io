@@ -4,11 +4,12 @@ Monorepo di due prodotti distinti che condividono solo il repository:
 
 | Componente | Cartella | Cos'è | Stack | Dove gira |
 | :--- | :--- | :--- | :--- | :--- |
-| **App NutriPro** | `/` (root) | PWA per il paziente: importa il PDF Progeo Medical, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | Container Docker su Hermes (`nutriprobasta.jirachibot.eu`) |
-| **Landing "Nutrà"** | `landing_page_nutripro/` | Sito vetrina B2B con waitlist per nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, Cloudflare Pages Functions + D1 | Cloudflare Pages (non ancora deployata) |
+| **Landing "Nutrà"** | `landing_page_nutripro/` | Sito pubblico, leggero e ottimizzato per i motori di ricerca; raccoglie la waitlist dei nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, HTML statico | **Radice** del dominio (`/`), servita dal backend Node |
+| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF Progeo Medical, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
 
-I due componenti **non condividono codice, dipendenze, build, runtime né deploy**.
-Possono convivere nello stesso repo senza interferire (vedi [Convivenza](#convivenza-app-e-landing)).
+Oggi il dominio è `nutriprobasta.jirachibot.eu`, **temporaneo e solo per demo interne**. L'impostazione è pensata per reggere anche con un dominio definitivo: landing pubblica e SEO da una parte, web app autenticata dall'altra, senza codice in comune. Il dominio non è scritto nel codice: vedi [Configurazione](#configurazione-variabili-dambiente).
+
+I due componenti **non condividono codice, dipendenze né build**: vivono nello stesso repo e nello stesso container solo perché oggi il deploy è uno (vedi [Convivenza](#convivenza-app-e-landing)).
 
 ---
 
@@ -35,53 +36,62 @@ Possono convivere nello stesso repo senza interferire (vedi [Convivenza](#conviv
 flowchart LR
   subgraph Browser
     PWA[App React / PWA<br/>pdf.js + localStorage]
-    LP[Landing Nutrà<br/>statica]
+    LP[Landing Nutrà<br/>HTML statico]
   end
   subgraph Hermes["Hermes (self-hosted)"]
     Proxy[Reverse proxy] --> Node["Container Node :8080<br/>server/app.cjs"]
+    Node --- Vol[("Volume /data<br/>waitlist.sqlite")]
   end
-  subgraph CF[Cloudflare]
-    Pages[Pages: dist statico]
-    Fn[Functions: /api/waitlist]
-    D1[(D1: waitlist)]
-    Pages --- Fn --> D1
-  end
-  PWA -- "HTTPS, cookie di sessione" --> Proxy
+  LP -- "GET /, /privacy/, POST /api/waitlist" --> Proxy
+  PWA -- "GET /app/*, /auth/*, /api/*" --> Proxy
   Node -- "OIDC (PKCE)" --> Google[Google Identity]
   Node -- "generateContent (opzionale)" --> Gemini[Gemini API]
-  LP --> Pages
 ```
+
+Un solo processo Node serve entrambi i prodotti, ma con regole diverse:
+
+| Percorso | Contenuto | Auth | CSP |
+| :--- | :--- | :--- | :--- |
+| `/`, `/privacy/`, `/assets/*`, `/robots.txt`, `/favicon.svg` | Landing (file della sua build, allowlist all'avvio) | no | Landing: solo Google Fonts come origine esterna |
+| `POST /api/waitlist` | Candidatura tester | no (Origin + rate limit + honeypot) | - |
+| `/app/*` | Shell della web app React | sì (altrimenti `/app/login`) | App: nessuna origine esterna |
+| `/auth/*`, `/api/session`, `/api/chat*` | Login Google, sessione, assistente | vedi tabella route | - |
+| `/healthz`, `/deploy-version.txt` | Operatività | no | - |
+
+Le vecchie URL dell'app (`/login`, `/plans`, `/chat`, `/settings`, `/index.html`) rispondono con redirect verso `/app/...`.
 
 Principi di progetto dell'app:
 
 - **Il piano alimentare non lascia il browser.** Il PDF è analizzato lato client con `pdf.js`; piani, spunte e acqua stanno in `localStorage`, una chiave per account (`diet_plan_archive:<Google sub>`). Il server conosce solo l'identità, mai il piano.
 - **Il backend è minimale e stateful solo in memoria**: autenticazione Google, sessioni, un proxy verso Gemini, file statici. Nessun database.
 - **Zero CDN**: JS, CSS, font e worker di pdf.js sono serviti dal backend (la CSP vieta origini esterne).
-- **Login obbligatoria**: ogni route dell'app senza sessione valida reindirizza a `/login`.
+- **Login obbligatoria**: ogni route dell'app senza sessione valida reindirizza a `/app/login`.
 
 ## Convivenza app e landing
 
-**Sì, convivono senza problemi**, perché sono isolati a ogni livello. Verificato sul codice:
+**Convivono senza problemi** e restano separabili. Verificato sul codice e sui test:
 
-| Aspetto | App (root) | Landing |
+| Aspetto | Landing | App (root del repo) |
 | :--- | :--- | :--- |
-| `package.json` / lockfile | root | `landing_page_nutripro/` (propri) |
-| Build | `vite build` → `dist/` (root) | `vite build` → `landing_page_nutripro/dist/` |
-| Runtime | Node + Docker | Cloudflare Pages (statico + Functions) |
-| Dominio previsto | `nutriprobasta.jirachibot.eu` | `nutra.pages.dev` (placeholder) o dominio proprio |
-| Brand | NutriPro | Nutrà |
-| Target | Paziente | Nutrizionista / dietista |
-| CI | `nutripro-ci-deploy.yml` | **nessuna** (vedi [punti aperti](#stato-e-punti-aperti)) |
+| `package.json` / lockfile | `landing_page_nutripro/` | root |
+| Build | `vite build` → `landing_page_nutripro/dist/` (base `/`) | `vite build` → `dist/` (base `/app/`) |
+| Dove gira | file statici serviti dal backend | stesso backend, route autenticate |
+| Brand | Nutrà | NutriPro |
+| Target | Nutrizionista (e motori di ricerca) | Paziente |
+| JavaScript | pochi KB, nessun framework | React + pdf.js |
+| Stato | nessuno lato client; waitlist su SQLite | `localStorage` per account |
 
-Perché non si disturbano:
+Cosa tiene separate le due parti:
 
-- Il `Dockerfile` copia solo `index.html`, `vite.config.js`, `src/`, `public/`, `server/`. `.dockerignore` esclude tutto il resto: la landing **non entra nell'immagine**.
-- Il `vite.config.js` e il `package.json` di root non vedono la cartella landing; `npm ci` e `npm test` in root non la toccano.
-- La CI parte su push a `dev` e lavora dalla root.
+- **Asset senza collisioni**: la landing usa `/assets/*`, l'app `/app/assets/*`.
+- **CSP diverse**: la landing può chiamare Google Fonts, l'app no. Gli script restano `'self'` in entrambe.
+- **Cookie di sessione** `__Host-` con `Path=/`: valgono anche sulla landing ma non vengono mai letti lì. `/auth/*` e `/api/*` sono rimasti alla radice, quindi il redirect OAuth registrato su Google **non cambia**.
+- **Nessun import incrociato**: la landing non importa nulla da `src/` e viceversa.
+- **Dominio configurabile**: `APP_ORIGIN` (backend) e `SITE_URL` (build della landing) sono parametri, non costanti.
 
-**Ruolo della landing**: è l'acquisizione. Raccoglie candidature di professionisti per la fase di test (nome, email, ruolo, n. pazienti, consenso privacy) nella tabella D1 `waitlist`. Non fa login, non parla con l'app. Oggi il legame tra i due prodotti è solo di marketing: la landing promette ciò che l'app (lato paziente) già fa (menu del giorno, idratazione, lista della spesa, calcolatore).
+**Ruolo della landing**: acquisizione e SEO. Raccoglie le candidature dei professionisti per la fase di test (nome, email, ruolo, n. pazienti, consenso privacy). Non ha login e non carica nulla dell'app; l'unico legame è il link "Accedi" verso `/app/`.
 
-**Cosa tenere d'occhio**: i due brand diversi (Nutrà vs NutriPro / "NutriPro Basta"), i lockfile separati, e il fatto che un'eventuale futura area professionisti (`/admin` nella landing) dovrà decidere se riusare l'auth Google dell'app o averne una propria.
+**Con un dominio definitivo** si può tenere questa impostazione (stesso host, `/` e `/app`) oppure spostare la landing su hosting statico/CDN e lasciare l'app su un sottodominio (`app.dominio.it`). Il codice lo permette: basta servire `landing_page_nutripro/dist` da altrove e impostare `APP_ORIGIN` sull'host dell'app. In quel caso la waitlist va esposta dal backend dell'app o spostata su un servizio dedicato.
 
 ## Struttura del repository
 
@@ -105,10 +115,11 @@ NutriPro/
 ├── server/
 │   ├── index.cjs              # Bootstrap + graceful shutdown (SIGINT/SIGTERM)
 │   ├── app.cjs                # HTTP server: config, auth OIDC, sessioni, CSP, routing, statici
-│   └── gemini.cjs             # Servizio chat Gemini (validazione, rate limit, timeout)
+│   ├── gemini.cjs             # Servizio chat Gemini (validazione, rate limit, timeout)
+│   └── waitlist.cjs           # Validazione e archivio SQLite della waitlist
 ├── tests/                     # Unit/integration (*.test.cjs) e browser (*.e2e.cjs)
 ├── .github/workflows/nutripro-ci-deploy.yml
-├── landing_page_nutripro/     # Prodotto separato (vedi sezione dedicata)
+├── landing_page_nutripro/     # Landing pubblica (vedi sezione dedicata); la build entra nell'immagine Docker
 ├── .wayfinder/ + WAYFINDER.md # Mappa decisionale e ticket WF-001…WF-020
 ├── CONTEXT.md                 # Glossario di dominio
 └── HANDOFF.md                 # Diario operativo di sessione (storico, 800+ righe)
@@ -120,7 +131,7 @@ NutriPro/
 
 ### Frontend
 
-- **Routing** (React Router 7): `/login`, `/` (Home), `/plans`, `/plans/:id`, `/chat`, `/settings`.
+- **Routing** (React Router 7, `basename="/app"`, Vite `base: '/app/'`): `/app/login`, `/app/` (Home), `/app/plans`, `/app/plans/:id`, `/app/chat`, `/app/settings`.
 - **`Protected`** verifica `/api/session` ogni 60 s e a ogni ritorno in primo piano; blocca la UI quando la pagina è nascosta; espelle l'utente su scadenza o cambio account.
 - **PDF**: `parseProgeoPdf` (pdf.js) → struttura per giorno/pasto/alimento, con alternative esplicite, ricette e tabella "Unità di misura" del PDF che prevale sui coefficienti generici.
 - **Archivio** (`planStore`): un piano attivo alla volta (o nessuno), piani inattivi consultabili, "sostituzione" distruttiva con doppia conferma. Nessuna sincronizzazione fra dispositivi, nessun PDF originale conservato.
@@ -159,8 +170,9 @@ Server `http` di Node senza framework. Route:
 | `/auth/logout` | POST | sì + CSRF | Revoca sessione, `Clear-Site-Data: "cache"` |
 | `/api/chat/status` | GET | sì | Stato assistente |
 | `/api/chat` | POST | sì + CSRF + Origin | Messaggio a Gemini |
-| `/`, `/plans`, `/chat`, `/settings`, `/plans/:id` | GET | sì | Shell SPA (senza sessione → `/login`) |
-| `/assets/*`, `/icon-512.png`, `/manifest.webmanifest` | GET | no | Statici da allowlist |
+| `/app/`, `/app/plans`, `/app/chat`, `/app/settings`, `/app/plans/:id` | GET | sì | Shell SPA (senza sessione → `/app/login`) |
+| `/app/assets/*`, `/app/icon-512.png`, `/app/manifest.webmanifest` | GET | no | Statici dell'app da allowlist |
+| `/api/waitlist` | POST | no | Candidatura tester (vedi landing) |
 
 **Sessioni**: cookie firmato HMAC-SHA256 (`__Host-nutripro_session` in HTTPS), HttpOnly, durata di default 90 giorni con rinnovo all'uso (max 180). Con `SESSION_SECRET` sopravvivono ai riavvii; senza, ogni restart disconnette tutti (warning a log). La revoca al logout è tenuta in memoria.
 
@@ -168,37 +180,36 @@ Server `http` di Node senza framework. Route:
 
 ### Container
 
-`Dockerfile` multistadio: stadio build (`npm ci --include=dev`, `vite build`) → stadio runtime `node:22-alpine`, solo dipendenze di produzione, utente `node`, porta 8080, `HEALTHCHECK` su `/healthz`. `compose.auth.yml` (riferimento standalone) aggiunge: bind su `127.0.0.1`, filesystem read-only, `cap_drop: ALL`, `no-new-privileges`, tmpfs su `/tmp`, 128 MB RAM, 0.25 CPU.
+`Dockerfile` multistadio: stadio `build` (app) + stadio `landing` (landing, con `ARG SITE_URL`) → stadio runtime `node:22-alpine`, solo dipendenze di produzione, utente `node`, porta 8080, `VOLUME /data`, `HEALTHCHECK` su `/healthz`. `compose.auth.yml` (riferimento standalone) aggiunge: bind su `127.0.0.1`, filesystem read-only, `cap_drop: ALL`, `no-new-privileges`, tmpfs su `/tmp`, 128 MB RAM, 0.25 CPU.
 
 ---
 
 ## Landing page (`landing_page_nutripro/`)
 
-Sito vetrina "Nutrà" per reclutare nutrizionisti tester.
+Sito pubblico "Nutrà" per reclutare nutrizionisti tester. Obiettivo: pagina leggera, indicizzabile, indipendente dall'app.
 
-- **Frontend**: Vite 6, JavaScript vanilla a componenti (`src/components/`), GSAP + Lenis per animazioni e scroll, storytelling in `src/story/`, stili CSS divisi per sezione (`src/styles/`). Due pagine: `index.html` e `privacy/index.html`.
-- **Config unica**: `src/config.js` (nome brand, `SITE_URL`, `CONTACT_EMAIL`, endpoint, SEO). Il plugin `brand-html` in `vite.config.js` sostituisce i segnaposto `%BRAND%`, `%SEO_TITLE%`, … nell'HTML già a build time (SEO e no-JS ok).
-- **Backend serverless** (Cloudflare Pages Functions):
-  - `POST /api/waitlist`: valida (nome, email, ruolo, n. pazienti ≤ 10000, consenso), controlla `Origin`, honeypot anti-spam (campo `website`), supporta JSON e form classico (fallback no-JS), insert idempotente in D1 (`ON CONFLICT(email) DO NOTHING`, così non rivela chi è iscritto).
-  - `/admin/*`: oggi risponde sempre 403 (area riservata non ancora realizzata).
-- **Database**: D1 `nutra-waitlist`, migrazione `migrations/0001_create_waitlist.sql`.
-- **Comandi** (dentro `landing_page_nutripro/`):
+- **Frontend**: Vite 6, JavaScript vanilla a componenti (`src/components/`), GSAP + Lenis per animazioni e scroll, storytelling in `src/story/`, stili CSS per sezione (`src/styles/`). Due pagine: `index.html` e `privacy/index.html`. Lo script di intro è un file (`public/intro-boot.js`), non inline, per rispettare la CSP.
+- **Config unica**: `src/config.js` (brand, endpoint, contatti, SEO). `SITE_URL` si imposta alla build (`SITE_URL=https://dominio npm run build`); il default è il dominio demo. Il plugin `brand-html` sostituisce `%BRAND%`, `%SEO_TITLE%`, `%SITE_URL%`… già nell'HTML statico (SEO e no-JS ok).
+- **Waitlist**: `POST /api/waitlist` è gestita dal backend Node (`server/waitlist.cjs`). Accetta JSON o form classico (senza JS risponde con redirect a `/?waitlist=ok#tester`), controlla `Origin`, honeypot `website`, rate limit (5/min per IP, 60/min globali), limite di 8 KB. Salva in SQLite (`node:sqlite`, nessuna dipendenza aggiunta); un'email già presente non produce errore e non rivela chi è iscritto.
+- **Dati**: file `WAITLIST_DB_PATH` (in Docker `/data/waitlist.sqlite`, **volume persistente**). Se il volume manca, l'app parte lo stesso e solo la waitlist risponde 500.
+- **Legacy**: `functions/`, `migrations/` e `wrangler.toml` sono la vecchia versione per Cloudflare Pages + D1, **non più usata**. Restano finché non si decide di rimuoverli.
 
 ```powershell
+cd landing_page_nutripro
 npm install
-npm run dev                # Vite in sviluppo (genera prima il favicon)
-npm run build              # → dist/
-npm run db:migrate:local   # applica le migrazioni D1 in locale
-npm run pages:dev          # build + wrangler pages dev su :8788 (con Functions e D1 locale)
+npm run dev      # sviluppo con Vite (solo grafica: /api/waitlist non esiste qui)
+npm run build    # → dist/ (usata dal backend in locale e dal Dockerfile)
 ```
 
-> **Prima di pubblicarla** va fatto: `npx wrangler d1 create nutra-waitlist` e sostituire `database_id` (oggi `0000…`) in `wrangler.toml`; applicare le migrazioni in remoto; impostare `SITE_URL` e `CONTACT_EMAIL` reali in `src/config.js`; creare il progetto Pages.
+Per vederla **con la waitlist funzionante** in locale: `npm run build` nella landing, poi `npm start` dalla root e apri http://localhost:8080 (landing alla radice, app su `/app/`).
+
+> **Da fare prima di una pubblicazione definitiva**: `CONTACT_EMAIL` in `src/config.js` è un placeholder; impostare `SITE_URL` sul dominio reale; prevedere un backup del volume `/data`.
 
 ---
 
 ## Configurazione (variabili d'ambiente)
 
-Solo app. Copiare `.env.example` in `.env` (ignorato da git). Mai committare valori reali.
+Solo backend (per la landing, `SITE_URL` è un parametro di build). Copiare `.env.example` in `.env` (ignorato da git). Mai committare valori reali.
 
 | Variabile | Obbligatoria | Default | Note |
 | :--- | :--- | :--- | :--- |
@@ -210,6 +221,8 @@ Solo app. Copiare `.env.example` in `.env` (ignorato da git). Mai committare val
 | `SESSION_SECRET` | consigliata | casuale a ogni avvio | ≥ 32 caratteri. Senza, i restart disconnettono tutti. Cambiarla disconnette tutti. |
 | `TRUST_PROXY` | no | `false` | `true` solo dietro il proxy privato che sovrascrive `X-Real-IP`. |
 | `NUTRIPRO_SHA` | no | `unknown` | SHA a 40 hex esposto da `/deploy-version.txt`; impostato dal deploy. |
+| `WAITLIST_DB_PATH` | consigliata | `./data/waitlist.sqlite` (Docker: `/data/waitlist.sqlite`) | File SQLite della waitlist. In produzione deve stare su un volume persistente. |
+| `LANDING_DIR` | no | `./landing`, poi `landing_page_nutripro/dist` | Cartella con la build della landing. Se assente, `/` risponde 404 e l'app funziona lo stesso. |
 | `GEMINI_ENABLED` | no | `false` | |
 | `GEMINI_API_KEY` | se attivo | vuoto | Solo server, mai nel client. |
 | `GEMINI_MODEL` | no | `gemini-3.5-flash-lite` | Qualsiasi altro valore → `unsupported_model`. |
@@ -224,38 +237,38 @@ Requisiti: Node ≥ 22.14.
 ```powershell
 npm ci --ignore-scripts
 Copy-Item .env.example .env      # poi compilare le credenziali Google
-npm start                        # build + server su http://localhost:8080
+npm start                        # build app + server su http://localhost:8080 (app su /app/)
 npm run dev                      # (altro terminale) rebuild in watch; ricaricare il browser
 ```
 
-Un server statico non basta: la login richiede il backend. Senza credenziali la pagina di login segnala "accesso non disponibile" e la home resta chiusa.
+Per vedere anche la landing: `npm run build --prefix landing_page_nutripro` una volta. Un server statico non basta: la login richiede il backend. Senza credenziali la pagina di login segnala "accesso non disponibile" e la home resta chiusa.
 
-Docker standalone: `docker compose -f compose.auth.yml up --build -d`.
+Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il volume `waitlist-data` su `/data`). Per un dominio diverso dal demo: `docker build --build-arg SITE_URL=https://dominio .`
 
 ## Test
 
 ```powershell
-npm test               # build + unit/integration (53 test: spesa, auth, piani, gemini, chat, settings)
+npm test               # build + unit/integration (58 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist)
 npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, mobile, settings)
 ```
 
 - I test di login simulano il provider Google ma usano server e cookie reali; un test a parte verifica firme RSA con la libreria Google. La verifica con un progetto Google reale resta necessaria prima dell'attivazione.
 - I test browser leggono `PLAYWRIGHT_MODULE` (percorso del modulo Playwright, installato fuori dal repo; la CI usa `playwright@1.61.1`).
 - `tests/progeo-pdf.e2e.cjs` richiede un PDF privato (`REAL_PROGEO_PDF`), **non** è in CI: da eseguire a mano prima di toccare il parser.
-- La landing non ha test.
+- La landing è coperta lato server (`tests/landing.test.cjs`: file serviti, CSP, redirect, waitlist). Il suo front-end non ha test.
 
 ## CI/CD e deploy
 
 Workflow `.github/workflows/nutripro-ci-deploy.yml`, su **push a `dev`**:
 
-1. **test**: `npm ci` → `npm test` → installa Playwright/Chromium → `npm run test:browser`. Azioni fissate per SHA.
+1. **test**: `npm ci` → build della landing → `npm test` → installa Playwright/Chromium → `npm run test:browser`. Azioni fissate per SHA.
 2. **deploy** (solo se i test passano, solo su `dev` del repo ufficiale, environment `nutripro-deploy`): verifica che lo SHA appartenga a `dev`, poi lancia `deploy-nutripro.yml` nel repo `Thegoldendice/JirachiBotOrchestrator`, che gira sul runner self-hosted di Hermes, prende un lock host-wide e rifiuta di sostituire un commit più recente.
 
 Requisiti: secret `ORCHESTRATOR_DISPATCH_TOKEN` (PAT fine-grained limitato al repo Orchestrator, solo *Actions: read and write*). Credenziali di produzione fuori dal clone: `/home/hermes/.config/nutripro/auth.env`. Il proxy deve puntare al container Node sulla porta 8080 (il vecchio nginx sulla 80 non è compatibile).
 
 **Flusso di branch**: si lavora su `dev` (che deploya); `main` riceve `dev` con fast-forward quando si vuole fissare una release. Il push su `main` **non** deploya.
 
-La landing si deploya a parte con Wrangler/Cloudflare Pages (oggi manuale, vedi [punti aperti](#stato-e-punti-aperti)).
+La landing **non ha un deploy separato**: la sua build entra nell'immagine Docker (stadio `landing` del `Dockerfile`) e va online con l'app. **Requisito di deploy**: il container deve avere un volume persistente su `/data` (da aggiungere anche nella configurazione del repo Orchestrator, non solo in `compose.auth.yml`), altrimenti la waitlist risponde 500.
 
 ## Sicurezza
 
@@ -276,7 +289,10 @@ La landing si deploya a parte con Wrangler/Cloudflare Pages (oggi manuale, vedi 
 
 ## Stato e punti aperti
 
-- **Landing**: `database_id` D1 placeholder, `SITE_URL`/`CONTACT_EMAIL` placeholder, `/admin` chiuso, nessuna CI/deploy automatico, nessun test. Decisione brand Nutrà vs NutriPro da prendere.
+- **Dominio**: `nutriprobasta.jirachibot.eu` è temporaneo (demo interne). Con il dominio vero impostare `APP_ORIGIN`, `SITE_URL` (build arg) e il redirect OAuth.
+- **Landing**: `CONTACT_EMAIL` placeholder, nessun backup del volume `/data`, nessun test del front-end, file legacy Cloudflare da rimuovere. Decisione brand Nutrà vs NutriPro da prendere.
+- **PWA già installate**: avevano `start_url` `/`; ora la radice è la landing. Vanno reinstallate da `/app/`.
+- **Immagine Docker**: la build multistadio con la landing non è stata provata in locale (daemon non attivo); la prima verifica è la CI/deploy.
 - **Gemini (WF-010)**: aperto. Ultimo run CI: test ok ma richiesta di deploy fallita (causa non diagnosticata, vedi HANDOFF). Nessuna verifica con provider reale; attivazione pubblica richiede decisione sul tier a pagamento.
 - **CI**: la condizione del job deploy è vincolata a `M4nu0w2/M4nu0w2.github.io`; il PDF reale non è coperto.
 - **Dati**: nessun backup/sincronizzazione; perdere il browser significa perdere i piani.

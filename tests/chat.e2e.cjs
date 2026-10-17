@@ -18,13 +18,13 @@ async function setup(t, enabled = true) {
 
 test('chat is authenticated and disabled until configured, with mobile layout', async t => {
   const { fixture, context, page } = await setup(t, false);
-  await page.goto(`${fixture.config.origin}/chat`);
+  await page.goto(`${fixture.config.origin}/app/chat`);
   await page.getByRole('heading', { name: 'Assistente non ancora attivo' }).waitFor();
   assert.equal(await page.getByLabel('La tua domanda').count(), 0);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await context.clearCookies();
   await page.reload();
-  await page.waitForURL('**/login');
+  await page.waitForURL('**/app/login');
 });
 
 test('chat sends CSRF and general text only, renders HTML safely and never persists history', async t => {
@@ -34,7 +34,7 @@ test('chat sends CSRF and general text only, renders HTML safely and never persi
     calls.push({ body: route.request().postDataJSON(), headers: await route.request().allHeaders() });
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: '<img src=x onerror=alert(1)> Risposta', model: 'gemini-test' }) });
   });
-  await page.goto(`${fixture.config.origin}/chat`);
+  await page.goto(`${fixture.config.origin}/app/chat`);
   await page.getByLabel('La tua domanda').fill('Come organizzare la spesa?');
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
   await page.locator('.chat-model').waitFor();
@@ -62,7 +62,7 @@ test('failed chat keeps the draft, requires a manual retry, and handles session 
     calls++;
     return route.fulfill({ status: calls === 1 ? 429 : 401, contentType: 'application/json', body: '{"error":"rate_limited"}' });
   });
-  await page.goto(`${fixture.config.origin}/chat`);
+  await page.goto(`${fixture.config.origin}/app/chat`);
   await page.getByLabel('La tua domanda').fill('Domanda da ritentare');
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
   await page.getByRole('alert').filter({ hasText: 'limite temporaneo' }).waitFor();
@@ -70,7 +70,7 @@ test('failed chat keeps the draft, requires a manual retry, and handles session 
   assert.equal(await page.locator('.chat-message').count(), 0);
   assert.equal(calls, 1);
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
-  await page.waitForURL('**/login?error=expired');
+  await page.waitForURL('**/app/login?error=expired');
   assert.equal(calls, 2);
 });
 
@@ -82,7 +82,7 @@ test('chat prunes oldest complete turns to keep long responses inside the histor
     calls.push(route.request().postDataJSON());
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: longReply, model: 'gemini-test' }) });
   });
-  await page.goto(`${fixture.config.origin}/chat`);
+  await page.goto(`${fixture.config.origin}/app/chat`);
   for (const [index, question] of ['Prima domanda', 'Seconda domanda', 'Terza domanda'].entries()) {
     await page.getByLabel('La tua domanda').fill(question);
     await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
@@ -101,7 +101,7 @@ test('provider overload explains the failure, preserves the draft and only retri
     calls++;
     return route.fulfill({ status: calls === 1 ? 503 : 200, contentType: 'application/json', body: JSON.stringify(calls === 1 ? { error: 'provider_unavailable', message: 'Private provider details' } : { text: 'Risposta dopo il tentativo manuale.' }) });
   });
-  await page.goto(`${fixture.config.origin}/chat`);
+  await page.goto(`${fixture.config.origin}/app/chat`);
   await page.getByLabel('La tua domanda').fill('Domanda conservata');
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
   await page.getByRole('alert').filter({ hasText: 'Gemini Flash-Lite è temporaneamente sovraccarico' }).waitFor();

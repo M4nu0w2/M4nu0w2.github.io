@@ -63,3 +63,12 @@
     display: none;
   }
 }
+
+.nav__login {
+  color: var(--text-dim, inherit);
+  font-weight: 600;
+  margin-inline-start: auto;
+  margin-inline-end: 1rem;
+  text-decoration: none;
+}
+.nav__login:hover { text-decoration: underline; }

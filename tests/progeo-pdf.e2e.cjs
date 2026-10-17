@@ -23,7 +23,7 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
       window.cspViolations = [];
       document.addEventListener('securitypolicyviolation', event => window.cspViolations.push(event.violatedDirective));
     });
-    await page.goto(fixture.config.origin);
+    await page.goto(fixture.config.origin + '/app/');
     await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
     await page.getByLabel('PDF del piano').setInputFiles(pdfPath);
     await page.getByRole('button', { name: 'Importa e attiva' }).click();
