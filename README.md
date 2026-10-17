@@ -1,247 +1,287 @@
-# 🌱 NutriPro Basta — Piano Nutrizionale PWA (Progeo Medical Converter)
+# NutriPro
 
-[![PWA Ready](https://img.shields.io/badge/PWA-Mobile--First-10b981?style=for-the-badge&logo=pwa)](./index.html)
-[![React](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react)](./src/App.jsx)
-[![Client Side PDF Engine](https://img.shields.io/badge/PDF.js-Client--Side-ff6b6b?style=for-the-badge&logo=mozilla)](https://mozilla.github.io/pdf.js/)
+Monorepo di due prodotti distinti che condividono solo il repository:
 
-Una **Single Page Web Application (PWA / Mobile-First)** per l'analisi locale dei piani alimentari generati dal software gestionale **Progeo Medical**, con servizio Node per autenticazione Google e protezione della home.
+| Componente | Cartella | Cos'è | Stack | Dove gira |
+| :--- | :--- | :--- | :--- | :--- |
+| **App NutriPro** | `/` (root) | PWA per il paziente: importa il PDF Progeo Medical, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | Container Docker su Hermes (`nutriprobasta.jirachibot.eu`) |
+| **Landing "Nutrà"** | `landing_page_nutripro/` | Sito vetrina B2B con waitlist per nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, Cloudflare Pages Functions + D1 | Cloudflare Pages (non ancora deployata) |
 
-L'applicazione converte automaticamente le dosi espresse in cucchiai, bicchieri e legumi secchi nelle corrispondenti grammature esatte (o peso del cotto in scatola sgocciolato) e le memorizza nel browser per consultarle ed aggiornarle ogni giorno dalla schermata Home dello smartphone.
-
----
-
-## 🌐 Link Applicazione Live / Web App
-
-> 🔗 **Accedi all'App Nutrizionale**:  
-> **[NutriPro su Hermes](https://nutriprobasta.jirachibot.eu)**
-
-La login è preparata nel codice ma non ancora attivata in produzione. GitHub
-Pages non esegue il servizio Node; nel rollout la vecchia app su Pages deve
-essere disabilitata o sostituita da un redirect al dominio protetto.
+I due componenti **non condividono codice, dipendenze, build, runtime né deploy**.
+Possono convivere nello stesso repo senza interferire (vedi [Convivenza](#convivenza-app-e-landing)).
 
 ---
 
-## ✨ Caratteristiche Principali
+## Indice
 
-### 🔒 PDF locale e login Google
-- **Login sul server**: identità verificata da Google; home disponibile soltanto con sessione NutriPro valida. Google riceve i dati necessari all'autenticazione; non riceve il PDF o il piano.
-- **Mozilla `pdf.js` Integrato**: Il PDF viene analizzato localmente direttamente nel browser.
-- **Persistenza Locale**: piani e tracking sono salvati in `localStorage` in un archivio distinto per account (`diet_plan_archive:<Google sub>`). Questo non è un archivio remoto e non sincronizza dispositivi. Chi ha accesso al profilo del browser può leggere lo storage locale.
-- **Piani precedenti**: le chiavi senza account sono conservate ma non importate automaticamente. Al primo accesso autenticato ricaricare il PDF; nessun piano precedente viene cancellato.
-- **Sessione**: cookie HttpOnly, Secure in produzione, durata iniziale 12 ore, logout revocato sul server. I riavvii del servizio terminano le sessioni. Login e verifica della sessione richiedono connessione; nessuna cache offline della home.
-- **Risorse locali**: React, CSS, font di sistema e PDF.js/worker sono serviti dal backend, senza CDN.
-- **I miei piani** (`/plans`): pagina React con schede, ricerca e filtri.
-  Consulta un piano precedente senza attivarlo (`/plans/:id`). Importare un nuovo
-  PDF conserva il precedente. Sostituire il piano attivo richiede due conferme
-  e azzera solamente le sue spunte e acqua.
-- **Attivazione**: un piano attivo alla volta oppure nessuno. Rendi attivo
-  ripristina anche spunte e acqua di quel piano; Disattiva conserva tutti i dati.
-- **Archivio locale**: chiave `diet_plan_archive:<Google sub>`, indipendente per
-  account, con migrazione automatica del precedente piano dell'account e backup
-  delle vecchie chiavi. Rimane nel browser; PDF originali e sincronizzazione
-  fra dispositivi non sono inclusi. La consultazione dello storico e implementata
-  nel ticket WF-009.
-
+1. [Architettura](#architettura)
+2. [Convivenza app e landing](#convivenza-app-e-landing)
+3. [Struttura del repository](#struttura-del-repository)
+4. [App NutriPro](#app-nutripro)
+5. [Landing page](#landing-page-landing_page_nutripro)
+6. [Configurazione (variabili d'ambiente)](#configurazione-variabili-dambiente)
+7. [Sviluppo locale](#sviluppo-locale)
+8. [Test](#test)
+9. [CI/CD e deploy](#cicd-e-deploy)
+10. [Sicurezza](#sicurezza)
+11. [Documentazione di progetto](#documentazione-di-progetto)
+12. [Stato e punti aperti](#stato-e-punti-aperti)
 
 ---
 
-### ⚖️ Motore di Conversione Rigido per Grammature Progeo Medical
+## Architettura
 
-Durante l'analisi del PDF, l'applicazione applica le seguenti regole automatiche di normalizzazione:
-
-| Alimento / Categoria | Formato Originale PDF | Conversione Automatica App | Note & Dettagli |
-| :--- | :--- | :--- | :--- |
-| **Cereali e derivati** *(Riso, Farro, Orzo, Cereali)* | `X cucchiai` | **1 cucchiaio da minestra = 20 g** | Es. `5 cucchiai` $\rightarrow$ **100 g** |
-| **Couscous** | `X cucchiai` | **1 cucchiaio = 10 g** | Es. `8 cucchiai` $\rightarrow$ **80 g** |
-| **Olio extra vergine d'oliva** | `X cucchiaini` | **1 cucchiaino = 4 g** | Es. `2 cucchiaini` = **8 g**, `3 cucchiaini` = **12 g**, `4 cucchiaini` = **16 g** |
-| **Legumi Secchi in Cucchiai** *(Ceci, Lenticchie, Fagioli, Cicerchie)* | `X cucchiai secchi` | **Peso secco (20g/cucchiaio) $\times 2.5$** | Convertiti in **Legumi cotti in scatola sgocciolati** (es. Ceci secchi 2 cucchiai e 1/2 $\rightarrow$ **Ceci cotti in scatola 125 g** - *pari a 50g secchi*) |
-| **Piselli freschi** | `X cucchiai` | **1 cucchiaio = 20 g** | Es. `5 cucchiai` $\rightarrow$ **100 g** |
-| **Latte** | `1 bicchiere` | **200 g / ml** | Quantità standard per bicchiere da latte |
-| **Fiocchi di frumento/avena** | `1 bicchiere` | **40 g** | Peso per bicchiere di cereali in fiocchi |
-| **Acqua** | `1 bicchiere` | **200 ml** | Quantità standard per idratazione |
-
----
-
-### 📱 Interfaccia Mobile-First & PWA
-
-- **Selettore Orario Settimanale**: Top bar con bottoni per i 7 giorni (`LUN`, `MAR`, `MER`, `GIO`, `VEN`, `SAB`, `DOM`). All'avvio seleziona in automatico il giorno corrente della settimana (`new Date().getDay()`).
-- **Card dei Pasti**: Visualizzazione divisa per pasti (*Colazione 🌅*, *Metà mattina 🍎*, *Pranzo 🥗*, *Merenda 🍇*, *Cena 🍲*, *Spuntino serale 🌙*, *Arco della giornata 💧*).
-- **Checkbox Interattive**: Permettono di barrare gli alimenti mangiati salvando lo stato delle spunte giorno per giorno.
-- **Badge Grammatura ad Alto Contrasto**: Pillola colorata ad alto contrasto per leggere le grammature a colpo d'occhio.
-- **Water Tracker Integrato**: Monitoraggio fino a 12 bicchieri d'acqua al giorno (2.4 L) con griglia interattiva e tasti rapidi `+` e `-`.
-- **Calcolatore Veloce (Drawer)**: Drawer scorrevole dal basso per calcolare conversioni tra crudo e cotto (riso x2.5, legumi x2.5, pasta x2.2, carne/pesce x0.8) o calcolare il peso da cucchiai e bicchieri.
-
----
-
-## Lista della spesa
-
-Il pulsante **Esporta lista della spesa** apre un’anteprima con giorni selezionabili
-(inizialmente tutta la settimana). Gli alimenti con lo stesso nome e unità compatibili
-vengono sommati; i titoli delle ricette con sottoingredienti vengono esclusi.
-Le quantità non sommabili restano esplicite, con il numero di ripetizioni quando necessario.
-
-Le alternative esplicite restano su una sola riga, con la quantità di ciascuna scelta:
-`Vitello — 150 g oppure Pollo — 180 g`. Non vengono suggerite sostituzioni assenti dal piano.
-Il parser riconosce alternative sulla stessa riga o introdotte da «oppure», «o»,
-«in alternativa» e «Alt:», e collega i codici della colonna **Alt.** alle tabelle
-**Alternative alimentari** in appendice. Le alternative di ricette includono tutti
-gli ingredienti nella stessa voce; non vengono sommate agli ingredienti obbligatori.
-Quando presente, la tabella **Unità di misura** del PDF prevale sui coefficienti
-generici per cucchiai, cucchiaini, bicchieri e porzioni. Le equivalenze restano
-indicative; per i legumi l’app mantiene la conversione esistente in peso cotto
-sgocciolato (fattore 2,5), indicandola nel nome e nelle note del piano.
-Il risultato va confrontato con il PDF originale:
-altri impaginati possono richiedere adattamenti. Per piani importati prima di questa
-funzione, ricaricare il PDF se le alternative sono state perse.
-
-La lista si può **copiare**, **condividere** sui dispositivi che lo consentono, o
-**scaricare come `.txt`**. L’esportazione contiene una voce per riga, senza caselle
-Unicode: per ottenere caselle interattive occorre attivarle nell’app di destinazione.
-
-- **Note di Apple:** incollare la lista, selezionare le righe e applicare Checklist.
-- **Google Keep:** incollare in una nota e scegliere «Mostra caselle di controllo».
-
-La disponibilità di Note/Keep nel menu Condividi dipende dal dispositivo.
-L’export non modifica il piano o le spunte e non invia automaticamente dati a servizi esterni.
-Le quantità seguono il piano e le conversioni esistenti: non si ricavano automaticamente
-ingredienti da ricette prive di sottoingredienti né pesi di acquisto da descrizioni di piatti cotti.
-
-### Test della funzione
-
-Test del motore e del parser, senza dipendenze aggiuntive (Node.js >=22.14):
-
-```powershell
-node --test tests/shopping-list.test.cjs
+```mermaid
+flowchart LR
+  subgraph Browser
+    PWA[App React / PWA<br/>pdf.js + localStorage]
+    LP[Landing Nutrà<br/>statica]
+  end
+  subgraph Hermes["Hermes (self-hosted)"]
+    Proxy[Reverse proxy] --> Node["Container Node :8080<br/>server/app.cjs"]
+  end
+  subgraph CF[Cloudflare]
+    Pages[Pages: dist statico]
+    Fn[Functions: /api/waitlist]
+    D1[(D1: waitlist)]
+    Pages --- Fn --> D1
+  end
+  PWA -- "HTTPS, cookie di sessione" --> Proxy
+  Node -- "OIDC (PKCE)" --> Google[Google Identity]
+  Node -- "generateContent (opzionale)" --> Gemini[Gemini API]
+  LP --> Pages
 ```
 
-Test browser con Playwright installato e Chromium disponibile:
+Principi di progetto dell'app:
 
-```powershell
-node --test tests/shopping-export.e2e.cjs
-```
+- **Il piano alimentare non lascia il browser.** Il PDF è analizzato lato client con `pdf.js`; piani, spunte e acqua stanno in `localStorage`, una chiave per account (`diet_plan_archive:<Google sub>`). Il server conosce solo l'identità, mai il piano.
+- **Il backend è minimale e stateful solo in memoria**: autenticazione Google, sessioni, un proxy verso Gemini, file statici. Nessun database.
+- **Zero CDN**: JS, CSS, font e worker di pdf.js sono serviti dal backend (la CSP vieta origini esterne).
+- **Login obbligatoria**: ogni route dell'app senza sessione valida reindirizza a `/login`.
 
-Se Playwright è installato in un’altra cartella, impostare prima
-`$env:PLAYWRIGHT_MODULE` al percorso assoluto del modulo. Il test browser verifica
-anteprima mobile, selezione giorni, copia e fallback, download, persistenza e
-condivisione simulata, con la CSP prevista per NutriPro. Il test
-`tests/pdf-import.e2e.cjs` verifica il worker incluso usando un PDF di test reale.
-Non vengono testate le app native Note/Keep.
+## Convivenza app e landing
 
-`tests/progeo-pdf.e2e.cjs` e un controllo facoltativo sul documento privato di
-riferimento: impostare `REAL_PROGEO_PDF` ed eseguire il file. Nessun PDF privato
-viene incluso nel repository.
+**Sì, convivono senza problemi**, perché sono isolati a ogni livello. Verificato sul codice:
 
-## 🛠️ Struttura Tecnologica
+| Aspetto | App (root) | Landing |
+| :--- | :--- | :--- |
+| `package.json` / lockfile | root | `landing_page_nutripro/` (propri) |
+| Build | `vite build` → `dist/` (root) | `vite build` → `landing_page_nutripro/dist/` |
+| Runtime | Node + Docker | Cloudflare Pages (statico + Functions) |
+| Dominio previsto | `nutriprobasta.jirachibot.eu` | `nutra.pages.dev` (placeholder) o dominio proprio |
+| Brand | NutriPro | Nutrà |
+| Target | Paziente | Nutrizionista / dietista |
+| CI | `nutripro-ci-deploy.yml` | **nessuna** (vedi [punti aperti](#stato-e-punti-aperti)) |
+
+Perché non si disturbano:
+
+- Il `Dockerfile` copia solo `index.html`, `vite.config.js`, `src/`, `public/`, `server/`. `.dockerignore` esclude tutto il resto: la landing **non entra nell'immagine**.
+- Il `vite.config.js` e il `package.json` di root non vedono la cartella landing; `npm ci` e `npm test` in root non la toccano.
+- La CI parte su push a `dev` e lavora dalla root.
+
+**Ruolo della landing**: è l'acquisizione. Raccoglie candidature di professionisti per la fase di test (nome, email, ruolo, n. pazienti, consenso privacy) nella tabella D1 `waitlist`. Non fa login, non parla con l'app. Oggi il legame tra i due prodotti è solo di marketing: la landing promette ciò che l'app (lato paziente) già fa (menu del giorno, idratazione, lista della spesa, calcolatore).
+
+**Cosa tenere d'occhio**: i due brand diversi (Nutrà vs NutriPro / "NutriPro Basta"), i lockfile separati, e il fatto che un'eventuale futura area professionisti (`/admin` nella landing) dovrà decidere se riusare l'auth Google dell'app o averne una propria.
+
+## Struttura del repository
 
 ```
 NutriPro/
-  src/App.jsx             # Componenti React, login, Home, Piani e Dettaglio
-  src/styles.css          # Interfaccia responsive
-  src/lib/dietEngine.mjs  # Parser e calcoli
-  src/lib/planStore.mjs   # Archivio locale per account
-  public/                 # Icona e manifest
-  server/                 # OAuth Google e sessioni Node
-  tests/                  # Test unitari e browser
-  dist/                   # Build Vite generata, esclusa da Git
+├── index.html                 # Shell Vite dell'app (monta #root)
+├── vite.config.js             # Vite + plugin React → dist/
+├── package.json               # Dipendenze app (React, router, pdfjs, google-auth-library)
+├── Dockerfile                 # Build multistadio (build Vite → runtime node:22-alpine)
+├── compose.auth.yml           # Esecuzione standalone hardened
+├── .env.example               # Modello configurazione (mai committare .env)
+├── src/                       # Frontend React
+│   ├── main.jsx               # Entry point
+│   ├── App.jsx                # Router, Login, Protected (sessione), Home, Piani, Dettaglio
+│   ├── components/ChatPage.jsx# Assistente Gemini (/chat)
+│   ├── lib/dietEngine.mjs     # Parser PDF Progeo, conversioni, lista della spesa
+│   ├── lib/planStore.mjs      # Archivio piani per account in localStorage
+│   ├── lib/tracking.mjs       # Olio, quantità, step tracking
+│   └── *.css
+├── public/                    # manifest.webmanifest, icon-512.png (PWA)
+├── server/
+│   ├── index.cjs              # Bootstrap + graceful shutdown (SIGINT/SIGTERM)
+│   ├── app.cjs                # HTTP server: config, auth OIDC, sessioni, CSP, routing, statici
+│   └── gemini.cjs             # Servizio chat Gemini (validazione, rate limit, timeout)
+├── tests/                     # Unit/integration (*.test.cjs) e browser (*.e2e.cjs)
+├── .github/workflows/nutripro-ci-deploy.yml
+├── landing_page_nutripro/     # Prodotto separato (vedi sezione dedicata)
+├── .wayfinder/ + WAYFINDER.md # Mappa decisionale e ticket WF-001…WF-020
+├── CONTEXT.md                 # Glossario di dominio
+└── HANDOFF.md                 # Diario operativo di sessione (storico, 800+ righe)
 ```
 
-Frontend React 19 con React Router e Vite. `npm start` compila e avvia il
-backend su 8080; durante lo sviluppo `npm run dev` aggiorna la build in watch
-(ricaricare il browser; riavviare il backend se cambiano i nomi degli asset).
-Docker usa una build multistadio e serve soltanto dist e backend.
+---
+
+## App NutriPro
+
+### Frontend
+
+- **Routing** (React Router 7): `/login`, `/` (Home), `/plans`, `/plans/:id`, `/chat`, `/settings`.
+- **`Protected`** verifica `/api/session` ogni 60 s e a ogni ritorno in primo piano; blocca la UI quando la pagina è nascosta; espelle l'utente su scadenza o cambio account.
+- **PDF**: `parseProgeoPdf` (pdf.js) → struttura per giorno/pasto/alimento, con alternative esplicite, ricette e tabella "Unità di misura" del PDF che prevale sui coefficienti generici.
+- **Archivio** (`planStore`): un piano attivo alla volta (o nessuno), piani inattivi consultabili, "sostituzione" distruttiva con doppia conferma. Nessuna sincronizzazione fra dispositivi, nessun PDF originale conservato.
+- **Interfaccia**: selettore giorni, card pasti con spunte, water tracker (obiettivo configurabile), calcolatore crudo/cotto, lista della spesa (copia, condividi, `.txt`), layout mobile con tab bar.
+- **PWA**: `manifest.webmanifest` + icona. Nessuna cache offline: login e verifica sessione richiedono rete.
+
+### Motore di conversione (dettaglio)
+
+Regole principali applicate al parsing (le quantità restano indicative: confrontare sempre col PDF):
+
+| Alimento | Formato PDF | Conversione |
+| :--- | :--- | :--- |
+| Cereali (riso, farro, orzo) | cucchiai | 1 cucchiaio = 20 g |
+| Couscous | cucchiai | 1 cucchiaio = 10 g |
+| Olio EVO | cucchiaini | 1 cucchiaino = 4 g |
+| Legumi secchi | cucchiai | 20 g/cucchiaio × 2,5 → peso cotto sgocciolato |
+| Piselli freschi | cucchiai | 20 g/cucchiaio |
+| Latte | bicchiere | 200 g/ml |
+| Fiocchi | bicchiere | 40 g |
+| Acqua | bicchiere | 200 ml |
+
+I glifi `½` sono normalizzati; le intestazioni di pasto sono riconosciute solo a riga intera (così "Olio extra vergine" non diventa il pasto "extra"). Test dedicati in `tests/shopping-list.test.cjs`.
+
+### Backend (`server/`)
+
+Server `http` di Node senza framework. Route:
+
+| Route | Metodo | Auth | Scopo |
+| :--- | :--- | :--- | :--- |
+| `/healthz` | GET | no | Health check (usato dal `HEALTHCHECK` Docker) |
+| `/deploy-version.txt` | GET/HEAD | no | SHA del deploy (`NUTRIPRO_SHA`) |
+| `/auth/status` | GET | no | Login configurato? |
+| `/auth/google` | GET | no | Avvia OIDC (state, nonce, PKCE S256), rate limit |
+| `/auth/google/callback` | GET | flusso | Scambio codice, verifica ID token, crea sessione |
+| `/api/session` | GET | sì | Identità, token CSRF, scadenza |
+| `/auth/logout` | POST | sì + CSRF | Revoca sessione, `Clear-Site-Data: "cache"` |
+| `/api/chat/status` | GET | sì | Stato assistente |
+| `/api/chat` | POST | sì + CSRF + Origin | Messaggio a Gemini |
+| `/`, `/plans`, `/chat`, `/settings`, `/plans/:id` | GET | sì | Shell SPA (senza sessione → `/login`) |
+| `/assets/*`, `/icon-512.png`, `/manifest.webmanifest` | GET | no | Statici da allowlist |
+
+**Sessioni**: cookie firmato HMAC-SHA256 (`__Host-nutripro_session` in HTTPS), HttpOnly, durata di default 90 giorni con rinnovo all'uso (max 180). Con `SESSION_SECRET` sopravvivono ai riavvii; senza, ogni restart disconnette tutti (warning a log). La revoca al logout è tenuta in memoria.
+
+**Assistente Gemini** (`gemini.cjs`): modello unico ammesso `gemini-3.5-flash-lite`, **spento di default**. Per attivarlo servono insieme `GEMINI_ENABLED=true`, `GEMINI_API_KEY` e `GEMINI_ACCESS_MODE` (`local-dev` solo su localhost; `paid-services` è la decisione esplicita richiesta per client pubblici in SEE). Nessun piano né dato dell'account viene inviato a Google. Limiti: 5 richieste/min e 30/giorno per account, 120/giorno globali, 4 concorrenti, timeout 20 s, nessun retry; input ≤ 2000 caratteri, cronologia ≤ 20 messaggi / 24000 caratteri. Contatori in memoria (reset al riavvio). Stato: WF-010 aperto, mai verificato con provider reale.
+
+### Container
+
+`Dockerfile` multistadio: stadio build (`npm ci --include=dev`, `vite build`) → stadio runtime `node:22-alpine`, solo dipendenze di produzione, utente `node`, porta 8080, `HEALTHCHECK` su `/healthz`. `compose.auth.yml` (riferimento standalone) aggiunge: bind su `127.0.0.1`, filesystem read-only, `cap_drop: ALL`, `no-new-privileges`, tmpfs su `/tmp`, 128 MB RAM, 0.25 CPU.
 
 ---
 
-## 📲 Come Installare come PWA (App Smartphone)
+## Landing page (`landing_page_nutripro/`)
 
-### Su iPhone / iPad (iOS Safari)
-1. Apri il link dell'applicazione su **Safari**.
-2. Tocca l'icona di **Condivisione** (il quadrato con la freccia verso l'alto).
-3. Scorri verso il basso e seleziona **"Aggiungi alla schermata Home"**.
+Sito vetrina "Nutrà" per reclutare nutrizionisti tester.
 
-### Su Android (Google Chrome)
-1. Apri il link dell'applicazione su **Chrome**.
-2. Tocca i tre pallini del menu in alto a destra.
-3. Seleziona **"Aggiungi a schermata Home"** o **"Installa app"**.
-
----
-
-## 👨‍💻 Sviluppo Locale
-
-Per eseguire ed esplorare l'applicazione in locale:
-
-1. Clona o scarica il repository.
-2. Installa le dipendenze (Node.js >=22.14):
-   ```powershell
-   npm ci --ignore-scripts
-   Copy-Item .env.example .env
-   ```
-3. Configura `.env` con Client ID e Client Secret di un client Google OAuth
-   di tipo **Web application**, registrando anche il redirect
-   `http://localhost:8080/auth/google/callback` per lo sviluppo locale.
-4. Esegui `npm start` e apri `http://localhost:8080`.
-
-Senza credenziali appare la pagina di login non disponibile e la home resta
-bloccata. Un server statico non è sufficiente per la login.
-
-Configurazione OAuth ufficiale: [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect).
-Non serve una API key Google o un token Gemini: servono Client ID e Client Secret;
-il token d'identità viene emesso durante ciascun accesso e verificato dal backend.
-
-`ALLOWED_EMAILS` limita facoltativamente gli accessi a email Google verificate,
-separate da virgole. Se vuoto, sono ammessi tutti gli account Google verificati.
-In Testing aggiungere gli account nella schermata Audience del progetto Google.
-
-Verifiche senza credenziali reali:
+- **Frontend**: Vite 6, JavaScript vanilla a componenti (`src/components/`), GSAP + Lenis per animazioni e scroll, storytelling in `src/story/`, stili CSS divisi per sezione (`src/styles/`). Due pagine: `index.html` e `privacy/index.html`.
+- **Config unica**: `src/config.js` (nome brand, `SITE_URL`, `CONTACT_EMAIL`, endpoint, SEO). Il plugin `brand-html` in `vite.config.js` sostituisce i segnaposto `%BRAND%`, `%SEO_TITLE%`, … nell'HTML già a build time (SEO e no-JS ok).
+- **Backend serverless** (Cloudflare Pages Functions):
+  - `POST /api/waitlist`: valida (nome, email, ruolo, n. pazienti ≤ 10000, consenso), controlla `Origin`, honeypot anti-spam (campo `website`), supporta JSON e form classico (fallback no-JS), insert idempotente in D1 (`ON CONFLICT(email) DO NOTHING`, così non rivela chi è iscritto).
+  - `/admin/*`: oggi risponde sempre 403 (area riservata non ancora realizzata).
+- **Database**: D1 `nutra-waitlist`, migrazione `migrations/0001_create_waitlist.sql`.
+- **Comandi** (dentro `landing_page_nutripro/`):
 
 ```powershell
-npm test
-npm run test:browser
+npm install
+npm run dev                # Vite in sviluppo (genera prima il favicon)
+npm run build              # → dist/
+npm run db:migrate:local   # applica le migrazioni D1 in locale
+npm run pages:dev          # build + wrangler pages dev su :8788 (con Functions e D1 locale)
 ```
 
-I test di flusso simulano il provider Google, mantenendo il server e i cookie
-reali; un test separato verifica firme RSA con la libreria Google. La verifica
-con un progetto Google reale è necessaria prima dell'attivazione.
-
-Docker standalone: `docker compose -f compose.auth.yml up --build -d`.
-In produzione impostare `APP_ORIGIN=https://nutriprobasta.jirachibot.eu` e
-redirect `https://nutriprobasta.jirachibot.eu/auth/google/callback`.
-Su Hermes l'Orchestrator usa un file credenziali esterno:
-`/home/hermes/.config/nutripro/auth.env`, fuori dal clone ripulito dal deploy.
-Il rollout richiede il nuovo container Node e il proxy sulla porta 8080;
-il precedente container nginx sulla porta 80 non è compatibile.
+> **Prima di pubblicarla** va fatto: `npx wrangler d1 create nutra-waitlist` e sostituire `database_id` (oggi `0000…`) in `wrangler.toml`; applicare le migrazioni in remoto; impostare `SITE_URL` e `CONTACT_EMAIL` reali in `src/config.js`; creare il progetto Pages.
 
 ---
 
-## 📄 Licenza
+## Configurazione (variabili d'ambiente)
 
-Distribuito con licenza MIT. Libero da utilizzare e personalizzare.
+Solo app. Copiare `.env.example` in `.env` (ignorato da git). Mai committare valori reali.
 
-## Assistente Gemini - prima integrazione locale
+| Variabile | Obbligatoria | Default | Note |
+| :--- | :--- | :--- | :--- |
+| `APP_ORIGIN` | sì in prod | `http://localhost:8080` | Origine assoluta senza path; HTTPS obbligatorio fuori da localhost. Base del redirect OAuth e dei controlli Origin. |
+| `PORT` | no | `8080` | |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | sì per il login | vuoto | Vanno impostate **entrambe**; client OAuth "Web application". Senza: accesso chiuso. |
+| `ALLOWED_EMAILS` | no | vuoto (tutti) | Allowlist di email Google verificate, separate da virgola. |
+| `SESSION_TTL_SECONDS` | no | `7776000` (90 gg) | 60 s … 180 gg, rinnovata all'uso. |
+| `SESSION_SECRET` | consigliata | casuale a ogni avvio | ≥ 32 caratteri. Senza, i restart disconnettono tutti. Cambiarla disconnette tutti. |
+| `TRUST_PROXY` | no | `false` | `true` solo dietro il proxy privato che sovrascrive `X-Real-IP`. |
+| `NUTRIPRO_SHA` | no | `unknown` | SHA a 40 hex esposto da `/deploy-version.txt`; impostato dal deploy. |
+| `GEMINI_ENABLED` | no | `false` | |
+| `GEMINI_API_KEY` | se attivo | vuoto | Solo server, mai nel client. |
+| `GEMINI_MODEL` | no | `gemini-3.5-flash-lite` | Qualsiasi altro valore → `unsupported_model`. |
+| `GEMINI_ACCESS_MODE` | se attivo | vuoto | `local-dev` o `paid-services`. |
 
-Pagina React `/chat` protetta dalla login; API `/api/chat/status` e POST
-`/api/chat` autenticate, con Origin e CSRF. Prima versione: domande generali,
-nessun PDF, piano o attributo account nel payload inviato a Google. Cronologia
-solo in memoria nella pagina, cancellata quando si cambia pagina o account.
+OAuth: registrare il redirect `{APP_ORIGIN}/auth/google/callback`. In produzione `https://nutriprobasta.jirachibot.eu/auth/google/callback`. Con il progetto Google in *Testing*, aggiungere gli account di test nella schermata Audience.
 
-Modello previsto: `gemini-3.5-flash-lite`. API key sul server tramite
-`GEMINI_API_KEY`, mai nel frontend o nel repository. Disabilitato per default
-(`GEMINI_ENABLED=false`). Per un test locale autorizzato, impostare esplicitamente
-`GEMINI_ENABLED=true` e `GEMINI_ACCESS_MODE=local-dev` con APP_ORIGIN localhost.
-Questa modalita viene rifiutata su origini pubbliche. Verificare in AI Studio
-che il progetto sia nel tier desiderato: la chiave non prova da sola il tier.
+## Sviluppo locale
 
-Per client pubblici in Italia/SEE i termini Google richiedono Paid Services:
-https://ai.google.dev/gemini-api/terms
-L'attivazione pubblica richiede decisione esplicita del PO e configurazione
-`GEMINI_ACCESS_MODE=paid-services`; il codice non attiva billing o fallback.
-Modello e prezzi: https://ai.google.dev/gemini-api/docs/pricing
-Nessuna API key fornita e nessuna chiamata reale eseguita in questo incremento.
+Requisiti: Node ≥ 22.14.
 
-Limiti iniziali: 5 richieste/minuto e 30/giorno per account, 120/giorno totali,
-4 richieste contemporanee; contatori in memoria, reset al riavvio. Timeout20s,
-nessun retry automatico; input2000 caratteri, history20 messaggi/24000 caratteri,
-body128KB. Risposta resa come testo React; niente strumenti o modifica piani.
-I test usano un provider simulato e non verificano qualita o disponibilita del
-modello nel progetto Google reale. Scope dati, credenziale e attivazione da
-confermare; WF-010 resta aperto fino alla verifica reale concordata.
+```powershell
+npm ci --ignore-scripts
+Copy-Item .env.example .env      # poi compilare le credenziali Google
+npm start                        # build + server su http://localhost:8080
+npm run dev                      # (altro terminale) rebuild in watch; ricaricare il browser
+```
+
+Un server statico non basta: la login richiede il backend. Senza credenziali la pagina di login segnala "accesso non disponibile" e la home resta chiusa.
+
+Docker standalone: `docker compose -f compose.auth.yml up --build -d`.
+
+## Test
+
+```powershell
+npm test               # build + unit/integration (53 test: spesa, auth, piani, gemini, chat, settings)
+npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, mobile, settings)
+```
+
+- I test di login simulano il provider Google ma usano server e cookie reali; un test a parte verifica firme RSA con la libreria Google. La verifica con un progetto Google reale resta necessaria prima dell'attivazione.
+- I test browser leggono `PLAYWRIGHT_MODULE` (percorso del modulo Playwright, installato fuori dal repo; la CI usa `playwright@1.61.1`).
+- `tests/progeo-pdf.e2e.cjs` richiede un PDF privato (`REAL_PROGEO_PDF`), **non** è in CI: da eseguire a mano prima di toccare il parser.
+- La landing non ha test.
+
+## CI/CD e deploy
+
+Workflow `.github/workflows/nutripro-ci-deploy.yml`, su **push a `dev`**:
+
+1. **test**: `npm ci` → `npm test` → installa Playwright/Chromium → `npm run test:browser`. Azioni fissate per SHA.
+2. **deploy** (solo se i test passano, solo su `dev` del repo ufficiale, environment `nutripro-deploy`): verifica che lo SHA appartenga a `dev`, poi lancia `deploy-nutripro.yml` nel repo `Thegoldendice/JirachiBotOrchestrator`, che gira sul runner self-hosted di Hermes, prende un lock host-wide e rifiuta di sostituire un commit più recente.
+
+Requisiti: secret `ORCHESTRATOR_DISPATCH_TOKEN` (PAT fine-grained limitato al repo Orchestrator, solo *Actions: read and write*). Credenziali di produzione fuori dal clone: `/home/hermes/.config/nutripro/auth.env`. Il proxy deve puntare al container Node sulla porta 8080 (il vecchio nginx sulla 80 non è compatibile).
+
+**Flusso di branch**: si lavora su `dev` (che deploya); `main` riceve `dev` con fast-forward quando si vuole fissare una release. Il push su `main` **non** deploya.
+
+La landing si deploya a parte con Wrangler/Cloudflare Pages (oggi manuale, vedi [punti aperti](#stato-e-punti-aperti)).
+
+## Sicurezza
+
+- **OIDC hardened**: state, nonce, PKCE S256, flusso monouso, verifica di firma/aud/iss/exp/`email_verified`, `sub` come chiave identità, rate limit per tentativi di login e callback concorrenti.
+- **Cookie** `__Host-` (Secure, HttpOnly, Path=/) in HTTPS; CSRF token per le POST + controllo `Origin`.
+- **CSP stretta**: `default-src 'self'`, niente script/stili inline né origini esterne, `object-src 'none'`, `frame-ancestors 'self'`. Header aggiuntivi: `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` che nega camera/microfono/geolocalizzazione, `Cache-Control: no-store`.
+- **Privacy dati**: il piano non viene mai inviato al server né a Google; `localStorage` è leggibile da chiunque usi il profilo del browser (limite noto, documentato).
+- **Segreti**: solo via env, mai nel client né nel repo; log senza token/codici/dati personali.
+- **Container** non-root, read-only, senza capability.
+
+## Documentazione di progetto
+
+| File | Contenuto |
+| :--- | :--- |
+| [CONTEXT.md](CONTEXT.md) | Glossario di dominio (Piano attivo/inattivo, Sostituzione, Account Google, Sessione, …) |
+| [WAYFINDER.md](WAYFINDER.md) + [.wayfinder/](.wayfinder/TRACKER.md) | Mappa decisionale e 20 ticket (WF-001…WF-020): login, archivio, Gemini, settaggi, tracking, PWA |
+| [HANDOFF.md](HANDOFF.md) | Diario cronologico delle sessioni e dei rilasci; fonte storica, le sezioni più recenti prevalgono |
+
+## Stato e punti aperti
+
+- **Landing**: `database_id` D1 placeholder, `SITE_URL`/`CONTACT_EMAIL` placeholder, `/admin` chiuso, nessuna CI/deploy automatico, nessun test. Decisione brand Nutrà vs NutriPro da prendere.
+- **Gemini (WF-010)**: aperto. Ultimo run CI: test ok ma richiesta di deploy fallita (causa non diagnosticata, vedi HANDOFF). Nessuna verifica con provider reale; attivazione pubblica richiede decisione sul tier a pagamento.
+- **CI**: la condizione del job deploy è vincolata a `M4nu0w2/M4nu0w2.github.io`; il PDF reale non è coperto.
+- **Dati**: nessun backup/sincronizzazione; perdere il browser significa perdere i piani.
+- **Sessioni**: revoca e rate limit in memoria, non scalano oltre una singola istanza.
+
+## Licenza
+
+MIT.
