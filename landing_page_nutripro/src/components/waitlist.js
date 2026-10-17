@@ -76,7 +76,7 @@ function setStatus(el, text, isError = false) {
 }
 
 function errorText() {
-  return `Non siamo riusciti a inviare la candidatura. Riprova tra poco o scrivici a ${CONTACT_EMAIL}.`;
+  return `Non siamo riusciti a inviare la candidatura. Riprova tra poco${CONTACT_EMAIL ? ` o scrivici a ${CONTACT_EMAIL}` : ''}.`;
 }
 
 function showSuccess(form, name = '') {

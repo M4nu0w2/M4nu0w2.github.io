@@ -11,7 +11,8 @@ FROM node:22-alpine AS landing
 WORKDIR /landing
 # Public origin used for canonical URL and SEO. Default is the temporary demo domain.
 ARG SITE_URL=https://nutriprobasta.jirachibot.eu
-ENV SITE_URL=$SITE_URL
+ARG CONTACT_EMAIL=
+ENV SITE_URL=$SITE_URL CONTACT_EMAIL=$CONTACT_EMAIL
 COPY landing_page_nutripro/package.json landing_page_nutripro/package-lock.json ./
 RUN npm ci --include=dev --ignore-scripts
 COPY landing_page_nutripro/index.html landing_page_nutripro/vite.config.js ./

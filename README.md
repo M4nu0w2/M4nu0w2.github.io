@@ -192,7 +192,8 @@ Sito pubblico "Nutrà" per reclutare nutrizionisti tester. Obiettivo: pagina leg
 - **Config unica**: `src/config.js` (brand, endpoint, contatti, SEO). `SITE_URL` si imposta alla build (`SITE_URL=https://dominio npm run build`); il default è il dominio demo. Il plugin `brand-html` sostituisce `%BRAND%`, `%SEO_TITLE%`, `%SITE_URL%`… già nell'HTML statico (SEO e no-JS ok).
 - **Waitlist**: `POST /api/waitlist` è gestita dal backend Node (`server/waitlist.cjs`). Accetta JSON o form classico (senza JS risponde con redirect a `/?waitlist=ok#tester`), controlla `Origin`, honeypot `website`, rate limit (5/min per IP, 60/min globali), limite di 8 KB. Salva in SQLite (`node:sqlite`, nessuna dipendenza aggiunta); un'email già presente non produce errore e non rivela chi è iscritto.
 - **Dati**: file `WAITLIST_DB_PATH` (in Docker `/data/waitlist.sqlite`, **volume persistente**). Se il volume manca, l'app parte lo stesso e solo la waitlist risponde 500.
-- **Legacy**: `functions/`, `migrations/` e `wrangler.toml` sono la vecchia versione per Cloudflare Pages + D1, **non più usata**. Restano finché non si decide di rimuoverli.
+- **Cloudflare**: la vecchia versione (Pages Functions + D1) è stata rimossa. Il DNS del dominio resta su Cloudflare, ma non serve altro lì.
+- **PWA già installate**: la landing le reindirizza a `/app/` se aperte in modalità standalone (`public/intro-boot.js`).
 
 ```powershell
 cd landing_page_nutripro
@@ -203,7 +204,9 @@ npm run build    # → dist/ (usata dal backend in locale e dal Dockerfile)
 
 Per vederla **con la waitlist funzionante** in locale: `npm run build` nella landing, poi `npm start` dalla root e apri http://localhost:8080 (landing alla radice, app su `/app/`).
 
-> **Da fare prima di una pubblicazione definitiva**: `CONTACT_EMAIL` in `src/config.js` è un placeholder; impostare `SITE_URL` sul dominio reale; prevedere un backup del volume `/data`.
+> **Parametri di build**: `SITE_URL` (dominio pubblico) e `CONTACT_EMAIL` (contatto mostrato nel footer e nella privacy; se vuoto non viene mostrato nulla).
+>
+> **Da fare prima di una pubblicazione definitiva**: completare «Titolare del trattamento» in `privacy/index.html` (ragione sociale, indirizzo: oggi è un segnaposto), impostare `CONTACT_EMAIL` e `SITE_URL` reali, prevedere un backup del volume `/data`.
 
 ---
 
@@ -243,7 +246,7 @@ npm run dev                      # (altro terminale) rebuild in watch; ricaricar
 
 Per vedere anche la landing: `npm run build --prefix landing_page_nutripro` una volta. Un server statico non basta: la login richiede il backend. Senza credenziali la pagina di login segnala "accesso non disponibile" e la home resta chiusa.
 
-Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il volume `waitlist-data` su `/data`). Per un dominio diverso dal demo: `docker build --build-arg SITE_URL=https://dominio .`
+Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il volume `waitlist-data` su `/data`). Per un dominio diverso dal demo: `docker build --build-arg SITE_URL=https://dominio --build-arg CONTACT_EMAIL=info@dominio .`
 
 ## Test
 
@@ -268,7 +271,7 @@ Requisiti: secret `ORCHESTRATOR_DISPATCH_TOKEN` (PAT fine-grained limitato al re
 
 **Flusso di branch**: si lavora su `dev` (che deploya); `main` riceve `dev` con fast-forward quando si vuole fissare una release. Il push su `main` **non** deploya.
 
-La landing **non ha un deploy separato**: la sua build entra nell'immagine Docker (stadio `landing` del `Dockerfile`) e va online con l'app. **Requisito di deploy**: il container deve avere un volume persistente su `/data` (da aggiungere anche nella configurazione del repo Orchestrator, non solo in `compose.auth.yml`), altrimenti la waitlist risponde 500.
+La landing **non ha un deploy separato**: la sua build entra nell'immagine Docker (stadio `landing` del `Dockerfile`) e va online con l'app. **Deploy su Hermes**: il Dockerfile e il Compose usati davvero stanno nel repo `JirachiBotOrchestrator` (`services/nutripro/`), con il volume `nutripro-data` su `/data` (va incluso nei backup). Il proxy non aggiunge una CSP propria: la emette il backend per percorso. Ordine di rilascio: prima l'Orchestrator, poi il push su `dev` di NutriPro.
 
 ## Sicurezza
 
@@ -290,9 +293,9 @@ La landing **non ha un deploy separato**: la sua build entra nell'immagine Docke
 ## Stato e punti aperti
 
 - **Dominio**: `nutriprobasta.jirachibot.eu` è temporaneo (demo interne). Con il dominio vero impostare `APP_ORIGIN`, `SITE_URL` (build arg) e il redirect OAuth.
-- **Landing**: `CONTACT_EMAIL` placeholder, nessun backup del volume `/data`, nessun test del front-end, file legacy Cloudflare da rimuovere. Decisione brand Nutrà vs NutriPro da prendere.
-- **PWA già installate**: avevano `start_url` `/`; ora la radice è la landing. Vanno reinstallate da `/app/`.
-- **Immagine Docker**: la build multistadio con la landing non è stata provata in locale (daemon non attivo); la prima verifica è la CI/deploy.
+- **Landing**: «Titolare del trattamento» nella privacy è un segnaposto, `CONTACT_EMAIL` non impostato (nessun contatto mostrato), nessun backup del volume `/data`, nessun test del front-end. Decisione brand Nutrà vs NutriPro da prendere.
+- **PWA già installate**: avevano `start_url` `/`; la landing le reindirizza a `/app/`, ma conviene reinstallarle da `/app/`.
+- **Rollback**: gli SHA precedenti alla landing non si costruiscono con il Dockerfile attuale dell'Orchestrator (richiede `landing_page_nutripro/`).
 - **Gemini (WF-010)**: aperto. Ultimo run CI: test ok ma richiesta di deploy fallita (causa non diagnosticata, vedi HANDOFF). Nessuna verifica con provider reale; attivazione pubblica richiede decisione sul tier a pagamento.
 - **CI**: la condizione del job deploy è vincolata a `M4nu0w2/M4nu0w2.github.io`; il PDF reale non è coperto.
 - **Dati**: nessun backup/sincronizzazione; perdere il browser significa perdere i piani.

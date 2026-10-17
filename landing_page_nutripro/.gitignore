@@ -1,5 +1,3 @@
 node_modules/
 dist/
 
-# Cloudflare (stato locale di wrangler / D1)
-.wrangler/

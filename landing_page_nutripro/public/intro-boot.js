@@ -1,3 +1,8 @@
+// Una PWA installata prima del trasferimento dell'app sotto /app apriva la radice: in modalità standalone si va all'app.
+if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) {
+  location.replace('/app/');
+}
+
 // Intro del logo: attivata prima del primo paint per evitare flash del contenuto.
 // Saltata con prefers-reduced-motion o se si arriva su un'ancora (es. /#tester).
 (function () {

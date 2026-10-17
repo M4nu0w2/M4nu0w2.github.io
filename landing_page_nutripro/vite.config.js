@@ -12,6 +12,9 @@ const brandHtml = () => ({
       .replaceAll('%SEO_TITLE%', SEO.title)
       .replaceAll('%SEO_DESCRIPTION%', SEO.description)
       .replaceAll('%SITE_URL%', SITE_URL)
+      .replaceAll('%CONTACT_LINE%', CONTACT_EMAIL ? ` Email: ${CONTACT_EMAIL}` : '')
+      .replace(/<a href="mailto:%CONTACT_EMAIL%">%CONTACT_EMAIL%<\/a>\s*/g, CONTACT_EMAIL ? `<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>
+        ` : '')
       .replaceAll('%CONTACT_EMAIL%', CONTACT_EMAIL)
       .replaceAll('%WAITLIST_ENDPOINT%', WAITLIST_ENDPOINT)
       .replaceAll('%YEAR%', String(new Date().getFullYear()));

@@ -51,18 +51,26 @@ Cloudflare; un volume persistente sul container va bene.
 
 2026-10-17 — implementazione locale (Claude), non pushata.
 
-- Verifiche: `npm test` 58/58, `npm run test:browser` 16/16, smoke con Chromium
-  sulla landing reale (nessuna violazione CSP, waitlist 200, `/app/` → `/app/login`).
-- **Non verificato**: la build `docker build` con lo stadio `landing` (daemon
-  Docker non attivo sul PC di sviluppo).
+- NutriPro: `npm test` 58/58, `npm run test:browser` 16/16. Smoke con Chromium
+  sulla landing reale: nessuna violazione CSP, waitlist 200, `/app/` → `/app/login`.
+- Immagine Docker costruita e avviata: gira come utente `node`, il volume `/data`
+  è scrivibile e la candidatura sopravvive al riavvio del container.
+- Repo `JirachiBotOrchestrator` (commit locale `6692071`, non pushato): Dockerfile
+  con stadio `landing` e `/data`, Compose con volume `nutripro-data`, proxy senza
+  CSP propria (le CSP si intersecano e bloccherebbero i font della landing),
+  `smoke-auth.sh` aggiornato, README. Immagine costruita con quel Dockerfile e
+  smoke passato in un container Linux; `test-deploy-guard.sh` 26/26.
+- Rimossi i file Cloudflare (Functions, D1, wrangler). `CONTACT_EMAIL` è ora un
+  parametro di build (vuoto = nessun contatto mostrato). Una PWA installata che
+  apre la radice viene portata a `/app/`.
 
 ## Da fare per chiudere
 
-- Il deploy su Hermes è nel repo `JirachiBotOrchestrator`: va aggiunto il
-  **volume persistente su `/data`** al container, altrimenti la waitlist
-  risponde 500 (l'app funziona).
-- Provare l'immagine Docker (CI/deploy) e la landing sul dominio pubblico.
-- Le PWA già installate puntano a `/`: vanno reinstallate da `/app/`.
-- `CONTACT_EMAIL` della landing è ancora un segnaposto.
-- Decidere se rimuovere `landing_page_nutripro/functions`, `migrations` e
-  `wrangler.toml` (legacy Cloudflare).
+- **Ordine di rilascio**: push dell'Orchestrator su `main` (aggiorna il proxy),
+  poi push di NutriPro su `dev` (CI → deploy con il nuovo Dockerfile).
+- Il volume `nutripro-data` va incluso nei backup di Hermes.
+- Completare «Titolare del trattamento» in `privacy/index.html` e impostare
+  `CONTACT_EMAIL` e `SITE_URL` reali con il dominio definitivo.
+- Rollback: gli SHA precedenti alla landing non si costruiscono con il nuovo Dockerfile.
+- Verificare sul dominio pubblico dopo il deploy; l'accesso Google resta una
+  verifica manuale.
