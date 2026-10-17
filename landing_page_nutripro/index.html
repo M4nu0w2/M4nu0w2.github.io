@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%SEO_TITLE%</title>
+    <meta name="description" content="%SEO_DESCRIPTION%" />
+    <meta name="theme-color" content="#070B12" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Intro del logo: attivata prima del primo paint per evitare flash del contenuto.
+      // Saltata con prefers-reduced-motion o se si arriva su un'ancora (es. /#tester).
+      (function () {
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce || location.hash || location.search.indexOf('storyAt') >= 0) return;
+        var root = document.documentElement;
+        root.classList.add('intro-active');
+        // Paracadute: se il JS non parte, la pagina si sblocca comunque.
+        if (location.search.indexOf('introAt') < 0) {
+          setTimeout(function () { root.classList.remove('intro-active'); }, 6000);
+        }
+      })();
+    </script>
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="it_IT" />
+    <meta property="og:site_name" content="%BRAND%" />
+    <meta property="og:title" content="%SEO_TITLE%" />
+    <meta property="og:description" content="%SEO_DESCRIPTION%" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenuto">Vai al contenuto</a>
+
+    <header class="nav" data-nav>
+      <div class="container nav__inner">
+        <a class="nav__brand" href="/" aria-label="%BRAND% — home">
+          <span data-logo="wordmark" data-size="30"></span>
+        </a>
+        <nav aria-label="Principale">
+          <ul class="nav__links">
+            <li><a href="#storia">Come funziona</a></li>
+            <li><a href="#funzionalita">Funzionalità</a></li>
+            <li><a href="#scena-dashboard">Per nutrizionisti</a></li>
+          </ul>
+        </nav>
+        <a class="btn btn--primary nav__cta" href="#tester">Diventa tester</a>
+      </div>
+    </header>
+
+    <!-- Overlay dell'intro animata del logo -->
+    <div class="intro" id="intro" aria-hidden="true"></div>
+
+    <main id="contenuto">
+      <!-- Scene 0-7: sezione pinnata con un'unica timeline (src/story/story.js) -->
+      <section class="story" id="storia" data-story aria-label="Come funziona %BRAND%">
+        <div class="story__stage" data-stage>
+          <div class="glow story__glow"></div>
+
+          <!-- Scena 1: il PDF del nutrizionista -->
+          <div class="pdf" aria-hidden="true">
+            <div class="pdf__head">
+              <span class="pdf__title">Piano alimentare</span>
+              <span class="pdf__meta">Piano di prova · pag. 1/3</span>
+            </div>
+            <div class="pdf__row">
+              <b>Colazione</b>
+              <span>Latte scremato 200 ml (1 bicchiere)</span>
+              <span>Fiocchi d'avena 40 g (1 bicchiere)</span>
+            </div>
+            <div class="pdf__row">
+              <b>Metà mattina</b>
+              <span>Mela 150 g</span>
+              <span>Noci sgusciate 15 g</span>
+            </div>
+            <div class="pdf__row">
+              <b>Pranzo</b>
+              <span>Pasta integrale 80 g · Zucchine 200 g</span>
+              <span>Olio EVO 1 cucchiaio · Pane integrale 50 g</span>
+            </div>
+            <div class="pdf__filler"><i></i><i></i><i></i><i></i><i></i></div>
+            <span class="pdf__tag">PDF</span>
+          </div>
+
+          <div class="story__phone">
+            <!-- Scena 4: la lista della spesa esce dal telefono -->
+            <div class="receipt" aria-hidden="true">
+              <span class="receipt__title">Lista della spesa</span>
+              <span class="receipt__meta">Piano di prova · settimana</span>
+              <ul>
+                <li><span>Latte scremato</span><b>1,4 l</b></li>
+                <li><span>Fiocchi d'avena</span><b>280 g</b></li>
+                <li><span>Mele</span><b>1 kg</b></li>
+                <li><span>Noci sgusciate</span><b>105 g</b></li>
+                <li><span>Pasta integrale</span><b>560 g</b></li>
+                <li><span>Zucchine</span><b>1,4 kg</b></li>
+                <li><span>Olio EVO</span><b>140 ml</b></li>
+                <li><span>Yogurt greco 0%</span><b>7 vasetti</b></li>
+                <li><span>Salmone</span><b>450 g</b></li>
+              </ul>
+            </div>
+            <div data-phone-mount="oggi" data-state="off" data-label="App %BRAND%: il menu di oggi con i pasti del piano"></div>
+          </div>
+
+          <!-- Scene 6-7: collegamento telefono → laptop e dashboard del nutrizionista -->
+          <svg class="story__link" aria-hidden="true">
+            <path class="story__link-path" pathLength="1" />
+            <circle class="story__link-dot" r="5" />
+            <circle class="story__link-dot" r="5" />
+            <circle class="story__link-dot" r="5" />
+          </svg>
+          <div class="story__laptop">
+            <div class="glow story__laptop-glow"></div>
+            <div data-laptop-mount></div>
+          </div>
+        </div>
+
+        <div class="story__scenes">
+          <article class="scene scene--hero" data-scene="0">
+            <div class="container">
+              <div class="scene__text hero__text">
+                <span class="eyebrow">Il piano alimentare, in app</span>
+                <h1>La dieta che vive nel telefono dei tuoi pazienti.</h1>
+                <p class="lead">Carica il piano, %BRAND% lo trasforma in un'app.</p>
+              </div>
+            </div>
+            <div class="scroll-hint" aria-hidden="true">
+              <span>Scorri</span>
+              <span class="scroll-hint__line"></span>
+            </div>
+          </article>
+
+          <article class="scene scene--left" data-scene="1">
+            <div class="container">
+              <div class="scene__text">
+                <span class="eyebrow">Dal PDF all'app</span>
+                <h2>Basta PDF dimenticati in una cartella.</h2>
+                <p class="lead">Lo stesso piano, finalmente interattivo.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--right" data-scene="2">
+            <div class="container">
+              <div class="scene__text">
+                <span class="eyebrow">Il menu di oggi</span>
+                <h2>Pasto per pasto, giorno per giorno.</h2>
+                <p class="lead">Quantità in grammi e in misure di casa: bicchieri, cucchiai, porzioni.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--left" data-scene="3">
+            <div class="container">
+              <div class="scene__text">
+                <span class="eyebrow">Spunta e traccia</span>
+                <h2>Il paziente segna cosa mangia, in un tap.</h2>
+                <p class="lead">Acqua e olio inclusi, se vuoi.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--right" data-scene="4">
+            <div class="container">
+              <div class="scene__text">
+                <span class="eyebrow">Calcolatore e spesa</span>
+                <h2>Niente più dubbi in cucina.</h2>
+                <p class="lead">Da crudo a cotto, e la spesa è già pronta.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--left" data-scene="5">
+            <div class="container">
+              <div class="scene__text">
+                <span class="eyebrow">Tutti i piani, sempre</span>
+                <h2>Un piano attivo, tutto lo storico a portata di mano.</h2>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--center" data-scene="6">
+            <div class="container">
+              <div class="scene__text">
+                <span class="badge-soon">In arrivo</span>
+                <h2>E tu vedi tutto. In tempo reale.</h2>
+              </div>
+            </div>
+          </article>
+
+          <article class="scene scene--left" data-scene="7" id="scena-dashboard">
+            <div class="container">
+              <div class="scene__text">
+                <span class="badge-soon">In arrivo</span>
+                <h2>Tutti i tuoi pazienti, una sola dashboard.</h2>
+                <p class="lead">Aderenza al piano, progressi e avvisi per ogni paziente collegato.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="features" id="funzionalita" aria-labelledby="funzionalita-titolo">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">Funzionalità</span>
+            <h2 id="funzionalita-titolo">Tutto quello che serve al paziente, niente di più.</h2>
+          </div>
+          <ul class="features__grid">
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14l2 2 4-4"/></svg></span>
+              <h3>Piano dal PDF all'app</h3>
+              <p>Il piano del nutrizionista diventa un'app che il paziente apre ogni giorno.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>
+              <h3>Menu giornaliero con spunte</h3>
+              <p>Pasto per pasto, con le quantità in grammi e in misure di casa.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></span>
+              <h3>Idratazione e olio</h3>
+              <p>Litri d'acqua e olio usato, tracciati solo se ti servono.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span>
+              <h3>Calcolatore porzioni</h3>
+              <p>Da crudo a cotto e dalle misure domestiche ai grammi.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></span>
+              <h3>Lista della spesa</h3>
+              <p>Generata dal piano della settimana, pronta da esportare.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+              <h3>Archivio piani</h3>
+              <p>Un piano attivo, tutti i precedenti sempre a disposizione.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></span>
+              <h3>Assistente AI <span class="badge-soon">In arrivo</span></h3>
+              <p>Uno spazio per le domande generali del paziente.</p>
+            </li>
+            <li class="card feature">
+              <span class="feature__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20M8 12v-2M12 12V8M16 12v-3"/></svg></span>
+              <h3>Dashboard nutrizionista <span class="badge-soon">In arrivo</span></h3>
+              <p>Tutti i pazienti collegati e la loro aderenza al piano.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="cta" id="tester" aria-labelledby="tester-titolo">
+        <div class="container cta__inner">
+          <div class="cta__visual">
+            <div class="glow"></div>
+            <div data-phone-mount="oggi" data-state="splash" class="cta__phone" data-label="Logo %BRAND% sullo schermo del telefono"></div>
+          </div>
+          <div class="cta__text">
+            <span class="eyebrow">Fase di test</span>
+            <h2 id="tester-titolo">Stiamo cercando i primi nutrizionisti tester.</h2>
+            <p class="lead">Gratis durante la fase di test. Ci aiuti a costruire lo strumento che vorresti usare.</p>
+            <form class="waitlist card" action="%WAITLIST_ENDPOINT%" method="post" novalidate data-waitlist>
+              <div class="field">
+                <label for="wl-name">Nome e cognome</label>
+                <input id="wl-name" name="name" type="text" autocomplete="name" maxlength="100" required aria-describedby="wl-name-errore" />
+                <p class="field__error" id="wl-name-errore"></p>
+              </div>
+              <div class="field">
+                <label for="wl-email">Email</label>
+                <input id="wl-email" name="email" type="email" autocomplete="email" maxlength="200" required aria-describedby="wl-email-errore" />
+                <p class="field__error" id="wl-email-errore"></p>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="wl-role">Ruolo</label>
+                  <select id="wl-role" name="role" required aria-describedby="wl-role-errore">
+                    <option value="" selected disabled>Seleziona…</option>
+                    <option>Nutrizionista</option>
+                    <option>Dietista</option>
+                    <option>Biologo nutrizionista</option>
+                    <option>Altro</option>
+                  </select>
+                  <p class="field__error" id="wl-role-errore"></p>
+                </div>
+                <div class="field">
+                  <label for="wl-patients">Pazienti seguiti <span>(facoltativo)</span></label>
+                  <input id="wl-patients" name="patients" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" aria-describedby="wl-patients-errore" />
+                  <p class="field__error" id="wl-patients-errore"></p>
+                </div>
+              </div>
+              <!-- Trappola anti-spam: i bot la compilano, le persone non la vedono. -->
+              <div class="waitlist__hp" aria-hidden="true">
+                <label for="wl-website">Sito web</label>
+                <input id="wl-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label class="check" for="wl-privacy">
+                  <input id="wl-privacy" name="privacy" type="checkbox" value="1" required aria-describedby="wl-privacy-errore" />
+                  <span>Ho letto l'<a href="/privacy/">informativa privacy</a> e acconsento a essere ricontattato per la fase di test.</span>
+                </label>
+                <p class="field__error" id="wl-privacy-errore"></p>
+              </div>
+              <button class="btn btn--primary waitlist__submit" type="submit">Candidati come tester</button>
+              <p class="waitlist__status" data-status role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span data-logo="wordmark" data-size="24"></span>
+        <a href="mailto:%CONTACT_EMAIL%">%CONTACT_EMAIL%</a>
+        <a href="/privacy/">Privacy</a>
+        <span>© %YEAR% %BRAND%</span>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

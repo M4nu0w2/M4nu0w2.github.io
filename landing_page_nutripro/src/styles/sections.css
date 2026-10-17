@@ -1,0 +1,409 @@
+/* ---------- Storia pinnata (scene 0-7) ---------- */
+.story {
+  position: relative;
+}
+
+/* Stage: telefono e laptop. In fase 4 verrà pinnato dalla timeline GSAP. */
+.story__stage {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 100svh;
+  pointer-events: none;
+}
+
+.story__glow {
+  left: 50%;
+  top: 50%;
+  width: min(720px, 90vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+/* Posizione provvisoria: la timeline della fase 4 sposterà il telefono. */
+.story__phone {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  transform: translateX(-50%);
+}
+
+.story__phone .phone {
+  --w: min(330px, 34svh);
+}
+
+.story__scenes {
+  position: relative;
+  z-index: 2;
+  margin-top: -100svh;
+}
+
+.scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 130svh;
+  padding-block: calc(var(--nav-h) + 24px) 48px;
+}
+
+.scene__text {
+  display: grid;
+  gap: 18px;
+  max-width: 30rem;
+}
+
+.scene__text h2 {
+  font-size: var(--fs-h2);
+}
+
+.scene--right .scene__text {
+  margin-left: auto;
+}
+
+.scene--center .scene__text {
+  margin-inline: auto;
+  text-align: center;
+  justify-items: center;
+}
+
+/* Hero */
+.scene--hero {
+  min-height: 100svh;
+  align-items: flex-start;
+}
+
+.hero__text {
+  max-width: 54rem;
+  margin-inline: auto;
+  text-align: center;
+  justify-items: center;
+}
+
+.hero__text h1 {
+  font-size: var(--fs-display);
+}
+
+.scroll-hint {
+  position: absolute;
+  left: max(var(--gutter), calc((100% - var(--maxw)) / 2 + var(--gutter)));
+  bottom: 28px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.scroll-hint__line {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(var(--mint), transparent);
+}
+
+/* ---------- Feature grid ---------- */
+.features {
+  position: relative;
+  padding-block: clamp(96px, 14vw, 180px);
+}
+
+.section-head {
+  display: grid;
+  gap: 16px;
+  max-width: 40rem;
+  margin-bottom: clamp(40px, 6vw, 72px);
+}
+
+.section-head h2 {
+  font-size: var(--fs-h2);
+}
+
+.features__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 28px 24px;
+}
+
+.feature__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-app);
+  color: var(--mint);
+}
+
+.feature h3 {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.02em;
+}
+
+.feature p {
+  color: var(--text-2);
+}
+
+/* ---------- CTA ---------- */
+.cta {
+  position: relative;
+  padding-block: clamp(96px, 14vw, 180px);
+  overflow: hidden;
+}
+
+.cta__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(40px, 6vw, 96px);
+  align-items: center;
+}
+
+.cta__visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+}
+
+.cta__visual .glow {
+  width: 460px;
+  aspect-ratio: 1;
+}
+
+.cta__phone {
+  --w: 210px;
+}
+
+.cta__text {
+  display: grid;
+  gap: 18px;
+}
+
+.cta__text h2 {
+  font-size: var(--fs-h2);
+}
+
+/* Form waitlist */
+.waitlist {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+  padding: clamp(20px, 3vw, 32px);
+}
+
+.field {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.field label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.field label span {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.field input:not([type='checkbox']),
+.field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-app);
+  color: var(--text);
+  font: inherit;
+  transition: border-color 0.2s;
+}
+
+.field select {
+  appearance: none;
+  padding-right: 40px;
+  background: var(--bg-app) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 14px center;
+}
+
+.field input:hover,
+.field select:hover {
+  border-color: #33476a;
+}
+
+.field input:focus-visible,
+.field select:focus-visible {
+  border-color: var(--mint);
+  outline: 2px solid rgb(110 231 183 / 0.35);
+  outline-offset: 1px;
+}
+
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'] {
+  border-color: #f87171;
+}
+
+.field__error {
+  min-height: 0;
+  color: #fca5a5;
+  font-size: 0.875rem;
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: var(--text-2);
+  font-weight: 500 !important;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--mint);
+}
+
+.check a {
+  color: var(--mint);
+}
+
+.waitlist__hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.waitlist__submit {
+  justify-self: start;
+  min-height: 50px;
+  padding-inline: 28px;
+}
+
+.waitlist__submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.waitlist__status:empty {
+  display: none;
+}
+
+.waitlist__status.is-error {
+  color: #fca5a5;
+}
+
+.waitlist--done {
+  justify-items: start;
+}
+
+.waitlist--done h3 {
+  font-size: var(--fs-h3);
+}
+
+.waitlist--done p {
+  color: var(--text-2);
+}
+
+.waitlist__ok {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--mint);
+  color: var(--on-mint);
+  font-weight: 800;
+}
+
+@media (max-width: 560px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .cta__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .cta__visual {
+    min-height: 300px;
+  }
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  padding-block: 48px;
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+}
+
+.footer__inner > :first-child {
+  margin-right: auto;
+}
+
+.footer a {
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--text);
+}
+
+/* ---------- Privacy ---------- */
+.legal {
+  max-width: 46rem;
+  padding-block: calc(var(--nav-h) + 64px) 96px;
+}
+
+.legal h1 {
+  margin: 16px 0 24px;
+  font-size: var(--fs-h2);
+}
+
+.legal h2 {
+  margin: 40px 0 12px;
+  font-size: var(--fs-h3);
+}
+
+.legal p,
+.legal li {
+  color: var(--text-2);
+}
