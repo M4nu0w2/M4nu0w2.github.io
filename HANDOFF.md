@@ -1,5 +1,170 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Landing alla radice, app sotto /app, analisi di prodotto e nuova direzione dati - 2026-10-18
+
+Stato corrente; prevale sulle sezioni successive per tutto ciò che riguarda
+percorsi, deploy, README e direzione dei dati. L'utente scrive in italiano e ha
+attivato in chat lo stile telegrafico («caveman ultra»); codice, commit e
+documenti restano in forma normale.
+
+### Goal
+
+Portare NutriPro da «PWA per leggere un PDF» a un prodotto vendibile: landing
+pubblica e leggera alla radice, web app autenticata sotto `/app`, backend
+robusto, conservazione dei dati sul server, due piani a pagamento (nutrizionista
+e paziente individuale).
+
+### Current Progress (verificato)
+
+**In produzione** (`https://nutriprobasta.jirachibot.eu`, dominio **temporaneo**
+per demo interne; versione `7c41bea`, `/healthz` ok, login Google configurato):
+- `/` e `/privacy/`: landing «Nutrà», servita dal backend Node (build di
+  `landing_page_nutripro/` nell'immagine, cartella `landing/`), con CSP propria.
+- `/app/*`: web app React (Vite `base: '/app/'`, router `basename="/app"`). Senza
+  sessione → `/app/login`. Vecchie URL (`/login`, `/plans`, `/chat`, `/settings`,
+  `/index.html`) → redirect 303 a `/app/...`. `/auth/*`, `/api/*`, `/healthz` sono
+  rimasti alla radice: il redirect OAuth su Google **non è cambiato**.
+- `POST /api/waitlist` nel backend (`server/waitlist.cjs`), SQLite (`node:sqlite`)
+  su volume Docker `nutripro-data` montato in `/data`. Sostituisce Pages
+  Functions + D1 (file Cloudflare rimossi). Validazione, Origin, honeypot,
+  rate limit 5/min per IP, 8 KB.
+- `CONTACT_EMAIL` e `SITE_URL` sono parametri di build della landing (vuoto =
+  nessun contatto mostrato). Una PWA già installata che apre `/` viene mandata a
+  `/app/` (`landing_page_nutripro/public/intro-boot.js`).
+- Repo Orchestrator (`../JirachiBotOrchestrator`, **pushato**, commit `6692071`):
+  `services/nutripro/Dockerfile` (stadio `landing`, `/data`), `docker-compose.yml`
+  (volume), proxy nginx **senza** CSP propria (le CSP si intersecano e
+  bloccherebbero i font Google della landing; `csp-nutripro.conf` rimosso),
+  `smoke-auth.sh` riscritto, README del servizio. **Ordine di rilascio usato e da
+  rispettare in futuro per cambi di proxy: prima Orchestrator, poi push NutriPro.**
+- Deploy riuscito (CI verde, richiesta deploy riuscita, smoke passato). Il run
+  fallito del 2026-10-13 (sezione sotto) questa volta non si è ripetuto; causa
+  mai diagnosticata.
+- Test: `npm test` 58/58, `npm run test:browser` 16/16 (nuovo
+  `tests/landing.test.cjs`). README riscritto e allineato.
+- Gemini resta **disattivato** in produzione; WF-010 aperto.
+
+**Solo in locale, non pushato** (`dev` è «ahead 5», tutti commit di sola
+documentazione con `[skip ci]`): ticket Wayfinder WF-021 … WF-034 e note di
+aggiornamento in WF-003 e WF-026. Pushare un commit senza `[skip ci]` fa partire
+CI + deploy in produzione.
+
+### Decisioni del PO in questa sessione
+
+- Landing sul dominio base, app su `/app`. Il dominio attuale è temporaneo; la
+  struttura (marketing/SEO separato dall'app autenticata) deve valere anche con il
+  dominio definitivo.
+- **Pagano entrambi**: il nutrizionista con un piano dedicato e il paziente
+  individuale con un piano dedicato. Dettagli da decidere.
+- **Progeo è da togliere totalmente come riferimento.**
+- **Cambio di direzione sui dati: «conserveremo tutto» sul server**, non più solo
+  sul telefono. Supera le premesse di WF-001/WF-003 e la promessa del README «il
+  piano non lascia il browser» (README da riscrivere dopo WF-030).
+- Il nome del prodotto non è deciso (Nutrà sulla landing, NutriPro nell'app,
+  «NutriPro Basta» nel manifest).
+- Esistono nutrizionisti disposti a testare; nessun campione di PDF ancora.
+
+### Ticket aperti creati in questa sessione (tracker locale `.wayfinder/issues/`)
+
+| Ticket | Tipo | Stato |
+| :--- | :--- | :--- |
+| WF-021 Comprendere i pasti di qualsiasi PDF con Gemini | implementation | bloccato da WF-010, WF-023 |
+| WF-022 Landing alla radice, app sotto /app | implementation | implementato e in produzione; **resta aperto** (vedi Next Steps) |
+| WF-023 Enum dei tipi di pasto (20 scenari) | grilling | libero |
+| WF-024 Architettura backend leggero e robusto | grilling | libero |
+| WF-025 Stato di `node:sqlite` e alternative | research | libero, **non lanciato** |
+| WF-026 Persistenza server, migrazioni, backup | grilling | bloccato da WF-003, WF-025, WF-030 |
+| WF-027 Osservabilità e stato condiviso | grilling | bloccato da WF-024 |
+| WF-028 Backup del volume della waitlist su Hermes | task | libero, **urgente** |
+| WF-029 Rimuovere Progeo come riferimento | implementation | libero |
+| WF-030 Conservazione sul server dei dati dei pazienti | grilling | libero, **sposta tutto il resto** |
+| WF-031 Nome del prodotto | grilling | libero |
+| WF-032 Modello di ricavo e due piani | grilling | libero |
+| WF-033 Campioni di PDF e feedback dai nutrizionisti | task | libero |
+| WF-034 Consulenza legale su dati sanitari e GDPR | task | libero (serve una persona abilitata) |
+
+Il tracker `.wayfinder/` è escluso da `.git/info/exclude`: per committare un
+ticket nuovo serve `git add -f`. La mappa `WAYFINDER.md` non è stata aggiornata
+con i link dei ticket nuovi (regola del tracker: si aggiunge alla chiusura).
+Una sessione di grilling su WF-003 è stata iniziata e **abbandonata** su richiesta:
+l'assegnatario è tornato `null`, nessuna risposta dell'utente registrata.
+
+### Analisi di prodotto (solo in conversazione, non nel repo)
+
+Fatta una ricerca web sui concorrenti. Fonti per lo più di terzi (Capterra,
+Software Advice, schede degli store): **prezzi e funzioni non verificati**.
+Verificato dal sito ufficiale: Nutrium ha app cliente, strumenti AI di
+monitoraggio, 7 lingue italiano compreso. Progeo vende «Nutriverso» (cloud da
+browser per il professionista); un'app per il paziente non è stata trovata
+(ipotesi da verificare con un nutrizionista). Nutriplan ha un'app cliente
+italiana. Dimensione del mercato italiano non trovata.
+Priorità proposte: ora → titolare privacy, backup, cancellazione dati,
+disclaimer, nome unico, SEO di base, analisi senza cookie, schermata di revisione
+dell'import; poi → import di qualunque template (enum dei pasti + Gemini di
+ripiego), offline vero, promemoria, «ho mangiato altro», report di aderenza per il
+nutrizionista, invito a QR, demo interattiva sulla landing; più avanti → dashboard
+per il professionista, sincronizzazione, sostituzioni, peso/misure. Sconsigliato:
+un tracker di calorie con database alimentare.
+
+### What Worked
+
+- Un solo processo Node che serve landing e app con CSP diverse per percorso; asset
+  senza collisioni (`/assets` landing, `/app/assets` app); `/auth` e `/api` alla
+  radice per non toccare l'OAuth.
+- `node:sqlite` per la waitlist, aperto in modo pigro: senza volume l'app parte e
+  solo la waitlist risponde 500 (testato).
+- Provare l'immagine vera: build con il Dockerfile dell'Orchestrator, container
+  con volume, riavvio, candidatura che sopravvive, smoke eseguito in un container
+  Linux (`python:3.12-alpine` + `--network container:<nome>`).
+- Controllare il dominio vero dopo il deploy (landing 200, `/app/` → login,
+  `GET /api/waitlist` 405, CSP della landing, `/healthz`).
+
+### What Didn't Work (non ripetere)
+
+- **Test con SQLite su Windows**: la cartella temporanea non si cancella finché il
+  server tiene aperto il file. In `tests/landing.test.cjs` la chiusura del server
+  avviene prima della rimozione (`start()` registra un solo hook).
+- **`smoke-auth.sh` in Git Bash per Windows** fallisce per conversione dei percorsi
+  (`/app` diventa un percorso Windows) e per differenze con `pipefail`. Va
+  eseguito su Linux (container) come sul runner.
+- **Inline `<script>` e `style=` nella landing** violano la CSP. Script spostato in
+  `public/intro-boot.js`; per gli attributi `style` la landing ammette
+  `style-src-attr 'unsafe-inline'` (script restano `'self'`).
+- Una CSP aggiunta anche da nginx **si somma** a quella del backend: rimossa dal proxy.
+- Script Python lunghi dentro heredoc del tool Bash si interrompono: scriverli su
+  file con lo strumento di scrittura. Lo strumento di modifica richiede una lettura
+  del file nella stessa conversazione.
+- `/wayfinder` e `/handoff` non compaiono sempre nell'elenco delle skill; sono in
+  `~/.claude/skills`. `/CAVEMAN` in maiuscolo non è stato riconosciuto.
+- Playwright non è nel repo: installato in `%TEMP%\pw` e usato con
+  `PLAYWRIGHT_MODULE=%TEMP%\pw\node_modules\playwright` (come la CI, versione 1.61.1).
+  Docker Desktop va avviato a mano (`Docker Desktop.exe`).
+
+### Next Steps
+
+1. **Decidere se pushare i 5 commit di ticket.** Sono `[skip ci]`: nessun deploy.
+2. **Provare a mano**: login Google su `/app/` (mai verificato dopo lo spostamento) e
+   invio del form waitlist dalla landing sul dominio vero.
+3. **WF-028 backup** del volume `nutripro-data` (oggi nessun backup; contiene nomi
+   ed email di professionisti).
+4. **Completare «Titolare del trattamento»** e «Conservazione e diritti» in
+   `landing_page_nutripro/privacy/index.html` (segnaposto): finché non lo è, la
+   landing pubblica non è a norma. Collegato a WF-034.
+5. **Lavorare WF-030** (conservazione sul server): è il ticket che sblocca
+   WF-003, WF-026, il modello di ricavo e il resto. Punto di attenzione: l'hosting
+   è un mini-PC di casa senza backup; per dati sanitari di clienti paganti va
+   discusso. Poi riscrivere README e informativa.
+6. **WF-029 Progeo**: attenzione, il parser usa il testo «progeo medical» per
+   scartare intestazioni e piè di pagina; non cancellarlo senza una regola
+   sostitutiva, o le intestazioni finiscono tra gli alimenti.
+7. **WF-033/WF-034**: servono persone (campioni di PDF anonimizzati dai
+   nutrizionisti tester; consulente legale). Nessun PDF reale nel repository.
+8. Per chiudere WF-022: volume nei backup, `CONTACT_EMAIL`/`SITE_URL` definitivi,
+   PWA già installate da reinstallare da `/app/`. Rollback a SHA precedenti alla
+   landing non si costruisce più con il Dockerfile dell'Orchestrator.
+9. Aperti da prima: WF-010 (Gemini mai provato con provider reale; attivazione
+   pubblica richiede tier a pagamento SEE), WF-011/012/013/014/015/016/017/018/019/020.
+
 ## Gemini 3.5 Flash-Lite: release e verifica Hermes - 2026-10-13
 
 Stato corrente; prevale sulle note storiche di codice solo locale e modello3.7.
