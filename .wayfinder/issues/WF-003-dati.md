@@ -7,7 +7,7 @@ status: open
 assignee: null
 assignment: null
 assignment_mode: flexible
-blocked_by: [WF-001, WF-002]
+blocked_by: [WF-001, WF-002, WF-030]
 ---
 
 # Definire persistenza e dati condivisi con l’assistente
@@ -54,3 +54,12 @@ settaggi globali per account (interruttori acqua e olio, unità preferite) e
 quantità effettive dell'olio registrate per voce del pasto, con storico
 conservato alla disattivazione. Includere settaggi account e quantità effettive
 nel perimetro: salvataggio locale o sincronizzato fra dispositivi.
+
+## Update from the PO's change of direction - 2026-10-18
+
+Il PO ha cambiato direzione: **il sistema conserverà tutto sul server**, non più
+solo sul telefono dell'utente. La raccomandazione iniziale di questo ticket
+(contesto minimo, identità separata) e la premessa «il piano resta nel browser»
+vanno riesaminate. La conservazione sul server è ora decisa nel ticket
+[Definire la conservazione sul server dei dati dei pazienti](WF-030-conservazione-dati-lato-server.md),
+che blocca questo. Resta qui la domanda su quali campi vanno a Gemini.
