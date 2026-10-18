@@ -7,7 +7,7 @@ status: open
 assignee: null
 assignment: null
 assignment_mode: flexible
-blocked_by: [WF-003, WF-025]
+blocked_by: [WF-003, WF-025, WF-030]
 ---
 
 # Definire persistenza server, migrazioni e backup
@@ -60,3 +60,12 @@ Non sono decisioni prese.
 - Implementazione (ticket successivo).
 - Compito operativo di backup del volume esistente, già tracciato in
   [Eseguire il backup del volume della waitlist su Hermes](WF-028-backup-volume-waitlist.md).
+
+## Update from the PO's change of direction - 2026-10-18
+
+La decisione 1 («i piani rimangono nel browser») è **superata**: il PO ha deciso
+che il sistema conserva tutto sul server. Cosa si conserva, dove e con quali
+garanzie si decide in
+[Definire la conservazione sul server dei dati dei pazienti](WF-030-conservazione-dati-lato-server.md),
+che ora blocca questo ticket. Di conseguenza anche database, migrazioni e
+backup diventano un requisito di prodotto e non solo operativo.
