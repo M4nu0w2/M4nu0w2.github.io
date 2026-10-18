@@ -7,7 +7,7 @@ status: open
 assignee: null
 assignment: null
 assignment_mode: flexible
-blocked_by: [WF-010]
+blocked_by: [WF-010, WF-023]
 ---
 
 # Comprendere i pasti di qualsiasi PDF con Gemini, a prescindere dal template
