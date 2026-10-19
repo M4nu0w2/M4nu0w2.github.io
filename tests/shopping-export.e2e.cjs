@@ -27,7 +27,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
       contentType: route.request().url().endsWith('.js') ? 'application/javascript' : 'text/css', body: '' }));
     await page.goto(origin + '/app/');
     await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
-  await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
+  await page.getByRole('button', { name: /Carica Piano di Prova/i }).click();
   await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();
     const snapshot = await page.evaluate(() => localStorage.getItem('diet_plan_archive:google-user-1'));
     await page.getByRole('button', { name: 'Esporta lista della spesa', exact: true }).click();

@@ -52,4 +52,4 @@ Non sono decisioni prese.
 ## Out of scope
 
 - Disegno del logo (ticket a parte, dopo il nome).
-- La rimozione di Progeo ([Rimuovere Progeo come riferimento da prodotto, codice e documenti](WF-029-rimuovere-progeo-come-riferimento.md)).
+- La rimozione del riferimento al gestionale d'origine ([Rimuovere il riferimento al gestionale d'origine da prodotto, codice e documenti](WF-029-rimuovere-riferimento-gestionale.md)).

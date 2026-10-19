@@ -5,7 +5,7 @@ Monorepo di due prodotti distinti che condividono solo il repository:
 | Componente | Cartella | Cos'è | Stack | Dove gira |
 | :--- | :--- | :--- | :--- | :--- |
 | **Landing "Nutrà"** | `landing_page_nutripro/` | Sito pubblico, leggero e ottimizzato per i motori di ricerca; raccoglie la waitlist dei nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, HTML statico | **Radice** del dominio (`/`), servita dal backend Node |
-| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF Progeo Medical, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
+| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF del piano alimentare, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
 
 Oggi il dominio è `nutriprobasta.jirachibot.eu`, **temporaneo e solo per demo interne**. L'impostazione è pensata per reggere anche con un dominio definitivo: landing pubblica e SEO da una parte, web app autenticata dall'altra, senza codice in comune. Il dominio non è scritto nel codice: vedi [Configurazione](#configurazione-variabili-dambiente).
 
@@ -107,7 +107,7 @@ NutriPro/
 │   ├── main.jsx               # Entry point
 │   ├── App.jsx                # Router, Login, Protected (sessione), Home, Piani, Dettaglio
 │   ├── components/ChatPage.jsx# Assistente Gemini (/chat)
-│   ├── lib/dietEngine.mjs     # Parser PDF Progeo, conversioni, lista della spesa
+│   ├── lib/dietEngine.mjs     # Parser PDF, conversioni, lista della spesa
 │   ├── lib/planStore.mjs      # Archivio piani per account in localStorage
 │   ├── lib/tracking.mjs       # Olio, quantità, step tracking
 │   └── *.css
@@ -133,7 +133,7 @@ NutriPro/
 
 - **Routing** (React Router 7, `basename="/app"`, Vite `base: '/app/'`): `/app/login`, `/app/` (Home), `/app/plans`, `/app/plans/:id`, `/app/chat`, `/app/settings`.
 - **`Protected`** verifica `/api/session` ogni 60 s e a ogni ritorno in primo piano; blocca la UI quando la pagina è nascosta; espelle l'utente su scadenza o cambio account.
-- **PDF**: `parseProgeoPdf` (pdf.js) → struttura per giorno/pasto/alimento, con alternative esplicite, ricette e tabella "Unità di misura" del PDF che prevale sui coefficienti generici.
+- **PDF**: `parseDietPdf` (pdf.js) → struttura per giorno/pasto/alimento, con alternative esplicite, ricette e tabella "Unità di misura" del PDF che prevale sui coefficienti generici.
 - **Archivio** (`planStore`): un piano attivo alla volta (o nessuno), piani inattivi consultabili, "sostituzione" distruttiva con doppia conferma. Nessuna sincronizzazione fra dispositivi, nessun PDF originale conservato.
 - **Interfaccia**: selettore giorni, card pasti con spunte, water tracker (obiettivo configurabile), calcolatore crudo/cotto, lista della spesa (copia, condividi, `.txt`), layout mobile con tab bar.
 - **PWA**: `manifest.webmanifest` + icona. Nessuna cache offline: login e verifica sessione richiedono rete.
@@ -257,7 +257,7 @@ npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, 
 
 - I test di login simulano il provider Google ma usano server e cookie reali; un test a parte verifica firme RSA con la libreria Google. La verifica con un progetto Google reale resta necessaria prima dell'attivazione.
 - I test browser leggono `PLAYWRIGHT_MODULE` (percorso del modulo Playwright, installato fuori dal repo; la CI usa `playwright@1.61.1`).
-- `tests/progeo-pdf.e2e.cjs` richiede un PDF privato (`REAL_PROGEO_PDF`), **non** è in CI: da eseguire a mano prima di toccare il parser.
+- `tests/reference-pdf.e2e.cjs` richiede un PDF privato (`REFERENCE_PDF`), **non** è in CI: da eseguire a mano prima di toccare il parser.
 - La landing è coperta lato server (`tests/landing.test.cjs`: file serviti, CSP, redirect, waitlist). Il suo front-end non ha test.
 
 ## CI/CD e deploy

@@ -1,4 +1,4 @@
-# HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
+# HANDOFF — NutriPro
 
 ## Landing alla radice, app sotto /app, analisi di prodotto e nuova direzione dati - 2026-10-18
 
@@ -56,7 +56,7 @@ CI + deploy in produzione.
   dominio definitivo.
 - **Pagano entrambi**: il nutrizionista con un piano dedicato e il paziente
   individuale con un piano dedicato. Dettagli da decidere.
-- **Progeo è da togliere totalmente come riferimento.**
+- **Il nome del gestionale di origine dei PDF va tolto ovunque come riferimento** (WF-029, fatto il 2026-10-19).
 - **Cambio di direzione sui dati: «conserveremo tutto» sul server**, non più solo
   sul telefono. Supera le premesse di WF-001/WF-003 e la promessa del README «il
   piano non lascia il browser» (README da riscrivere dopo WF-030).
@@ -76,7 +76,7 @@ CI + deploy in produzione.
 | WF-026 Persistenza server, migrazioni, backup | grilling | bloccato da WF-003, WF-025, WF-030 |
 | WF-027 Osservabilità e stato condiviso | grilling | bloccato da WF-024 |
 | WF-028 Backup del volume della waitlist su Hermes | task | libero, **urgente** |
-| WF-029 Rimuovere Progeo come riferimento | implementation | libero |
+| WF-029 Rimuovere il riferimento al gestionale d'origine | implementation | chiuso |
 | WF-030 Conservazione sul server dei dati dei pazienti | grilling | libero, **sposta tutto il resto** |
 | WF-031 Nome del prodotto | grilling | libero |
 | WF-032 Modello di ricavo e due piani | grilling | libero |
@@ -94,8 +94,8 @@ l'assegnatario è tornato `null`, nessuna risposta dell'utente registrata.
 Fatta una ricerca web sui concorrenti. Fonti per lo più di terzi (Capterra,
 Software Advice, schede degli store): **prezzi e funzioni non verificati**.
 Verificato dal sito ufficiale: Nutrium ha app cliente, strumenti AI di
-monitoraggio, 7 lingue italiano compreso. Progeo vende «Nutriverso» (cloud da
-browser per il professionista); un'app per il paziente non è stata trovata
+monitoraggio, 7 lingue italiano compreso. Un altro gestionale italiano vende un cloud da
+browser per il professionista; un'app per il paziente non è stata trovata
 (ipotesi da verificare con un nutrizionista). Nutriplan ha un'app cliente
 italiana. Dimensione del mercato italiano non trovata.
 Priorità proposte: ora → titolare privacy, backup, cancellazione dati,
@@ -154,9 +154,10 @@ un tracker di calorie con database alimentare.
    WF-003, WF-026, il modello di ricavo e il resto. Punto di attenzione: l'hosting
    è un mini-PC di casa senza backup; per dati sanitari di clienti paganti va
    discusso. Poi riscrivere README e informativa.
-6. **WF-029 Progeo**: attenzione, il parser usa il testo «progeo medical» per
-   scartare intestazioni e piè di pagina; non cancellarlo senza una regola
-   sostitutiva, o le intestazioni finiscono tra gli alimenti.
+6. **WF-029 (fatto)**: il filtro delle intestazioni usava il nome del
+   gestionale; ora scarta righe con indirizzi web, `https?:` e `©`. Non è stato
+   provato sul PDF reale di riferimento (privato): eseguire
+   `tests/reference-pdf.e2e.cjs` con `REFERENCE_PDF` prima del prossimo rilascio.
 7. **WF-033/WF-034**: servono persone (campioni di PDF anonimizzati dai
    nutrizionisti tester; consulente legale). Nessun PDF reale nel repository.
 8. Per chiudere WF-022: volume nei backup, `CONTACT_EMAIL`/`SITE_URL` definitivi,
@@ -627,7 +628,7 @@ completo, verifiche, rollback e rischi. Qui solo ciò che serve a chi sviluppa.
 |---|---|---|
 | `tests/shopping-list.test.cjs` (20 test, motore e parser) | sì | `node --test tests/shopping-list.test.cjs` |
 | `tests/shopping-export.e2e.cjs` (browser, CSP di produzione) | sì | `node --test tests/shopping-export.e2e.cjs` con `PLAYWRIGHT_MODULE` |
-| `tests/progeo-pdf.e2e.cjs` (PDF di riferimento **privato**) | **NO** | solo in locale, con `REAL_PROGEO_PDF` e `PDFJS_ASSET_DIR` |
+| `tests/reference-pdf.e2e.cjs` (PDF di riferimento **privato**) | **NO** | solo in locale, con `REFERENCE_PDF` e `PDFJS_ASSET_DIR` |
 
 **La CI copre 21 test su 22. Il test sul PDF reale NON fa da cancello al deploy**:
 richiede un documento che non sta nel repo e lancia un errore all'avvio se manca.
@@ -686,8 +687,8 @@ progetto: è un prototipo/uso personale di `M4nu0w2`, non un prodotto Jirachi.
 **Una Single Page Application in un solo `index.html`** (2443 righe, ~82 KB) più
 `icon-512.png` (558 KB), 100% client-side:
 
-1. L'utente carica il PDF del piano alimentare generato da **Progeo Medical**.
-2. `pdf.js` (3.11.174, da cdnjs) lo legge **nel browser** e `parseProgeoPdf()`
+1. L'utente carica il PDF del piano alimentare generato dal gestionale del professionista.
+2. `pdf.js` (3.11.174, da cdnjs) lo legge **nel browser** e `parseDietPdf()`
    estrae pasti e dosi.
 3. `convertQuantityEngine()` converte dosi in cucchiai/bicchieri/legumi secchi
    in grammi (o peso del cotto sgocciolato).
@@ -709,8 +710,8 @@ altrove senza chiederlo al PO.
 | 1303-2441 | **`<script>`** unico: logica |
 
 Funzioni principali: `normalizeText`, `parseSpoonCount`, `convertQuantityEngine`
-(conversioni, ~120 righe), `getSampleProgeoDiet` (piano di esempio incorporato),
-`parseProgeoPdf` (~250 righe, il pezzo più delicato), `initAppState`,
+(conversioni, ~120 righe), `getSampleDiet` (piano di esempio incorporato),
+`parseDietPdf` (~250 righe, il pezzo più delicato), `initAppState`,
 `saveDietData`/`saveCheckedState`/`saveWaterState`, `renderDayTabs`,
 `renderActiveDay`, `toggleItemCheck`, `renderWaterTracker`, `handlePdfFile`,
 `setupCalculatorLogic`.
@@ -760,7 +761,7 @@ Il test del PDF reale verifica il collegamento di tutti gli alimenti con codice
 quantità settimanali quali olio 156 g, fiocchi d’avena 60 g e pane 550 g.
 
 22 test passati: `tests/shopping-list.test.cjs`, `tests/shopping-export.e2e.cjs`
-e `tests/progeo-pdf.e2e.cjs`; comandi nel README. Browser test con CSP; l’ultimo
+e `tests/reference-pdf.e2e.cjs`; comandi nel README. Browser test con CSP; l’ultimo
 usa il worker reale di pdf.js e il PDF privato esterno al repo, senza inviarlo
 alle CDN. Il PDF e le estrazioni di lavoro non sono nel repository. Nessun commit, push o
 deploy effettuato per questa funzione: la verifica online precedente non la include.

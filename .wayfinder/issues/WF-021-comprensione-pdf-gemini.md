@@ -14,8 +14,8 @@ blocked_by: [WF-010, WF-023]
 
 ## Requirement comment
 
-2026-10-17 — richiesta in sessione (PO). Oggi il parser (`parseProgeoPdf` in
-`src/lib/dietEngine.mjs`) riconosce solo il template Progeo Medical: intestazioni
+2026-10-17 — richiesta in sessione (PO). Oggi il parser (`parseDietPdf` in
+`src/lib/dietEngine.mjs`) riconosce solo il template del gestionale d'origine: intestazioni
 di pasto cercate per parola chiave a riga intera, tabelle e appendice attese in
 una forma precisa. Un PDF di un altro gestionale o con altro impaginato non
 viene capito.
@@ -51,9 +51,9 @@ archivio, così che il resto dell'app non cambi.
   contro i sei slot richiesti: va deciso dove confluiscono `spuntino_serale` e
   `arco_giornata` e se gli id esistenti nei piani già salvati vengono migrati
   o mantenuti.
-- Il parser deterministico attuale è testato e preciso sul template Progeo;
+- Il parser deterministico attuale è testato e preciso sul template attuale;
   non va peggiorato. Il PDF reale di riferimento resta privato
-  (`REAL_PROGEO_PDF`), non nel repository.
+  (`REFERENCE_PDF`), non nel repository.
 
 ## Decisioni aperte per il PO
 
@@ -68,7 +68,7 @@ Non sono decisioni prese; vanno risolte prima dell'implementazione.
    l'attivazione pubblica richiede `GEMINI_ACCESS_MODE=paid-services` per
    client SEE (vedi WF-010).
 2. **Architettura.** Gemini sostituisce il parser, oppure è un **fallback**
-   quando il parser Progeo non riconosce abbastanza pasti? Raccomandazione da
+   quando il parser attuale non riconosce abbastanza pasti? Raccomandazione da
    valutare: parser deterministico per primo, Gemini solo se la copertura è
    sotto soglia.
 3. **Dove gira la chiamata.** Il browser non può avere la chiave: serve un
@@ -91,9 +91,9 @@ Non sono decisioni prese; vanno risolte prima dell'implementazione.
 
 ## Acceptance criteria
 
-- Un PDF testuale con template diverso da Progeo produce un piano con i pasti
+- Un PDF testuale con template diverso da quello attuale produce un piano con i pasti
   assegnati ai sei slot canonici, senza modifiche al resto dell'app.
-- Un PDF Progeo continua a produrre lo stesso risultato di oggi (nessuna
+- Un PDF del template attuale continua a produrre lo stesso risultato di oggi (nessuna
   regressione sui test esistenti in `tests/shopping-list.test.cjs`).
 - Un PDF privo di testo (scansione o immagine) viene rifiutato con messaggio
   chiaro; non si tenta OCR.

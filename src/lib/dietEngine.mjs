@@ -37,7 +37,7 @@ async function loadPdfEngine() {
     }
 
     /* ==========================================================================
-       CONVERSION ENGINE (Strict Progeo Rules)
+       CONVERSION ENGINE (Strict Rules)
        ========================================================================== */
     function parseSpoonCount(str) {
       if (!str) return null;
@@ -205,7 +205,7 @@ async function loadPdfEngine() {
     }
 
     /* ==========================================================================
-       SAMPLE PROGEO DIET GENERATOR (DEMO)
+       SAMPLE DIET GENERATOR (DEMO)
        ========================================================================== */
     // Alternatives remain explicit: no food substitutions are inferred.
     function parseFoodChoices(rawName, rawQty) {
@@ -320,11 +320,11 @@ async function loadPdfEngine() {
       return [...groups.values()].map(group => group.map(formatShoppingOption).join(' oppure '));
     }
 
-    function getSampleProgeoDiet() {
+    function getSampleDiet() {
       const rawData = {
         metadata: {
           parsedAt: new Date().toISOString(),
-          source: "Piano Alimentare Progeo Medical (Demo)"
+          source: "Piano Alimentare (Demo)"
         },
         days: {
           lun: {
@@ -577,7 +577,7 @@ async function loadPdfEngine() {
     }
 
     /* ==========================================================================
-       SUPER ROBUST PDF PARSER FOR PROGEO MEDICAL
+       ROBUST PDF PARSER
        ========================================================================== */
     function pdfFoodRow(line) {
       const name = line.items.filter(item => item.x < 220).map(item => item.str).join(' ').replace(/^\s*-\s*/, '').trim();
@@ -686,7 +686,7 @@ async function loadPdfEngine() {
       data.metadata.alternativesImported = groups.size > 0;
     }
 
-    async function parseProgeoPdf(arrayBuffer, updateProgress, pdfEngine) {
+    async function parseDietPdf(arrayBuffer, updateProgress, pdfEngine) {
       if (updateProgress) updateProgress("Caricamento PDF...", 15);
 
       const pdfjsLib = pdfEngine || await loadPdfEngine();
@@ -716,12 +716,12 @@ async function loadPdfEngine() {
         { id: 'arco_giornata', name: 'Arco della giornata', icon: '💧', regex: /arco.*giornata|condimenti|nella.*giornata|extra/i }
       ];
 
-      const metadataBlacklistRegex = /personalizzato|elaborato da|dott\.|dottor|biologo nutrizionista|ph\.d|indirizzo:|cellulare:|telefono:|email:|codice fiscale|fabbisogno|ripartizione|consigli generali|norme generali|avvertenze|pag\.\s*\d+|progeo medical|via\s+[a-z]|\b\d{5}\b|\b\d{9,10}\b/i;
+      const metadataBlacklistRegex = /personalizzato|elaborato da|dott\.|dottor|biologo nutrizionista|ph\.d|indirizzo:|cellulare:|telefono:|email:|codice fiscale|fabbisogno|ripartizione|consigli generali|norme generali|avvertenze|pag\.\s*\d+|www\.|https?:|©|via\s+[a-z]|\b\d{5}\b|\b\d{9,10}\b/i;
 
       const dietPlan = {
         metadata: {
           parsedAt: new Date().toISOString(),
-          source: "File PDF Progeo Medical"
+          source: "File PDF"
         },
         days: {}
       };
@@ -1005,4 +1005,4 @@ async function loadPdfEngine() {
     }
 
 
-export { normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingList, getSampleProgeoDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseProgeoPdf };
+export { normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingList, getSampleDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseDietPdf };

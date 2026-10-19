@@ -47,7 +47,7 @@ test('Google login redirect, protected home, logout and browser back with mobile
   await page.getByRole('link', { name: 'Accedi con Google' }).focus();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
-  await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
+  await page.getByRole('button', { name: /Carica Piano di Prova/i }).click();
   await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();
   assert.equal(await page.locator('#account-name').textContent(), 'Manu');
   assert.equal(await page.locator('#main-content').isVisible(), true);
@@ -72,7 +72,7 @@ test('different Google accounts use separate local plans; legacy unowned storage
   await page.evaluate(() => localStorage.setItem('diet_plan_data', 'legacy-unowned-plan'));
   await page.getByRole('link', { name: 'Accedi con Google' }).click();
   await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
-  await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
+  await page.getByRole('button', { name: /Carica Piano di Prova/i }).click();
   await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();
   const firstPlan = await page.evaluate(() => localStorage.getItem('diet_plan_archive:google-user-1'));
   await page.getByRole('button', { name: 'Esci', exact: true }).filter({ visible: true }).first().click();

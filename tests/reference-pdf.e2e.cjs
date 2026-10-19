@@ -6,8 +6,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { startFixture } = require('./auth-fixture.cjs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const pdfPath = process.env.REAL_PROGEO_PDF;
-if (!pdfPath) throw new Error('Set REAL_PROGEO_PDF to the private reference PDF.');
+const pdfPath = process.env.REFERENCE_PDF;
+if (!pdfPath) throw new Error('Set REFERENCE_PDF to the private reference PDF.');
 
 test('real reference PDF: appendix links, complete recipes, accurate shopping totals, reload', async () => {
   const fixture = await startFixture();

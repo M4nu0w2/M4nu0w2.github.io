@@ -11,7 +11,7 @@ test('settings toggle water and oil, record effective oil, switch units and clea
   const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(f.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
-  await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
+  await page.getByRole('button', { name: 'Carica Piano di Prova' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
   const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));

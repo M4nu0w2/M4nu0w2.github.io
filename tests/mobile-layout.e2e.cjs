@@ -17,7 +17,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const page = await context.newPage();
   await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
-  await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
+  await page.getByRole('button', { name: 'Carica Piano di Prova' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
 

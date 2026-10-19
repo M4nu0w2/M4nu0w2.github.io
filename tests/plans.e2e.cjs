@@ -23,7 +23,7 @@ async function setup(t) {
   t.after(async () => { await browser.close(); await f.close(); });
   await page.goto(f.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
-  await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
+  await page.getByRole('button', { name: 'Carica Piano di Prova' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
   const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
@@ -79,7 +79,7 @@ test('React stale replacement cannot overwrite a newer plan from another tab', a
   await manage(); await page.getByRole('button', { name: 'Sostituisci PDF' }).click(); await page.getByRole('button', { name: 'Confermo: voglio sostituire il piano attuale' }).click();
   await upload('Correzione.pdf'); await page.getByRole('checkbox', { name: /Confermo definitivamente/ }).waitFor();
   const other = await context.newPage(); await other.goto(`${f.config.origin}/app/plans`);
-  await other.getByRole('button', { name: '+ Nuovo piano' }).click(); await other.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click(); await other.getByRole('button', { name: 'Importa e attiva' }).click();
+  await other.getByRole('button', { name: '+ Nuovo piano' }).click(); await other.getByRole('button', { name: 'Carica Piano di Prova' }).click(); await other.getByRole('button', { name: 'Importa e attiva' }).click();
   await other.getByRole('heading', { name: 'Il menu di oggi' }).waitFor(); await page.bringToFront(); const snapshot = await archive();
   await page.getByRole('checkbox', { name: /Confermo definitivamente/ }).check(); await page.getByRole('button', { name: 'Sostituisci definitivamente' }).click(); await page.getByRole('alert').first().waitFor(); assert.deepEqual(await archive(), snapshot);
 });

@@ -73,8 +73,8 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright
 
-      # NON eseguito qui di proposito: tests/progeo-pdf.e2e.cjs richiede il PDF
-      # di riferimento PRIVATO (REAL_PROGEO_PDF), che non sta nel repository, e
+      # NON eseguito qui di proposito: tests/reference-pdf.e2e.cjs richiede il PDF
+      # di riferimento PRIVATO (REFERENCE_PDF), che non sta nel repository, e
       # lancia un errore all'avvio se manca. Resta un controllo LOCALE da fare
       # prima di pushare modifiche al parser: la CI NON lo copre.
 

@@ -24,7 +24,7 @@ verrà dopo, in un ticket a parte.
 
 ## Stato attuale (verificato sul codice)
 
-- Il parser Progeo (`src/lib/dietEngine.mjs`, `mealKeywords`) conosce sette id
+- Il parser (`src/lib/dietEngine.mjs`, `mealKeywords`) conosce sette id
   testuali: `colazione`, `meta_mattina`, `pranzo`, `merenda`, `cena`,
   `spuntino_serale`, `arco_giornata`. Sono costanti sparse, non un tipo.
 - I pasti aggiuntivi diventano `pasto_aggiuntivo_N` (N dal PDF), con nome e icona
