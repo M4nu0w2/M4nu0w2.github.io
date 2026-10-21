@@ -42,7 +42,7 @@
       const date = now();
       return { id: id(), name: (sourceName || 'Piano alimentare').replace(/\.pdf$/i, ''),
         sourceName: sourceName || null, createdAt: date, updatedAt: date,
-        data: copy(data), checked: {}, water: {}, oil: {} };
+        data: copy(data), checked: {}, water: {}, oil: {}, shopping: {} };
     }
     function migrate() {
       if (storage.getItem(key) !== null) return read();
@@ -80,7 +80,8 @@
       return write(archive);
     }
     function saveTracking(planId, field, value) {
-      if (!['checked', 'water', 'oil'].includes(field)) throw new Error('Tracking non valido.');
+      // `shopping` maps a shopping entry key to the alternative bought; separate from meal checks.
+      if (!['checked', 'water', 'oil', 'shopping'].includes(field)) throw new Error('Tracking non valido.');
       const archive = read();
       const plan = archive.plans.find(p => p.id === planId);
       if (!plan || archive.activeId !== planId) throw new Error('Il piano attivo è cambiato. Ricarica la pagina.');

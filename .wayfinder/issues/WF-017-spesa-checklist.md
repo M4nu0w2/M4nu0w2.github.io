@@ -4,7 +4,7 @@ title: Usare la lista della spesa come checklist in app
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
 status: open
-assignee: null
+assignee: manu
 assignment: manu
 assignment_mode: flexible
 blocked_by: []
@@ -30,6 +30,33 @@ che modifica la stessa vista.
   alternativa acquistata?
 
 Non implementare prima che le risposte del PO siano annotate qui.
+
+## PO answers
+
+2026-10-21 — risposte in sessione (Manu):
+
+- Durata: una sola checklist per piano. Cambiando i giorni scelti, le spunte
+  restano sulle voci ancora presenti nella lista.
+- Voce con alternative: si spunta la singola alternativa acquistata; la voce
+  risulta completata.
+- Pulsante per svuotare tutte le spunte della spesa del piano: sì.
+- Voci spuntate: barrate e spostate in fondo alla lista.
+
+## Implementation comment
+
+2026-10-21 — implementato in locale, non ancora committato né pubblicato:
+
+- `buildShoppingGroups` in `dietEngine.mjs` dà voci e alternative con chiavi
+  indipendenti dalle quantità sommate; `buildShoppingList` ne deriva il testo.
+- Nuovo campo `shopping` del piano (`{ chiave voce: chiave alternativa }`),
+  vuoto nei piani nuovi e sostituiti; archivi esistenti senza campo validi.
+- "Apri checklist" nella finestra di esportazione; "Svuota spunte" azzera il
+  campo del piano. Chiavi di voci assenti restano salvate ma non contano.
+- Per [Raggruppare la lista della spesa per reparto](WF-018-spesa-reparti.md):
+  raggruppare sopra `buildShoppingGroups`, senza cambiare le chiavi.
+- `npm test` 56/56, `npm run test:browser` 17/17 verdi.
+
+Chiusura dopo push su `dev` con deploy riuscito.
 
 ## Vincoli
 

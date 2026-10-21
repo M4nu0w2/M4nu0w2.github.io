@@ -161,3 +161,13 @@ test('recipe choice groups aggregate all quantities without making their ingredi
   assert.deepEqual(plain(app().buildShoppingList(diet(choice, choice, food('Parmigiano', '10 g')), ['lun'])),
     ['Uovo — 4 pezzi oppure Frittata (Uovo — 2 pezzi + Parmigiano — 40 g)', 'Parmigiano — 10 g']);
 });
+test('shopping groups keep keys stable when selected days change quantities', () => {
+  const choice = () => food('Vitello', '150 g', { alternatives: [food('Pollo', '180 g')] });
+  const data = diet(choice());
+  data.days.mar = { meals: [{ items: [choice(), food('Pane', '50 g')] }] };
+  const one = app().buildShoppingGroups(data, ['lun']), two = app().buildShoppingGroups(data, ['lun', 'mar']);
+  assert.equal(one[0].key, two[0].key);
+  assert.deepEqual(one[0].options.map(option => option.key), two[0].options.map(option => option.key));
+  assert.deepEqual(plain(two.map(group => group.options.map(option => option.text))), [['Vitello — 300 g', 'Pollo — 360 g'], ['Pane — 50 g']]);
+  assert.deepEqual(plain(app().buildShoppingList(data, ['lun', 'mar'])), ['Vitello — 300 g oppure Pollo — 360 g', 'Pane — 50 g']);
+});

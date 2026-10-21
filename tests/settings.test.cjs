@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createStore, settingsOf } = require('../src/lib/planStore.mjs');
-const { dayOil, stepOil, formatOil, displayQty } = require('../src/lib/tracking.mjs');
+const { dayOil, stepOil, formatOil, displayQty, shoppingChecklist, toggleShopping } = require('../src/lib/tracking.mjs');
 
 const diet = name => ({ days: { lun: { meals: [{ items: [{ name, qty: '100 g' }] }] } } });
 function storage() {
@@ -93,4 +93,28 @@ test('PDF units show the original measure with grams in the note', () => {
   assert.deepEqual(displayQty(oil, 'pdf'), { qty: '3 cucchiaini', note: '= 12 g · 1 cucchiaino olio = 4 g' });
   assert.deepEqual(displayQty(oil, 'grams'), { qty: '12 g', note: '1 cucchiaino olio = 4 g (3 cucchiaini)' });
   assert.deepEqual(displayQty({ name: 'Mela', qty: '150 g', rawQty: '150 g', isConverted: false }, 'pdf'), { qty: '150 g', note: '' });
+});
+
+test('shopping checklist: one alternative per entry, bought entries last, stale keys ignored', () => {
+  const groups = [{ key: 'a', options: [{ key: 'a1' }, { key: 'a2' }] }, { key: 'b', options: [{ key: 'b1' }] }, { key: 'c', options: [{ key: 'c1' }] }];
+  let bought = toggleShopping({}, 'a', 'a1');
+  bought = toggleShopping(bought, 'a', 'a2');
+  assert.deepEqual(bought, { a: 'a2' });
+  assert.deepEqual(shoppingChecklist(groups, { ...bought, b: 'gone', z: 'z1' }).map(entry => [entry.key, entry.bought]), [['b', null], ['c', null], ['a', 'a2']]);
+  assert.deepEqual(toggleShopping(bought, 'a', 'a2'), {});
+});
+
+test('shopping checks are saved per plan, apart from meal checks, and reset on replacement', () => {
+  const store = createStore(storage(), 'sub-a');
+  let archive = store.importPlan(diet('Riso'));
+  const first = archive.activeId;
+  store.saveTracking(first, 'checked', { lun: { item1: true } });
+  archive = store.saveTracking(first, 'shopping', { a: 'a1' });
+  assert.deepEqual(archive.plans[0].shopping, { a: 'a1' });
+  assert.deepEqual(archive.plans[0].checked, { lun: { item1: true } });
+  archive = store.importPlan(diet('Pasta'));
+  assert.deepEqual(archive.plans[1].shopping, {});
+  archive = store.importPlan(diet('Farro'), { mode: 'replace', targetId: archive.activeId });
+  assert.deepEqual(archive.plans[1].shopping, {});
+  assert.deepEqual(store.read().plans[0].shopping, { a: 'a1' });
 });

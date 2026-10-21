@@ -83,3 +83,63 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     await fixture.close();
   }
 });
+
+test('mobile shopping checklist: one alternative per entry, bought last, survives reload and day changes', async () => {
+  const fixture = await startFixture();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const origin = fixture.config.origin;
+    const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
+    const login = await fixture.login();
+    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: origin }]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('https://**/*', route => route.fulfill({ status: 200,
+      contentType: route.request().url().endsWith('.js') ? 'application/javascript' : 'text/css', body: '' }));
+    await page.goto(origin);
+    await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
+    await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
+    await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();
+    const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
+    const mealChecks = JSON.stringify((await archive()).plans[0].checked);
+    await page.getByRole('button', { name: 'Esporta lista della spesa', exact: true }).click();
+    await page.getByRole('button', { name: 'Apri checklist', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Checklist della spesa' });
+    const entries = dialog.locator('.shopping-checklist > li');
+    const total = await entries.count();
+    assert.ok(total > 1);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+    assert.equal(await dialog.getByRole('button', { name: 'Svuota spunte', exact: true }).isDisabled(), true);
+    const choice = entries.filter({ hasText: 'oppure' }).first();
+    const label = await choice.getByRole('checkbox').nth(1).getAttribute('aria-label');
+    await choice.getByRole('checkbox').nth(1).check();
+    const last = entries.last();
+    assert.equal(await last.getByRole('checkbox', { name: label, exact: true }).isChecked(), true);
+    assert.equal(await last.getByRole('checkbox').first().isChecked(), false);
+    await last.getByRole('checkbox').first().check();
+    assert.equal(await last.getByRole('checkbox', { name: label, exact: true }).isChecked(), false);
+    assert.equal(await last.getByRole('checkbox').first().isChecked(), true);
+    assert.equal(await entries.filter({ has: page.locator('input:checked') }).count(), 1);
+    await page.locator('#shopping-progress').filter({ hasText: `1 / ${total}` }).waitFor();
+    const saved = (await archive()).plans[0];
+    assert.equal(Object.keys(saved.shopping).length, 1);
+    assert.equal(JSON.stringify(saved.checked), mealChecks);
+    await dialog.getByRole('checkbox', { name: 'Martedì' }).uncheck();
+    assert.equal(await entries.filter({ has: page.locator('input:checked') }).count(), 1);
+    await page.reload();
+    await page.getByRole('button', { name: 'Esporta lista della spesa', exact: true }).click();
+    await page.getByRole('button', { name: 'Apri checklist', exact: true }).click();
+    assert.equal(await entries.last().locator('input:checked').count(), 1);
+    await dialog.getByRole('button', { name: 'Svuota spunte', exact: true }).click();
+    assert.equal(await entries.locator('input:checked').count(), 0);
+    assert.deepEqual((await archive()).plans[0].shopping, {});
+    await dialog.getByRole('button', { name: "Torna all'esportazione", exact: true }).click();
+    assert.ok((await page.locator('#shopping-preview').inputValue()).includes('oppure'));
+    assert.deepEqual(errors, []);
+    await context.close();
+  } finally {
+    await browser.close();
+    await fixture.close();
+  }
+});

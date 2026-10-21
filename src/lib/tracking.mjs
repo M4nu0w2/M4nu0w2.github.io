@@ -54,4 +54,18 @@ function displayQty(food, units) {
   return { qty: food.rawQty, note: `= ${food.qty}${rule ? ` · ${rule}` : ''}` };
 }
 
-export { itemKey, isOil, gramsOf, dayOil, stepOil, formatOil, displayQty, OIL_GRAMS_PER_TEASPOON, OIL_STEP_GRAMS };
+// A stored alternative that no longer exists in its entry does not count as bought.
+// Bought entries move to the bottom, otherwise list order is kept.
+function shoppingChecklist(groups, bought = {}) {
+  const entries = groups.map(group => ({ ...group, bought: group.options.some(option => option.key === bought[group.key]) ? bought[group.key] : null }));
+  return [...entries.filter(entry => !entry.bought), ...entries.filter(entry => entry.bought)];
+}
+
+function toggleShopping(bought = {}, groupKey, optionKey) {
+  const next = { ...bought };
+  if (next[groupKey] === optionKey) delete next[groupKey];
+  else next[groupKey] = optionKey;
+  return next;
+}
+
+export { itemKey, isOil, gramsOf, dayOil, stepOil, formatOil, displayQty, shoppingChecklist, toggleShopping, OIL_GRAMS_PER_TEASPOON, OIL_STEP_GRAMS };

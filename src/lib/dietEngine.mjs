@@ -298,7 +298,8 @@ async function loadPdfEngine() {
       (option.recipeIngredients || []).forEach((ingredient, index) => sumShoppingOption(target.recipeIngredients[index], ingredient));
     }
 
-    function buildShoppingList(data, selectedDays) {
+    // Keys ignore summed quantities, so a checklist entry survives a change of selected days.
+    function buildShoppingGroups(data, selectedDays) {
       const groups = new Map();
       [...new Set(selectedDays)].forEach(dayKey => {
         (data?.days?.[dayKey]?.meals || []).forEach(meal => {
@@ -317,7 +318,11 @@ async function loadPdfEngine() {
           });
         });
       });
-      return [...groups.values()].map(group => group.map(formatShoppingOption).join(' oppure '));
+      return [...groups].map(([key, group]) => ({ key, options: group.map(option => ({ key: JSON.stringify(shoppingOptionKey(option)), text: formatShoppingOption(option) })) }));
+    }
+
+    function buildShoppingList(data, selectedDays) {
+      return buildShoppingGroups(data, selectedDays).map(group => group.options.map(option => option.text).join(' oppure '));
     }
 
     function getSampleProgeoDiet() {
@@ -1005,4 +1010,4 @@ async function loadPdfEngine() {
     }
 
 
-export { normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingList, getSampleProgeoDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseProgeoPdf };
+export { normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingGroups, buildShoppingList, getSampleProgeoDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseProgeoPdf };
