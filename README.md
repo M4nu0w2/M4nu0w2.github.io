@@ -100,7 +100,7 @@ NutriPro/
 ├── index.html                 # Shell Vite dell'app (monta #root)
 ├── vite.config.js             # Vite + plugin React → dist/
 ├── package.json               # Dipendenze app (React, router, pdfjs, google-auth-library)
-├── Dockerfile                 # Build multistadio (build Vite → runtime node:22-alpine)
+├── Dockerfile                 # Build multistadio (build Vite → runtime node:26-alpine)
 ├── compose.auth.yml           # Esecuzione standalone hardened
 ├── .env.example               # Modello configurazione (mai committare .env)
 ├── src/                       # Frontend React
@@ -180,7 +180,7 @@ Server `http` di Node senza framework. Route:
 
 ### Container
 
-`Dockerfile` multistadio: stadio `build` (app) + stadio `landing` (landing, con `ARG SITE_URL`) → stadio runtime `node:22-alpine`, solo dipendenze di produzione, utente `node`, porta 8080, `VOLUME /data`, `HEALTHCHECK` su `/healthz`. `compose.auth.yml` (riferimento standalone) aggiunge: bind su `127.0.0.1`, filesystem read-only, `cap_drop: ALL`, `no-new-privileges`, tmpfs su `/tmp`, 128 MB RAM, 0.25 CPU.
+`Dockerfile` multistadio: stadio `build` (app) + stadio `landing` (landing, con `ARG SITE_URL`) → stadio runtime `node:26-alpine`, solo dipendenze di produzione, utente `node`, porta 8080, `VOLUME /data`, `HEALTHCHECK` su `/healthz`. `compose.auth.yml` (riferimento standalone) aggiunge: bind su `127.0.0.1`, filesystem read-only, `cap_drop: ALL`, `no-new-privileges`, tmpfs su `/tmp`, 128 MB RAM, 0.25 CPU.
 
 ---
 

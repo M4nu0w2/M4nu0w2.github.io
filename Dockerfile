@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --ignore-scripts
@@ -7,7 +7,7 @@ COPY src ./src
 COPY public ./public
 RUN npm run build
 
-FROM node:22-alpine AS landing
+FROM node:26-alpine AS landing
 WORKDIR /landing
 # Public origin used for canonical URL and SEO. Default is the temporary demo domain.
 ARG SITE_URL=https://nutriprobasta.jirachibot.eu
@@ -22,7 +22,7 @@ COPY landing_page_nutripro/scripts ./scripts
 COPY landing_page_nutripro/src ./src
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production PORT=8080 WAITLIST_DB_PATH=/data/waitlist.sqlite
 COPY package.json package-lock.json ./
