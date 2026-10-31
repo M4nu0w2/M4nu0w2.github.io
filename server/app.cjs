@@ -8,6 +8,8 @@ const { OAuth2Client } = require('google-auth-library');
 const { createGeminiService } = require('./gemini.cjs');
 const { validate: validateWaitlist, createWaitlistStore } = require('./waitlist.cjs');
 const { createLogger, LEVELS } = require('./log.cjs');
+const { createAnonymizer } = require('./anonymizer.cjs');
+const { createPlanImport } = require('./planImport.cjs');
 
 const ROOT = path.join(__dirname, '..', 'dist');
 const APP = '/app';
@@ -59,6 +61,7 @@ function configFromEnv(env) {
     deploySha: /^[a-f0-9]{40}$/.test(env.NUTRIPRO_SHA || '') ? env.NUTRIPRO_SHA : 'unknown',
     trustProxy: env.TRUST_PROXY === 'true',
     logLevel: logLevel,
+    piiUrl: env.PII_URL || '',
     landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
     waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite')
   };
@@ -103,9 +106,10 @@ function readChatBody(req, { limit = 131072, parser = text => JSON.parse(text) }
 }
 
 // The OAuth client and clock can be injected by tests only. Production always uses Google's verifier.
-function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger } = {}) {
+function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger, planImport } = {}) {
   const log = logger || createLogger({ level: config.logLevel });
   const chat = geminiService || createGeminiService({ env: config.gemini || {}, origin: config.origin, now });
+  const importer = planImport || createPlanImport({ anonymizer: createAnonymizer({ url: config.piiUrl }), gemini: chat, log });
   const client = oauthClient || new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret,
     redirectUri: `${config.origin}/auth/google/callback`,
     transporterOptions: { timeout: 10000, retryConfig: { retry: 0 } } });
@@ -338,6 +342,24 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
           log.warn('chat_error', { status, code: error.code });
           if (status === 429) res.setHeader('Retry-After', '60');
           return json(res, status, { error: error.code || 'chat_error', message: error.safeMessage || 'Messaggio non inviato. Riprova piu tardi.' });
+        }
+      }
+      if (route === '/api/plan/status' && req.method === 'GET') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        return json(res, 200, importer.status());
+      }
+      if (route === '/api/plan/import' && req.method === 'POST') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        if (req.headers.origin !== config.origin || !equal(session.csrf, req.headers['x-csrf-token'])) return json(res, 403, { error: 'forbidden' });
+        if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return json(res, 415, { error: 'unsupported_media_type' });
+        try {
+          const input = await readChatBody(req, { limit: 262144 });
+          return json(res, 200, await importer.run(session.sub, input));
+        } catch (error) {
+          const status = Number.isInteger(error.status) ? error.status : 500;
+          log.warn('plan_import_error', { status, code: error.code });
+          if (status === 429) res.setHeader('Retry-After', '60');
+          return json(res, status, { error: error.code || 'import_error', message: error.safeMessage || 'Lettura non riuscita. Riprova più tardi.' });
         }
       }
       if (route === '/api/session' && req.method === 'GET') {

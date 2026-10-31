@@ -96,3 +96,55 @@ test('two columns: a code of two digits links its alternatives too', async () =>
   assert.equal(lunch.alternativeCode, '96');
   assert.deepEqual(lunch.alternatives.map(choice => choice.rawName), ['Pasta integrale, verdure e parmigiano', 'Pasta integrale, pomodoro, piselli e parmigiano', 'Pasta integrale, pomodoro e ricotta di vacca']);
 });
+
+// ---- Text sent to the assistant: layout-aware, and without the repeated header and footer ----
+const textOf = pages => engine.extractPdfText(new ArrayBuffer(0), fakePdf(pages));
+
+test('assistant text: one block per column, so two day columns are never interleaved', async () => {
+  const { pages } = await textOf(load('plan-two-columns.json'));
+  assert.equal(pages.length, 6);
+  const first = pages[0];
+  assert.ok(first.indexOf('Lunedì') < first.indexOf('Martedì'));
+  // Everything of Monday comes before anything of Tuesday: the left column is one block.
+  assert.ok(first.indexOf('Melone estivo') < first.indexOf('Lenticchie secche'));
+  assert.match(first, /Ogni giorno/);
+  assert.match(first, /Tè verde {2}1 tazza/);
+});
+
+test('assistant text: the header with the patient name and the footer with the professional never leave', async () => {
+  for (const name of ['plan-two-columns.json', 'plan-daily-pages.json']) {
+    const { pages } = await textOf(load(name).slice(name === 'plan-daily-pages.json' ? 2 : 0));
+    const all = pages.join('\n');
+    assert.equal(/MARIO ROSSI|Mario Rossi/.test(all), false, name);
+    assert.equal(/Giulia Bianchi|Powered by|Elaborato da/.test(all), false, name);
+    // The foods are still there.
+    assert.match(all, /Tonno al naturale/);
+  }
+});
+
+test('assistant text: a PDF without text is reported, like the import', async () => {
+  await assert.rejects(textOf([[], []]), error => error.code === 'PDF_NO_TEXT');
+});
+
+test('a plan read by the assistant gets the same shape, meal ids and order as one read locally', () => {
+  const plan = engine.planFromAssistant({ days: [{ day: 'lun', meals: [
+    { type: 'cena', name: 'Cena', items: [{ name: 'Orata', qty: '300 g' }] },
+    { type: 'colazione', name: 'Colazione', items: [{ name: 'Kiwi', qty: 'n. 1', alternatives: [{ name: 'Ananas', qty: '70 g' }] }] },
+    { type: 'pasto_aggiuntivo', name: 'Extra', items: [{ name: 'Noci secche', qty: '10 g' }] },
+    { type: 'altro', name: 'Pre-allenamento', items: [{ name: 'Banane', qty: 'n. 1' }] },
+    { type: 'pranzo', name: 'Pranzo', items: [{ name: 'Riso integrale', qty: '8 cucchiai' }] }] }] });
+  assert.deepEqual(plan.days.lun.meals.map(meal => meal.id), ['colazione', 'pranzo', 'cena', 'pasto_aggiuntivo_1', 'altro_1']);
+  assert.deepEqual(plan.days.lun.meals.map(meal => meal.name), ['Colazione', 'Pranzo', 'Cena', 'Pasto aggiuntivo 1', 'Pre-allenamento']);
+  const kiwi = plan.days.lun.meals[0].items[0];
+  assert.deepEqual([kiwi.rawName, kiwi.rawQty, kiwi.alternatives[0].rawName], ['Kiwi', 'n. 1', 'Ananas']);
+  // The same conversions as for a plan read locally: 8 spoons of rice become grams.
+  assert.equal(plan.days.lun.meals[1].items[0].qty, '160 g');
+  assert.equal(plan.metadata.assistant, true);
+  assert.equal(plan.metadata.quality.recognizedDays, 1);
+  assert.equal(plan.metadata.quality.warnings.some(text => /assistente/.test(text) && /originale/.test(text)), true);
+  assert.equal(Object.keys(plan.days).length, 7);
+});
+
+test('an assistant answer with nothing in it is not a plan', () => {
+  assert.throws(() => engine.planFromAssistant({ days: [] }), error => error.code === 'PLAN_NOT_RECOGNIZED');
+});

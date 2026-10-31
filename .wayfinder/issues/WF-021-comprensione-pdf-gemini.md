@@ -135,3 +135,13 @@ motore non capisce: dipende da WF-010 (nessuna prova con un fornitore reale, chi
 API, tier a pagamento SEE), dal consenso privacy per inviare il testo del PDF
 (WF-030, WF-034) e dall'enum dei pasti (WF-023). Una scansione resta fuori ambito
 (nessun OCR), come deciso.
+
+## Progress note 2 - 2026-10-31
+
+Il ripiego con Gemini è **implementato**, spento di default e con un solo punto non provato (la chiamata reale
+a Google, per mancanza di chiave): il lettore locale resta il primo tentativo; se non capisce il PDF, o lo legge
+in parte, l'utente può scegliere «Leggi con l'assistente» dopo un consenso. Il testo passa da Rizzo-PII (nostro
+container) e da un filtro senza modello prima di arrivare a Google, che risponde in JSON controllato da noi. Dettagli:
+README, sezione «Lettura con l'assistente», e il ticket
+[Decidere dove e come usare Rizzo-PII per anonimizzare i dati prima che escano dal dispositivo](WF-035-anonimizzazione-rizzo-pii.md).
+Restano bloccanti per l'uso pubblico: chiave e tier di Google (WF-010), consenso e ruoli GDPR (WF-030, WF-034).

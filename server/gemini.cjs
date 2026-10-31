@@ -43,20 +43,20 @@ function createGeminiService({ env = process.env, origin = '', fetchImpl = globa
     if (counter.count >= 5 || counter.daily >= 30 || globalCount >= 120 || inflight >= 4 || (!accounts.has(account) && accounts.size >= 120)) throw new GeminiError(429, 'rate_limited', 'Limite temporaneo raggiunto. Riprova più tardi.');
     counter.count++; counter.daily++; globalCount++; accounts.set(account, counter);
   }
-  async function generate(account, body) {
+  // One request to the provider: availability, account limits, timeout and the usual errors.
+  async function call(account, { system, contents, generationConfig, timeoutMs: limit = timeoutMs, maxChars = 16000 }) {
     if (!enabled) throw new GeminiError(503, 'unavailable', 'Assistente Gemini non disponibile.');
     if (typeof account !== 'string' || !account || account.length > 256) throw new GeminiError(401, 'unauthorized', 'Accesso richiesto.');
-    const contents = validate(body);
     reserve(account);
     inflight++;
     const controller = new AbortController();
     let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, limit);
     try {
       const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
         method: 'POST', redirect: 'error', signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 1024, temperature: 0.4 } })
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig })
       });
       if (response.status === 429) throw new GeminiError(429, 'provider_quota', 'Quota Gemini esaurita. Riprova più tardi.');
       if (response.status === 503) throw new GeminiError(503, 'provider_unavailable', 'Gemini Flash-Lite temporaneamente sovraccarico. Riprova piu tardi.');
@@ -65,7 +65,7 @@ function createGeminiService({ env = process.env, origin = '', fetchImpl = globa
       const candidate = data?.candidates?.[0];
       if (data?.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'BLOCKLIST' || candidate?.finishReason === 'PROHIBITED_CONTENT' || candidate?.finishReason === 'RECITATION') throw new GeminiError(422, 'blocked_response', 'Gemini non può rispondere a questa richiesta.');
       const result = candidate?.content?.parts?.filter(part => typeof part.text === 'string' && !part.thought).map(part => part.text).join('\n').trim();
-      if (!result || result.length > 16000) throw new GeminiError(502, 'invalid_response', 'Risposta Gemini non disponibile.');
+      if (!result || result.length > maxChars) throw new GeminiError(502, 'invalid_response', 'Risposta Gemini non disponibile.');
       return { text: result, model: MODEL };
     } catch (error) {
       if (timedOut) throw new GeminiError(504, 'timeout', 'Gemini ha impiegato troppo tempo. Riprova.');
@@ -73,6 +73,18 @@ function createGeminiService({ env = process.env, origin = '', fetchImpl = globa
       throw new GeminiError(502, 'provider_error', 'Gemini non ha completato la richiesta.');
     } finally { clearTimeout(timer); inflight--; }
   }
-  return { status, generate };
+  async function generate(account, body) {
+    if (!enabled) throw new GeminiError(503, 'unavailable', 'Assistente Gemini non disponibile.');
+    const contents = validate(body);
+    return call(account, { system: SYSTEM, contents, generationConfig: { maxOutputTokens: 1024, temperature: 0.4 } });
+  }
+  // Structured reading of a document. The caller has already anonymised `text`: this module only
+  // sends it. Returns the model's JSON text; checking its shape is the caller's job.
+  async function extract(account, { system, text }) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 100000) throw new GeminiError(400, 'invalid_request', 'Testo non valido.');
+    return call(account, { system, contents: [{ role: 'user', parts: [{ text }] }], timeoutMs: 90000, maxChars: 100000,
+      generationConfig: { maxOutputTokens: 16384, temperature: 0, responseMimeType: 'application/json' } });
+  }
+  return { status, generate, extract };
 }
 module.exports = { createGeminiService, GeminiError, MODEL };

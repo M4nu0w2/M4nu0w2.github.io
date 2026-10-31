@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
+const { fakeRizzo, fakeGemini } = require('./plan-import-fakes.cjs');
 
 function fixturePdf(content) {
   const stream = content || 'BT /F1 12 Tf 1 0 0 1 40 760 Tm (Luned\\354) Tj ET\nBT /F1 12 Tf 1 0 0 1 260 730 Tm (Pranzo) Tj ET\nBT /F1 12 Tf 1 0 0 1 78 700 Tm (Pane) Tj 1 0 0 1 393 700 Tm (50 g) Tj ET';
@@ -71,4 +72,48 @@ test('a PDF that is not a meal plan gets a plain message, imports nothing, and t
   await page.getByLabel('PDF del piano').setInputFiles({ name: 'Piano ottobre.pdf', mimeType: 'application/pdf', buffer: fixturePdf() });
   await page.locator('button:not([disabled])', { hasText: 'Importa e attiva' }).waitFor();
   assert.deepEqual(errors, []);
+});
+
+test('a PDF the reader cannot understand can be read by the assistant, after consent and anonymisation', async t => {
+  const rizzo = await fakeRizzo(); const gemini = fakeGemini();
+  const fixture = await startFixture({ PII_URL: rizzo.url }, { geminiService: gemini }); const browser = await chromium.launch({ headless: true });
+  t.after(async () => { await browser.close(); await fixture.close(); await rizzo.close(); });
+  const context = await browser.newContext(); const login = await fixture.login();
+  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  const page = await context.newPage(); const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(fixture.config.origin + '/app/');
+  await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
+  const unknown = fixturePdf('BT /F1 12 Tf 1 0 0 1 40 760 Tm (Mario Rossi) Tj ET\nBT /F1 12 Tf 1 0 0 1 40 740 Tm (mario.rossi@example.test) Tj ET\nBT /F1 12 Tf 1 0 0 1 40 720 Tm (Il tuo menu in breve) Tj ET');
+  await page.getByLabel('PDF del piano').setInputFiles({ name: 'Menu.pdf', mimeType: 'application/pdf', buffer: unknown });
+  await page.getByRole('alert').waitFor();
+  const button = page.getByRole('button', { name: "Leggi con l'assistente" });
+  assert.equal(await button.isDisabled(), true); // no consent yet
+  await page.getByLabel('Ho capito e acconsento.').check();
+  await button.click();
+  await page.getByText(/giorni · .* pasti riconosciuti/).waitFor();
+  assert.match(await page.locator('.notice.warning').textContent(), /Letto con l'assistente/);
+  // Google received the text without the name and the e-mail; the PDF itself never left.
+  assert.equal(gemini.calls.length, 1);
+  assert.equal(/Mario Rossi|mario.rossi@example.test/.test(gemini.calls[0].text), false);
+  await page.getByRole('button', { name: 'Importa e attiva' }).click();
+  await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
+  const archive = await page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
+  assert.equal(archive.plans[0].data.days.lun.meals[0].name, 'Colazione');
+  assert.equal(archive.plans[0].data.days.lun.meals[0].items[1].alternatives[0].rawName, 'Ananas');
+  assert.deepEqual(errors, []);
+});
+
+test('without the anonymiser the assistant is not even offered', async t => {
+  const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
+  t.after(async () => { await browser.close(); await fixture.close(); });
+  const context = await browser.newContext(); const login = await fixture.login();
+  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  const page = await context.newPage();
+  await page.goto(fixture.config.origin + '/app/');
+  await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
+  const unknown = fixturePdf('BT /F1 12 Tf 1 0 0 1 40 760 Tm (Il tuo menu in breve) Tj ET');
+  await page.getByLabel('PDF del piano').setInputFiles({ name: 'Menu.pdf', mimeType: 'application/pdf', buffer: unknown });
+  await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('button', { name: "Leggi con l'assistente" }).count(), 0);
 });

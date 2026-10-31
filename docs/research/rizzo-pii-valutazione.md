@@ -88,3 +88,22 @@ state toccate in nessuna delle due prove.
    (intestazione con il nome del paziente, piè di pagina con il nome del professionista)
    e la copertina si possono togliere senza modello.
 6. Misurare il tempo e la RAM sulla macchina di produzione prima di decidere.
+
+## Prova di punta a punta (2026-10-31)
+
+Dopo l'implementazione del percorso «testo → nostro server → Rizzo-PII → filtro senza modello → Google»,
+provato con i due PDF reali: estrazione del testo con il codice di produzione (`extractPdfText`), nostro
+server vero, **container Rizzo-PII vero**, Gemini **simulato** che registra ciò che riceverebbe.
+
+| | Piano a due colonne | Piano con copertina |
+| :--- | :--- | :--- |
+| Risposta del server | 200 in 28,7 s (prima richiesta, a freddo) | 200 in 15,0 s |
+| Testo dal PDF → inviato a Google | 8.950 → 9.074 caratteri | 18.594 → 18.904 caratteri |
+| Identificativi reali che Google riceverebbe | nessuno | nessuno |
+| Codici delle alternative | 65 → 65 | 63 → 63 |
+| Quantità inviate | 200 | 164 |
+| Segnaposto inviati | nomi | nomi, via, CAP, città, provincia, telefono, email, sito |
+
+Note: nel secondo piano resta un carattere `@` isolato, il prefisso del profilo social dello studio, il cui
+nome è stato sostituito. Il CAP è coperto dal filtro senza modello (era escluso dal modello).
+La prova non cambia i limiti già elencati: due documenti, un solo paziente, un solo professionista.

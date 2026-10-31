@@ -97,3 +97,25 @@ Non sono decisioni prese.
 
 - Mettere il servizio in produzione (ticket di implementazione successivo).
 - Cambiare il lettore dei PDF.
+
+## Progress note - 2026-10-31 (implementation, on the PO's explicit request)
+
+Il PO ha chiarito il flusso voluto: il PDF dell'utente passa **prima** da un nostro container
+con Rizzo-PII e **poi** va a Google; il GDPR si sistema a parte. Implementato così, con una scelta
+mia da confermare: il lettore locale resta il primo tentativo e l'assistente parte solo se il PDF
+non si capisce o si legge in parte (o su scelta dell'utente), perché mandare tutto a Google, sempre,
+invierebbe i dati anche quando non servono. In ogni caso **a Google non arriva nulla che non sia passato
+da Rizzo-PII**, e se Rizzo non risponde non parte nessuna chiamata (due mutazioni del codice, provate, fanno
+fallire i test).
+
+Cosa c'è: `server/anonymizer.cjs` (servizio + filtro senza modello), `server/planImport.cjs` (consenso,
+limiti, prompt, controllo rigido della risposta), `gemini.extract`, `POST /api/plan/import` e
+`GET /api/plan/status`, lettura nel browser con pulizia di intestazione e piè di pagina, pulsante con
+consenso, `docker/rizzo-pii/Dockerfile` con revisione fissata, servizio nei Compose (NutriPro e Orchestrator)
+**spento di default** su rete interna. Misura su due piani reali: nessun identificativo a Google, tutti i
+codici delle alternative e le quantità intatti (docs/research/rizzo-pii-valutazione.md).
+
+Decisioni che restano al PO: dove far girare il servizio in produzione (misurare Hermes: 6,84 GB di disco,
+≈0,8 GB di RAM, ≈3 core, 15–30 s per documento), il richiamo del modello su altri nomi e studi (provato su
+un paziente e un professionista), i ruoli GDPR e il consenso (ticket legale), il tier di Google per i clienti nello
+SEE. **Non provato dal vivo con Google**: manca una chiave API; il formato della risposta è controllato da noi.

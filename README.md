@@ -168,6 +168,33 @@ Pasti: l'elenco dei tipi (`MEAL_TYPES`: colazione, metà mattina, pranzo, merend
 
 I test usano due fixture (`tests/fixtures/`) con le coordinate del testo di due PDF reali, **anonimizzate** (nome, indirizzo, telefono, email, studio e software di origine sostituiti): nessun PDF reale entra nel repository.
 
+### Lettura con l'assistente: anonimizzazione prima di Google
+
+Quando il lettore locale non capisce un PDF (o lo legge solo in parte), l'utente può scegliere **«Leggi con l'assistente»**, dopo un consenso esplicito. La regola di progetto: **a Google non arriva mai nulla che non sia passato dall'anonimizzatore, e se l'anonimizzatore non risponde non parte nessuna chiamata.**
+
+```
+browser                      server NutriPro                       container Rizzo-PII        Google
+PDF → testo (pdf.js)  ──►  controlli (login, CSRF, Origin,   ──►  toglie nomi, indirizzi,  ──►  Gemini → JSON
+toglie intestazione e      consenso, dimensioni, limiti)           telefoni, email, URL…       │
+piè di pagina ripetuti             │                                    │                      ▼
+                                   └── filtro senza modello: email, URL, IBAN, codice fiscale,  controllo rigido della
+                                       telefono, CAP ◄──────────────────┘                       risposta → piano
+```
+
+- **Nel browser** (`extractPdfText`): il testo esce a blocchi, uno per colonna, e **senza** la riga in cima e le righe in fondo che si ripetono su più pagine (là stanno di solito il nome del paziente e quello del professionista). Una riga che sembra contenuto (un pasto, un giorno, un alimento con quantità) non viene mai tolta.
+- **Server** (`server/planImport.cjs`, `server/anonymizer.cjs`): consenso obbligatorio (`consent: true`), al massimo 30 pagine e 80.000 caratteri; poi il servizio Rizzo-PII con `include_mapping: false` (nessun dizionario per ripristinare i dati) e le categorie `BUILDINGNUM`, `ZIPCODE`, `AGE`, `AMOUNT`, `DATE`, `TIME` escluse, perché altrimenti scambierebbe i codici delle alternative per numeri civici e CAP; poi un filtro **senza modello** (email, URL, IBAN, codice fiscale, telefono, CAP).
+- **Google** (`gemini.extract`): riceve solo il testo ripulito e un prompt che lo tratta come dato non attendibile (un PDF può contenere istruzioni). Chiede JSON; la risposta si **valida** (giorni, tipi di pasto, lunghezze, numero di voci) prima di essere usata. Una risposta che non rispetta le regole si rifiuta con un messaggio chiaro.
+- **Il piano** che ne esce passa da `planFromAssistant`: stessi id di pasto, stesso ordine e stesse conversioni di un piano letto in locale, con l'avviso «Letto con l'assistente: controlla ogni giorno con il PDF originale prima di importare».
+- **Disattivata di default**: serve `PII_URL`, e l'assistente Gemini attivo (`GEMINI_ENABLED`, chiave, `GEMINI_ACCESS_MODE`). L'interfaccia offre il pulsante solo se entrambi sono pronti.
+
+**Misura su due piani reali** (Rizzo-PII vero, Gemini simulato che registra cosa riceve, vedi `docs/research/rizzo-pii-valutazione.md`): a Google non arriva nessun nome, indirizzo, telefono, email, sito o studio; tutti i codici delle alternative (65 e 63) e le quantità (200 e 164) arrivano intatti. Tempo: 15–30 secondi per la sola anonimizzazione.
+
+**Limiti, detti chiaramente**
+- Il modello è una rete neurale: su un nome che non ha mai visto può sbagliare. Dichiara F1 0,989 per frase; è stato provato su due documenti dello stesso paziente. Per questo c'è il consenso con un avviso, e il filtro senza modello come seconda barriera.
+- Non è una garanzia di legge: l'invio del testo al nostro server e poi a Google richiede comunque base giuridica, informativa e accordi (ticket sul GDPR e sulla conservazione dei dati). Un piano senza nome ma legato all'account resta un dato personale.
+- Non provato dal vivo con Google: la chiamata reale richiede chiave API, e per i clienti nello SEE il tier a pagamento (vedi il ticket su Gemini). I test usano un Gemini simulato; il formato della risposta è controllato da noi, non dalla sintassi dello schema di Google.
+- L'immagine di Rizzo-PII pesa 6,84 GB e usa circa 0,8 GB di RAM e 3 core mentre lavora: va misurata sull'host di produzione prima di attivarla (Dockerfile con revisione fissata in `docker/rizzo-pii/`).
+
 ### Motore di conversione (dettaglio)
 
 Regole principali applicate al parsing (le quantità restano indicative: confrontare sempre col PDF):
@@ -203,6 +230,8 @@ Server `http` di Node senza framework. Route:
 | `/app/`, `/app/plans`, `/app/chat`, `/app/settings`, `/app/plans/:id` | GET | sì | Shell SPA (senza sessione → `/app/login`) |
 | `/app/assets/*`, `/app/icon-512.png`, `/app/manifest.webmanifest` | GET | no | Statici dell'app da allowlist |
 | `/api/waitlist` | POST | no | Candidatura tester (vedi landing) |
+| `/api/plan/status` | GET | sì | La lettura con l'assistente è disponibile? (`{ available, reason }`) |
+| `/api/plan/import` | POST | sì + CSRF + Origin | Legge un piano con l'assistente, dopo l'anonimizzazione (vedi sotto) |
 
 **Sessioni**: cookie firmato HMAC-SHA256 (`__Host-nutripro_session` in HTTPS), HttpOnly, durata di default 90 giorni con rinnovo all'uso (max 180). Con `SESSION_SECRET` sopravvivono ai riavvii; senza, ogni restart disconnette tutti (warning a log). La revoca al logout è tenuta in memoria.
 
@@ -257,6 +286,7 @@ Solo backend (per la landing, `SITE_URL` è un parametro di build). Copiare `.en
 | `TRUST_PROXY` | no | `false` | `true` solo dietro il proxy privato che sovrascrive `X-Real-IP`. |
 | `NUTRIPRO_SHA` | no | `unknown` | SHA a 40 hex esposto da `/deploy-version.txt`; impostato dal deploy. |
 | `WAITLIST_DB_PATH` | consigliata | `./data/waitlist.sqlite` (Docker: `/data/waitlist.sqlite`) | File SQLite della waitlist. In produzione deve stare su un volume persistente. |
+| `PII_URL` | no | vuoto (funzione spenta) | Indirizzo del servizio di anonimizzazione (Rizzo-PII), per esempio `http://rizzo-pii:5005`. Solo rete interna. Senza, la lettura con l'assistente non è offerta. |
 | `LOG_LEVEL` | no | `info` | `info`, `warn`, `error` o `silent`. Un valore diverso ferma l'avvio. |
 | `LANDING_DIR` | no | `./landing`, poi `landing_page_nutripro/dist` | Cartella con la build della landing. Se assente, `/` risponde 404 e l'app funziona lo stesso. |
 | `GEMINI_ENABLED` | no | `false` | |
@@ -284,7 +314,7 @@ Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il 
 ## Test
 
 ```powershell
-npm test               # build + unit/integration (72 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist, log, impaginazioni dei PDF)
+npm test               # build + unit/integration (86 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist, log, impaginazioni dei PDF, lettura con l'assistente)
 npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, mobile, settings)
 ```
 

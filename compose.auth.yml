@@ -1,4 +1,10 @@
 # Standalone reference. In Hermes, integrate this service into the existing proxy network.
+#
+# Reading a plan with the assistant (optional): the text of the PDF goes first to the anonymiser
+# (Rizzo-PII, below) and only then to Google. Off by default. To try it:
+#   1. in .env: PII_URL=http://rizzo-pii:5005, GEMINI_ENABLED=true, GEMINI_API_KEY=..., GEMINI_ACCESS_MODE=local-dev
+#   2. docker compose -f compose.auth.yml --profile assistant up --build -d
+# The first build downloads about 6.8 GB (image) and takes about 5 minutes.
 services:
   frontend:
     build: .
@@ -17,6 +23,24 @@ services:
       - /tmp:size=16m,mode=1777
     mem_limit: 128m
     cpus: 0.25
+    networks: [default, private]
+
+  rizzo-pii:
+    profiles: ["assistant"]
+    build: docker/rizzo-pii
+    image: rizzo-pii:pinned
+    restart: unless-stopped
+    # No ports: only the app, on the private network, can reach it (it has no authentication).
+    expose: ["5005"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 3g   # about 0.8 GB at rest and under load; headroom for long documents
+    cpus: 2
+    networks: [private]
+
+networks:
+  private:
+    internal: true   # no way out to the internet, no way in from outside
 
 volumes:
   waitlist-data:

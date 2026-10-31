@@ -1241,4 +1241,109 @@ async function loadPdfEngine() {
     }
 
 
-export { normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingList, getSampleDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseDietPdf };
+    /* ==========================================================================
+       TEXT FOR THE ASSISTANT: what leaves the device when the reader cannot understand a PDF.
+       One block per column, and without the lines that repeat on every page at the top and
+       bottom (there sit the patient's name and the professional's name).
+       ========================================================================== */
+    const groupLines = items => {
+      const lines = [];
+      items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        let line = lines.find(l => Math.abs(l.y - y) < 5);
+        if (!line) { line = { y, items: [] }; lines.push(line); }
+        line.items.push(item);
+      });
+      lines.sort((a, b) => b.y - a.y);
+      lines.forEach(l => l.items.sort((a, b) => a.transform[4] - b.transform[4]));
+      return lines;
+    };
+    const lineText = line => line.items.map(item => item.str.trim()).join('  ');
+    const repeatKey = line => normalizeText(lineText(line)).replace(/[0-9]+/g, '#');
+
+    // Items of the header and footer lines: lines at the page margins, set apart from the body by
+    // a clear gap, that say the same (digits aside) on at least a third of the pages.
+    function marginItems(pageLines) {
+      const counts = new Map();
+      pageLines.forEach(lines => new Set(lines.map(repeatKey)).forEach(key => counts.set(key, (counts.get(key) || 0) + 1)));
+      // A meal, a day or a food with its quantity is content, wherever it sits: never a margin.
+      const isContent = line => {
+        const text = normalizeText(lineText(line));
+        return MEAL_TYPES.some(type => type.regex.test(text)) || /luned|marted|mercoled|gioved|venerd|sabat|domenic/.test(text) ||
+          line.items.some(item => isQuantityText(item.str) && !/^[0-9]+$/.test(item.str.trim()));
+      };
+      const repeats = line => !isContent(line) && counts.get(repeatKey(line)) >= Math.max(2, Math.ceil(pageLines.length * 0.3));
+      return pageLines.map(lines => {
+        const out = [];
+        if (lines.length > 3 && repeats(lines[0]) && lines[0].y - lines[1].y >= 12) out.push(...lines[0].items);
+        // The footer is the block of up to 4 close lines at the bottom, set apart by a gap above.
+        let k = lines.length - 1;
+        if (k > 1 && repeats(lines[k])) {
+          while (k > 1 && lines.length - k < 4 && lines[k - 1].y - lines[k].y < 30 && repeats(lines[k - 1])) k--;
+          if (lines[k - 1].y - lines[k].y >= 30) lines.slice(k).forEach(line => out.push(...line.items));
+        }
+        return out;
+      });
+    }
+
+    async function extractPdfText(arrayBuffer, pdfEngine) {
+      const pdfjsLib = pdfEngine || await loadPdfEngine();
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer), isEvalSupported: false }).promise;
+      } catch (error) {
+        throw planReadError(error?.name === 'PasswordException' ? 'PDF_ENCRYPTED' : 'PDF_INVALID');
+      }
+      const pageItems = [];
+      for (let n = 1; n <= pdf.numPages; n++) {
+        const content = await (await pdf.getPage(n)).getTextContent();
+        pageItems.push((content.items || []).filter(item => item.str && item.str.trim()));
+      }
+      if (pageItems.every(items => items.length === 0)) throw planReadError('PDF_NO_TEXT');
+      const margins = marginItems(pageItems.map(groupLines));
+      const pages = pageItems.map((items, index) => {
+        const kept = items.filter(item => !margins[index].includes(item));
+        const strip = findEveryDayStrip(kept);
+        const body = strip ? kept.filter(item => !strip.items.includes(item)) : kept;
+        const blocks = splitColumns(body).map(region => groupLines(region.items).map(lineText).join('\n'));
+        return [strip ? groupLines(strip.items).map(lineText).join('\n') : '', ...blocks].filter(Boolean).join('\n\n');
+      });
+      return { pages };
+    }
+
+    // The assistant's answer, already checked by the server, as a plan like the reader's.
+    function planFromAssistant(data) {
+      const names = { lun: 'Lunedì', mar: 'Martedì', mer: 'Mercoledì', gio: 'Giovedì', ven: 'Venerdì', sab: 'Sabato', dom: 'Domenica' };
+      const plan = { metadata: { parsedAt: new Date().toISOString(), source: "Letto con l'assistente", assistant: true }, days: {} };
+      Object.keys(names).forEach(key => { plan.days[key] = { dayName: names[key], meals: [] }; });
+      const food = (entry, id) => {
+        const converted = convertQuantityEngine(entry.name, entry.qty || '');
+        return { id, rawName: entry.name, name: converted.name, rawQty: entry.qty || '', qty: converted.qty, isConverted: converted.converted,
+          conversionNote: converted.note, isSubItem: false, isRecipe: false };
+      };
+      (data?.days || []).forEach(day => {
+        const target = plan.days[day.day];
+        if (!target) return;
+        let extra = 0, other = 0;
+        (day.meals || []).forEach((meal, mealIndex) => {
+          const type = MEAL_TYPES.find(t => t.id === meal.type);
+          const id = type ? type.id : meal.type === 'pasto_aggiuntivo' ? `pasto_aggiuntivo_${++extra}` : `altro_${++other}`;
+          const name = type ? type.name : meal.type === 'pasto_aggiuntivo' ? `Pasto aggiuntivo ${extra}` : (meal.name || 'Altro pasto');
+          const items = (meal.items || []).map((entry, index) => {
+            const item = food(entry, `item_${day.day}_${id}_${mealIndex}_${index}`);
+            const alternatives = (entry.alternatives || []).map((alt, altIndex) => food(alt, `${item.id}_alt${altIndex}`));
+            return alternatives.length ? { ...item, alternatives } : item;
+          });
+          target.meals.push({ id, name, icon: type?.icon || (meal.type === 'pasto_aggiuntivo' ? '🍎' : '🍽️'), items });
+        });
+        target.meals.sort((a, b) => mealRank(a) - mealRank(b));
+      });
+      const recognizedDays = Object.keys(names).filter(key => plan.days[key].meals.some(meal => meal.items.length)).length;
+      if (recognizedDays === 0) throw planReadError('PLAN_NOT_RECOGNIZED');
+      plan.metadata.quality = { recognizedDays, warnings: [
+        "Letto con l'assistente: controlla ogni giorno con il PDF originale prima di importare." ,
+        ...(recognizedDays < 7 ? [`Abbiamo letto ${recognizedDays} giorni su 7: controlla che il piano sia completo.`] : [])] };
+      return plan;
+    }
+
+export { extractPdfText, planFromAssistant, normalizeText, parseSpoonCount, convertQuantityEngine, parseFoodChoices, getFoodChoices, escapeHtml, shoppingQuantity, formatShoppingOption, shoppingOption, shoppingOptionKey, sumShoppingOption, buildShoppingList, getSampleDiet, pdfFoodRow, parsePdfAlternativePage, parsePdfUnitMeasures, applyPdfAlternatives, parseDietPdf };
