@@ -113,3 +113,13 @@ Non sono decisioni prese.
 - Implementare l'enum o migrare i piani (ticket di implementazione successivo).
 - Interpretare il PDF con Gemini (WF-021).
 - Classificare gli alimenti o i macronutrienti.
+
+## Progress note - 2026-10-31
+
+Nel codice esiste ora un elenco unico `MEAL_TYPES` in `src/lib/dietEngine.mjs`, con gli
+id già presenti nei piani salvati (nessuna migrazione, nessuna perdita di spunte) e un
+ordine canonico dei pasti. «Pasto aggiuntivo» senza numero vale «Pasto aggiuntivo 1».
+Una striscia «Ogni giorno · Metà mattina: … · Acqua …: …» viene distribuita su tutti
+i giorni. **Non è la decisione del ticket**: restano aperti i sei punti per il PO
+(valore di ripiego «altro», spuntino ambiguo, nomi sconosciuti, piani con pasti
+diversi, uno o due spuntini, destino di `spuntino_serale` e `arco_giornata`).

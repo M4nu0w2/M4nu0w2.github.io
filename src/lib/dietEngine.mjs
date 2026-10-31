@@ -686,12 +686,207 @@ async function loadPdfEngine() {
       data.metadata.alternativesImported = groups.size > 0;
     }
 
+    /* ==========================================================================
+       MEAL TYPES: one list for the parser, the strip "same every day" and the order of meals.
+       Ids are the ones already stored in saved plans, so old plans keep working.
+       ========================================================================== */
+    const MEAL_TYPES = [
+      { id: 'colazione', name: 'Colazione', icon: '🌅', rank: 1, regex: /colazione/i },
+      { id: 'meta_mattina', name: 'Metà mattina', icon: '🍎', rank: 2, regex: /meta[' ]*mattina|spuntino.*matt|spuntino.*1|mattina/i },
+      { id: 'pranzo', name: 'Pranzo', icon: '🥗', rank: 3, regex: /pranzo/i },
+      { id: 'merenda', name: 'Merenda', icon: '🍇', rank: 4, regex: /merenda|spuntino.*pomeri|spuntino.*2|pomeriggio/i },
+      { id: 'cena', name: 'Cena', icon: '🍲', rank: 5, regex: /cena/i },
+      { id: 'spuntino_serale', name: 'Spuntino serale', icon: '🌙', rank: 6, regex: /spuntino.*sera|dopocena|serale|notturno/i },
+      { id: 'arco_giornata', name: 'Arco della giornata', icon: '💧', rank: 7, regex: /arco.*giornata|condimenti|nella.*giornata|extra/i }
+    ];
+    const mealRank = meal => (MEAL_TYPES.find(type => type.id === meal.id)?.rank) ?? (/^pasto_aggiuntivo/.test(meal.id) ? 8 : 9);
+
+    /* ==========================================================================
+       PAGE LAYOUT: day tables side by side, and the strip "same every day".
+       Each column is read as if it were a page of its own.
+       ========================================================================== */
+    class PlanReadError extends Error {
+      constructor(code, message) { super(message); this.name = 'PlanReadError'; this.code = code; }
+    }
+    const PLAN_READ_MESSAGES = {
+      PDF_NO_TEXT: 'Questo PDF non contiene testo selezionabile: è una scansione o un\'immagine. Chiedi al tuo nutrizionista il PDF originale, oppure carica un altro file.',
+      PLAN_NOT_RECOGNIZED: 'Non siamo riusciti a riconoscere un piano alimentare in questo PDF. Il formato potrebbe essere diverso da quelli che conosciamo. Prova con il PDF originale del tuo nutrizionista.',
+      PDF_ENCRYPTED: 'Questo PDF è protetto da password. Carica una copia senza protezione.',
+      PDF_INVALID: 'Questo file non è un PDF valido o è danneggiato. Prova a scaricarlo di nuovo.'
+    };
+    const planReadError = code => new PlanReadError(code, PLAN_READ_MESSAGES[code]);
+
+    const itemWidth = item => item.width || item.str.length * 5;
+
+    // A gutter is a vertical strip in the middle of the page that (almost) no text crosses.
+    function findGutter(items) {
+      if (items.length < 40) return null;
+      const spans = items.map(item => ({ x1: item.transform[4], x2: item.transform[4] + itemWidth(item) }));
+      const left = Math.min(...spans.map(s => s.x1));
+      const width = Math.max(...spans.map(s => s.x2)) - left;
+      if (width < 200) return null;
+      const allowed = Math.max(1, Math.floor(spans.length * 0.03));
+      let best = null, run = null;
+      for (let x = left + width * 0.3; x <= left + width * 0.7; x += 2) {
+        if (spans.filter(s => s.x1 < x && s.x2 > x).length <= allowed) {
+          run = run ? { from: run.from, to: x } : { from: x, to: x };
+          if (!best || run.to - run.from > best.to - best.from) best = { ...run };
+        } else run = null;
+      }
+      return best && best.to - best.from >= 10 ? (best.from + best.to) / 2 : null;
+    }
+
+    function splitColumns(items, depth = 0) {
+      const whole = [{ items, columnar: depth > 0 }];
+      if (depth > 1) return whole;
+      const gutter = findGutter(items);
+      if (gutter === null) return whole;
+      const sides = [items.filter(item => item.transform[4] < gutter), items.filter(item => item.transform[4] >= gutter)];
+      // A side that holds meals must also hold its own quantities: the gap between the name and
+      // the quantity columns of a single table is not a gutter. A side without meals (a legend,
+      // a box of notes) may sit next to a table.
+      const hasMeals = side => /colazione|pranzo|cena|merenda/i.test(side.map(item => item.str).join(' '));
+      const quantityLike = item => /^(n[.°] *)?([0-9]+|½)( *[a-zà-ü.]+)?$/i.test(item.str.trim()) && !/^[0-9]{2,5}$/.test(item.str.trim());
+      const mealSides = sides.filter(hasMeals);
+      if (!mealSides.length || mealSides.some(side => side.length < items.length * 0.25 || side.filter(quantityLike).length < side.length * 0.2)) return whole;
+      return sides.flatMap(side => splitColumns(side, depth + 1));
+    }
+
+    // Where the Quantità and Alt. columns start. Single tables keep the fixed positions of the
+    // original template; columns read from a wider page use their own header row.
+    function columnLayout(region) {
+      if (!region.columnar) return { qtyFrom: 220, altFrom: 450 };
+      const xs = region.items.map(item => item.transform[4]);
+      const left = Math.min(...xs), span = Math.max(...xs) - left;
+      const header = word => region.items.find(item => word.test(normalizeText(item.str)))?.transform[4];
+      return { qtyFrom: (header(/^quantita$/) ?? left + span * 0.5) - 8, altFrom: (header(/^alt\.?$/) ?? left + span * 0.85) - 8 };
+    }
+
+    // A name that wraps ("… ridotto" / "contenuto di grassi") or a quantity split in two lines
+    // ("quantità" / "bastante") belongs to the row above.
+    function mergeWrappedLines(lines, layout) {
+      const zone = (line, from, to) => line.items.filter(item => item.x >= from && item.x < to);
+      const out = [];
+      for (const line of lines) {
+        const prev = out[out.length - 1];
+        const names = zone(line, -Infinity, layout.qtyFrom);
+        const qty = zone(line, layout.qtyFrom, layout.altFrom);
+        const alt = zone(line, layout.altFrom, Infinity);
+        // A row has a quantity, or at least an alternatives code (a recipe title has only that).
+        const prevIsRow = prev && zone(prev, layout.qtyFrom, Infinity).length > 0 && prev.y - line.y < 18;
+        if (prevIsRow && names.length && !qty.length && !alt.length && /^[a-zà-ü(]/.test(names.map(item => item.str).join(' '))) {
+          prev.items.push(...names);
+        } else if (prevIsRow && !names.length && qty.length) {
+          prev.items.push(...qty, ...alt);
+        } else { out.push(line); continue; }
+        prev.items.sort((a, b) => a.x - b.x);
+      }
+      return out;
+    }
+
+    const isQuantityText = text => /^(n[.°] *)?([0-9]+|½)( *[a-zà-ü.]+)?$/i.test(text.trim());
+
+    // Alternatives printed as headings "Food · quantity   CODE" followed by the choices: one food
+    // per line, a list "A · B · C" sharing one quantity, or recipes (a title, then ingredients
+    // separated by ";", on lines that may wrap anywhere). Adds a group per code, like the other layout.
+    function parseCodedAppendix(items, groups) {
+      const gutter = findGutter(items);
+      const sides = gutter === null ? [items] : [items.filter(item => item.transform[4] < gutter), items.filter(item => item.transform[4] >= gutter)];
+      const quantityTail = /^(.*?) +((?:[0-9]+(?:[.,][0-9]+)?|½|n[.°] *[0-9½]+|quantità bastante|a piacere|q[.]?b[.]?).*)$/i;
+      const food = (name, qty) => parseFoodChoices(name.replace(/^[-–—] */, '').trim(), /quantita bastante|a piacere|^q[.]?b[.]?$/.test(normalizeText(qty)) ? 'q.b.' : qty.trim());
+      for (const side of sides) {
+        const lines = [];
+        side.forEach(item => {
+          const y = Math.round(item.transform[5]);
+          let line = lines.find(l => Math.abs(l.y - y) < 5);
+          if (!line) { line = { y, items: [] }; lines.push(line); }
+          line.items.push({ x: Math.round(item.transform[4]), str: item.str.trim() });
+        });
+        lines.sort((a, b) => b.y - a.y);
+        lines.forEach(l => l.items.sort((a, b) => a.x - b.x));
+        let group = null, title = null, ingredients = '', names = '', previous = '';
+        const closeRecipe = () => {
+          if (group && title) {
+            const foods = ingredients.split(';').map(part => part.trim()).filter(Boolean).map(part => {
+              const match = part.match(quantityTail);
+              return food(match ? match[1] : part, match ? match[2] : '');
+            });
+            group.choices.push({ ...parseFoodChoices(title, ''), isRecipe: true, recipeIngredients: foods });
+          }
+          title = null; ingredients = '';
+        };
+        for (const line of lines) {
+          const text = line.items.map(item => item.str).join(' ').replace(/  +/g, ' ').trim();
+          const last = line.items[line.items.length - 1];
+          const headingText = line.items.slice(0, -1).map(item => item.str).join(' ').replace(/  +/g, ' ').trim();
+          if (line.items.length > 1 && /^[0-9]{2,5}$/.test(last.str) && (headingText.includes('·') || !/[0-9;]/.test(headingText))) {
+            closeRecipe(); names = ''; previous = '';
+            const [name, qty] = headingText.split(/ *· */);
+            group = { code: last.str, name, choices: [qty ? food(name, qty) : { ...parseFoodChoices(name, ''), isRecipe: true, recipeIngredients: [] }] };
+            groups.set(group.code, group);
+            continue;
+          }
+          const listOpen = /·$/.test(previous);
+          previous = text;
+          if (!group || /^(piano originale|elaborato da|powered by)/.test(normalizeText(text)) || /^[0-9]+ *[/] *[0-9]+$/.test(text)) continue;
+          if (/per ciascuna alternativa$/i.test(text)) {
+            const shared = text.replace(/ *per ciascuna alternativa$/i, '');
+            names.split(/ *· */).map(name => name.trim()).filter(Boolean).forEach(name => group.choices.push(food(name, shared)));
+            names = '';
+          } else if (text.includes('·') || listOpen) {
+            names += ' ' + text;
+          } else if (line.items.length === 1 && /^[A-ZÀ-Ý]/.test(text) && !/[0-9;]/.test(text)) {
+            closeRecipe(); title = text;
+          } else if (title) {
+            ingredients += ' ' + text;
+          } else if (line.items.length > 1 && isQuantityText(last.str)) {
+            group.choices.push(food(line.items.slice(0, -1).map(item => item.str).join(' '), last.str));
+          }
+        }
+        closeRecipe();
+      }
+    }
+
+    // "Ogni giorno · Metà mattina: nocciole 10 g · Acqua …: 11 bicchieri": foods that apply to every
+    // day are printed once, in a strip above the day tables. Returns the strip's items and entries.
+    function findEveryDayStrip(items) {
+      const lines = [];
+      items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        let line = lines.find(l => Math.abs(l.y - y) < 5);
+        if (!line) { line = { y, items: [] }; lines.push(line); }
+        line.items.push(item);
+      });
+      for (const line of lines) {
+        line.items.sort((a, b) => a.transform[4] - b.transform[4]);
+        const text = line.items.map(item => item.str.trim()).join(' ').replace(/  +/g, ' ').trim();
+        if (!/^(ogni giorno|tutti i giorni)/.test(normalizeText(text))) continue;
+        const entries = text.split(/ *[·•] */).slice(1).map(segment => {
+          const labelled = segment.match(/^([^:]{2,60}): *(.+)$/);
+          if (!labelled) return null;
+          const meal = MEAL_TYPES.find(type => type.regex.test(normalizeText(labelled[1])));
+          const food = meal ? labelled[2] : labelled[1];
+          const rest = meal ? '' : labelled[2];
+          const tail = food.match(/^(.*?) +((?:[0-9]+(?:[.,][0-9]+)?|½) *(?:g|gr|ml|kg|cucchiai|cucchiaini|bicchieri|bicchiere|porzione|porzioni|tazza|tazze|vasetto|fette|pezzi)(?![a-z]).*)$/i);
+          const name = (rest ? food : tail ? tail[1] : food).trim();
+          const qty = rest || (tail ? tail[2] : '');
+          return name ? { meal: meal || MEAL_TYPES.find(type => type.id === 'arco_giornata'), name: name[0].toUpperCase() + name.slice(1), qty: qty.trim() } : null;
+        }).filter(Boolean);
+        if (entries.length) return { items: line.items, entries };
+      }
+      return null;
+    }
+
     async function parseDietPdf(arrayBuffer, updateProgress, pdfEngine) {
       if (updateProgress) updateProgress("Caricamento PDF...", 15);
 
       const pdfjsLib = pdfEngine || await loadPdfEngine();
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer), isEvalSupported: false });
-      const pdf = await loadingTask.promise;
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer), isEvalSupported: false }).promise;
+      } catch (error) {
+        throw planReadError(error?.name === 'PasswordException' ? 'PDF_ENCRYPTED' : 'PDF_INVALID');
+      }
 
       const dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
       const dayKeys = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
@@ -706,17 +901,9 @@ async function loadPdfEngine() {
         { key: 'dom', regex: /domenic[a]/i }
       ];
 
-      const mealKeywords = [
-        { id: 'colazione', name: 'Colazione', icon: '🌅', regex: /colazione/i },
-        { id: 'meta_mattina', name: 'Metà mattina', icon: '🍎', regex: /meta['\s]*mattina|spuntino.*matt|spuntino.*1|mattina/i },
-        { id: 'pranzo', name: 'Pranzo', icon: '🥗', regex: /pranzo/i },
-        { id: 'merenda', name: 'Merenda', icon: '🍇', regex: /merenda|spuntino.*pomeri|spuntino.*2|pomeriggio/i },
-        { id: 'cena', name: 'Cena', icon: '🍲', regex: /cena/i },
-        { id: 'spuntino_serale', name: 'Spuntino serale', icon: '🌙', regex: /spuntino.*sera|dopocena|serale|notturno/i },
-        { id: 'arco_giornata', name: 'Arco della giornata', icon: '💧', regex: /arco.*giornata|condimenti|nella.*giornata|extra/i }
-      ];
+      const mealKeywords = MEAL_TYPES;
 
-      const metadataBlacklistRegex = /personalizzato|elaborato da|dott\.|dottor|biologo nutrizionista|ph\.d|indirizzo:|cellulare:|telefono:|email:|codice fiscale|fabbisogno|ripartizione|consigli generali|norme generali|avvertenze|pag\.\s*\d+|www\.|https?:|©|via\s+[a-z]|\b\d{5}\b|\b\d{9,10}\b/i;
+      const metadataBlacklistRegex = /personalizzato|elaborato da|dott\.|dottor|biologo nutrizionista|ph\.d|indirizzo:|cellulare:|telefono:|email:|codice fiscale|fabbisogno|ripartizione|consigli generali|norme generali|avvertenze|pag\.\s*\d+|www\.|https?:|powered by|®|©|via\s+[a-z]|\b\d{5}\b|\b\d{9,10}\b/i;
 
       const dietPlan = {
         metadata: {
@@ -734,6 +921,8 @@ async function loadPdfEngine() {
       });
 
       let totalParsedItems = 0;
+      let sawText = false;
+      const everyDayEntries = [];
       let matchedDayIndex = 0;
       const alternativeGroups = new Map();
       const unitMeasures = Object.create(null);
@@ -747,13 +936,22 @@ async function loadPdfEngine() {
 
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const items = textContent.items;
-        if (!items || items.length === 0) continue;
+        const pageItems = (textContent.items || []).filter(item => item.str && item.str.trim());
+        if (pageItems.length === 0) continue;
+        sawText = true;
+
+        // The strip "same every day" is read once; each remaining column is read as a page.
+        const strip = findEveryDayStrip(pageItems);
+        if (strip) everyDayEntries.push(...strip.entries);
+        const regions = splitColumns(strip ? pageItems.filter(item => !strip.items.includes(item)) : pageItems);
+
+        for (const region of regions) {
+        const items = region.items;
+        const layout = columnLayout(region);
 
         // Group items by Y position
-        const lines = [];
+        let lines = [];
         items.forEach(item => {
-          if (!item.str || !item.str.trim()) return;
           const y = Math.round(item.transform[5]);
           const x = Math.round(item.transform[4]);
 
@@ -767,6 +965,7 @@ async function loadPdfEngine() {
 
         lines.sort((a, b) => b.y - a.y);
         lines.forEach(l => l.items.sort((a, b) => a.x - b.x));
+        lines = mergeWrappedLines(lines, layout);
 
         const fullPageRawText = lines.map(l => l.items.map(i => i.str).join(' ')).join('\n');
         const fullPageNormText = normalizeText(fullPageRawText);
@@ -786,6 +985,13 @@ async function loadPdfEngine() {
           appendixGroup = parsePdfAlternativePage(lines, alternativeGroups, appendixGroup);
           continue;
         }
+        // Alternatives of the layout with coded headings ("Food · quantity   CODE").
+        if (!region.columnar && !hasDailyMeals && !hasAlternativeHeading && !/lista alimenti|alimenti assegnati/i.test(fullPageNormText) &&
+            lines.slice(0, 3).some(line => /^alternative(?! alimentari)/.test(normalizeText(line.items.map(item => item.str).join(' '))))) {
+          const before = alternativeGroups.size;
+          parseCodedAppendix(items, alternativeGroups);
+          if (alternativeGroups.size > before) continue;
+        }
         inAlternativeAppendix = false;
 
         // Filter out Cover Page / Metadata pages
@@ -797,9 +1003,13 @@ async function loadPdfEngine() {
         }
 
         // Identify day
+        // The day named by a heading line wins over a day merely mentioned elsewhere on the page
+        // (a subtitle such as "Lunedì — Martedì" above two columns).
         let currentDayKey = null;
+        const headingLine = lines.find(line => dayPatterns.some(dp => new RegExp('^(?:.*- *)?' + dp.regex.source + '$', 'i').test(normalizeText(line.items.map(item => item.str).join(' ')))));
+        const headingText = headingLine ? normalizeText(headingLine.items.map(item => item.str).join(' ')) : fullPageNormText;
         for (let dp of dayPatterns) {
-          if (dp.regex.test(fullPageNormText)) {
+          if (dp.regex.test(headingText)) {
             currentDayKey = dp.key;
             break;
           }
@@ -835,16 +1045,17 @@ async function loadPdfEngine() {
           const lineNorm = normalizeText(lineRaw);
 
           // Ignore header/footer lines and patient/doctor metadata
-          if (metadataBlacklistRegex.test(lineNorm) || /piano alimentare/i.test(lineNorm) || /alimento.*quantita/i.test(lineNorm)) {
+          if (metadataBlacklistRegex.test(lineNorm) || /piano alimentare/i.test(lineNorm) || /alimento.*quantita/i.test(lineNorm) || /^[0-9]+( *\/ *[0-9]+)?$/.test(lineNorm)) {
             return;
           }
 
           // Check meal match
           const matchedMeal = mealKeywords.find(mk => lineNorm.match(mk.regex)?.[0] === lineNorm);
-          const additionalMeal = lineNorm.match(/^pasto aggiuntivo\s*(\d+)$/);
+          const additionalMeal = lineNorm.match(/^pasto aggiuntivo *([0-9]*)$/);
 
           if (additionalMeal) {
-            currentMeal = getOrCreateMeal(`Pasto aggiuntivo ${additionalMeal[1]}`, '🍎', `pasto_aggiuntivo_${additionalMeal[1]}`);
+            const number = additionalMeal[1] || '1';
+            currentMeal = getOrCreateMeal(`Pasto aggiuntivo ${number}`, '🍎', `pasto_aggiuntivo_${number}`);
             pendingAlternative = false;
             return;
           }
@@ -869,11 +1080,13 @@ async function loadPdfEngine() {
             }
           }
 
-          let isSub = lineRaw.startsWith('-') || (line.items.length > 0 && line.items[0].str.startsWith('-'));
+          // Sub-ingredients start with a hyphen or an en dash.
+          const dashStart = text => /^[-–—]/.test(text);
+          let isSub = dashStart(lineRaw) || (line.items.length > 0 && dashStart(line.items[0].str));
 
           // Check if this line is a main recipe title header (NOT a sub-item itself) followed by sub-ingredients starting with "-"
           const nextLine = (lineIdx + 1 < lines.length) ? lines[lineIdx + 1] : null;
-          const isMainRecipeTitle = !isSub && nextLine && nextLine.items.some(it => it.str.trim().startsWith('-'));
+          const isMainRecipeTitle = !isSub && nextLine && nextLine.items.some(it => dashStart(it.str.trim()));
 
           // Column-aware table parsing (Alimento | Quantità)
           let foodName = "";
@@ -888,9 +1101,9 @@ async function loadPdfEngine() {
             if (!str) return;
 
             // The Alt. code is retained separately to join appendix tables after parsing.
-            if (x >= 450) {
+            if (x >= layout.altFrom) {
               return;
-            } else if (x >= 220) {
+            } else if (x >= layout.qtyFrom) {
               // Column 2: Quantità -> Keep all quantity text (e.g. "g", "100", "150", "1 porzione", "5 cucchiai")
               qtyParts.push(str);
             } else {
@@ -901,7 +1114,7 @@ async function loadPdfEngine() {
 
           foodName = nameParts.join(' ').trim();
           foodQty = qtyParts.join(' ').trim();
-          const alternativeCode = line.items.find(item => item.x >= 450 && /^\d{2,5}$/.test(item.str.trim()))?.str.trim();
+          const alternativeCode = line.items.find(item => item.x >= layout.altFrom && /^\d{2,5}$/.test(item.str.trim()))?.str.trim();
 
           const isAlternativeRow = pendingAlternative || /^(?:oppure\b|o\s|in alternativa\b|alt(?:ernativa)?\s*[:.])/i.test(foodName);
           pendingAlternative = false;
@@ -912,7 +1125,7 @@ async function loadPdfEngine() {
             let qArr = [];
             line.items.forEach((it, idx) => {
               if (idx === 0 && line.items.length > 1) return;
-              if (it.x < 450) qArr.push(it.str.trim());
+              if (it.x < layout.altFrom) qArr.push(it.str.trim());
             });
             foodQty = qArr.join(' ').trim();
           }
@@ -961,7 +1174,7 @@ async function loadPdfEngine() {
           if (!foodQty && embeddedQuantity.rawQty) foodQty = embeddedQuantity.rawQty;
 
           // Truncate any remaining quantity or unit suffix from foodName so name stays clean
-          foodName = foodName.replace(/^-\s*/, '').trim();
+          foodName = foodName.replace(/^[-–—] */, '').trim();
           foodName = foodName.replace(/\s+\d+\s*(?:g|gr|ml|kg|cucchiai|cucchiaini|bicchieri|fette|pezzi|porzion[ei]|tazz[ae]|piatto|pezzo).*$/i, '').trim();
           foodName = foodName.replace(/\s+q\.?b\.?.*$/i, '').trim();
           foodName = foodName.replace(/\s+quantit[aa]\s+bastante.*$/i, '').trim();
@@ -994,11 +1207,34 @@ async function loadPdfEngine() {
         });
 
         dietPlan.days[currentDayKey].meals = pageMeals;
+        }
       }
 
-      if (totalParsedItems === 0) {
-        throw new Error("EMPTY_PARSED_DATA");
-      }
+      if (!sawText) throw planReadError('PDF_NO_TEXT');
+
+      // Foods printed once for every day go into each day that has a plan, in meal order.
+      dayKeys.forEach(key => {
+        const day = dietPlan.days[key];
+        if (day.meals.some(meal => meal.items.length)) {
+          everyDayEntries.forEach((entry, index) => {
+            let meal = day.meals.find(m => m.id === entry.meal.id);
+            if (!meal) { meal = { id: entry.meal.id, name: entry.meal.name, icon: entry.meal.icon, items: [] }; day.meals.push(meal); }
+            if (meal.items.some(item => normalizeText(item.rawName) === normalizeText(entry.name))) return;
+            const converted = convertQuantityEngine(entry.name, entry.qty);
+            totalParsedItems++;
+            meal.items.push({ id: `item_${key}_${meal.id}_every_${index}`, rawName: entry.name, name: converted.name, rawQty: entry.qty,
+              qty: converted.qty, isConverted: converted.converted, conversionNote: converted.note, isSubItem: false, isRecipe: false });
+          });
+        }
+        day.meals.sort((a, b) => mealRank(a) - mealRank(b));
+      });
+
+      const recognizedDays = dayKeys.filter(key => dietPlan.days[key].meals.some(meal => meal.items.length)).length;
+      if (totalParsedItems === 0 || recognizedDays === 0) throw planReadError('PLAN_NOT_RECOGNIZED');
+      const warnings = [];
+      if (recognizedDays < 7) warnings.push(`Abbiamo letto ${recognizedDays} giorni su 7: controlla che il piano sia completo.`);
+      if (dayKeys.some(key => dietPlan.days[key].meals.some(meal => meal.id === 'menu_giorno'))) warnings.push('In alcuni giorni non abbiamo trovato i nomi dei pasti: gli alimenti sono raggruppati in «Menu del Giorno».');
+      dietPlan.metadata.quality = { recognizedDays, warnings };
 
       applyPdfAlternatives(dietPlan, alternativeGroups, unitMeasures);
       return dietPlan;

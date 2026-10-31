@@ -95,6 +95,8 @@ come checklist e per reparto, app installabile.
 - [Definire l'architettura di un backend leggero e robusto](.wayfinder/issues/WF-024-architettura-backend.md): nessun framework (77 MB di RAM su 128; Fastify aggiungerebbe 41 pacchetti), moduli profondi solo con un seam vero; decisioni delegate al PO il 2026-10-31.
 - [Definire osservabilità e stato condiviso del backend](.wayfinder/issues/WF-027-osservabilita-stato.md): log JSON su stdout senza dati personali (implementato), stato in memoria con vincolo di una sola istanza; allarmi non ancora implementati.
 
+- [Verificare lo stato di node:sqlite e le alternative leggere](.wayfinder/issues/WF-025-ricerca-sqlite-alternative.md): `node:sqlite` è release candidate su Node 26 (sperimentale su 22); per la waitlist basta, per dati sanitari e più istanze si valuta PostgreSQL; repository allineato a Node 26.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified

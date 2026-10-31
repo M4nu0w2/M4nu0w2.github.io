@@ -119,3 +119,19 @@ Non sono decisioni prese; vanno risolte prima dell'implementazione.
 - OCR e PDF come immagini.
 - Modifica delle conversioni nutrizionali o delle sostituzioni (WF-006).
 - Conservare il PDF originale o inviarlo al server.
+
+## Progress note - 2026-10-31
+
+Senza Gemini, il motore deterministico ora legge **due impaginazioni diverse dello
+stesso piano** (un giorno per pagina; due colonne di giorni per pagina con striscia
+«Ogni giorno» e alternative in un altro formato) e produce la stessa struttura. Il
+confronto delle liste della spesa dei due PDF reali dà 50 righe ciascuna con gli
+stessi alimenti. Quando un PDF non si capisce, l'app lo dice con un messaggio chiaro
+(`PDF_NO_TEXT`, `PLAN_NOT_RECOGNIZED`, …) e avvisa se la lettura è parziale
+(`metadata.quality`). Dettagli e limiti nel README, sezione «Formati di PDF letti».
+
+Resta aperto, e bloccato, il **ripiego con Gemini** per le impaginazioni che il
+motore non capisce: dipende da WF-010 (nessuna prova con un fornitore reale, chiave
+API, tier a pagamento SEE), dal consenso privacy per inviare il testo del PDF
+(WF-030, WF-034) e dall'enum dei pasti (WF-023). Una scansione resta fuori ambito
+(nessun OCR), come deciso.

@@ -5,7 +5,7 @@ Monorepo di due prodotti distinti che condividono solo il repository:
 | Componente | Cartella | Cos'è | Stack | Dove gira |
 | :--- | :--- | :--- | :--- | :--- |
 | **Landing "Nutrà"** | `landing_page_nutripro/` | Sito pubblico, leggero e ottimizzato per i motori di ricerca; raccoglie la waitlist dei nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, HTML statico | **Radice** del dominio (`/`), servita dal backend Node |
-| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF del piano alimentare, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 22 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
+| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF del piano alimentare, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 26 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
 
 Oggi il dominio è `nutriprobasta.jirachibot.eu`, **temporaneo e solo per demo interne**. L'impostazione è pensata per reggere anche con un dominio definitivo: landing pubblica e SEO da una parte, web app autenticata dall'altra, senza codice in comune. Il dominio non è scritto nel codice: vedi [Configurazione](#configurazione-variabili-dambiente).
 
@@ -138,6 +138,36 @@ NutriPro/
 - **Interfaccia**: selettore giorni, card pasti con spunte, water tracker (obiettivo configurabile), calcolatore crudo/cotto, lista della spesa (copia, condividi, `.txt`), layout mobile con tab bar.
 - **PWA**: `manifest.webmanifest` + icona. Nessuna cache offline: login e verifica sessione richiedono rete.
 
+### Formati di PDF letti e cosa succede quando non si capisce
+
+Il motore (`src/lib/dietEngine.mjs`, `parseDietPdf`) legge il **testo** del PDF con pdf.js, nel browser. Non fa OCR: una scansione o un PDF fatto di immagini non è leggibile.
+
+| Caso | Come viene letto |
+| :--- | :--- |
+| Un giorno per pagina, tabella a una colonna | Posizioni di Alimento / Quantità / Alt. fisse (pagina A4) |
+| Due tabelle di giorni affiancate per pagina | La pagina si divide in colonne (un divisorio verticale che nessun testo attraversa, con i pasti e le quantità di ciascun lato); ogni colonna è letta come una pagina, con le sue intestazioni come riferimento |
+| Nome su due righe («…ridotto» / «contenuto di grassi»), quantità su due righe («quantità» / «bastante»), titolo di ricetta a capo | Unite alla riga sopra |
+| Striscia «Ogni giorno · Metà mattina: nocciole 10 g · Acqua …: 11 bicchieri» | Letta una volta e aggiunta a ogni giorno, al posto giusto |
+| Ingredienti di una ricetta con trattino o en dash | Sotto-voci della ricetta |
+| Alternative con codice, due impaginazioni: `96: Nome` + tabella, oppure titoli «Nome · quantità  CODICE» con elenchi `A · B · C` e ricette con ingredienti separati da `;` | Collegate agli alimenti per codice |
+| Piè di pagina («Powered by …», ©, ®, indirizzi web, numeri di pagina) | Scartati |
+
+Pasti: l'elenco dei tipi (`MEAL_TYPES`: colazione, metà mattina, pranzo, merenda, cena, spuntino serale, arco della giornata, «Pasto aggiuntivo N») è unico per parser e ordinamento; l'ordine nel piano è quello dell'elenco, qualunque sia l'ordine nel PDF.
+
+**Se non si capisce**, l'utente riceve un messaggio chiaro e non viene importato niente (la finestra resta aperta e si può scegliere un altro file):
+
+| Codice | Quando | Messaggio |
+| :--- | :--- | :--- |
+| `PDF_NO_TEXT` | nessuna riga di testo (scansione, immagine) | «…è una scansione o un'immagine. Chiedi al tuo nutrizionista il PDF originale…» |
+| `PLAN_NOT_RECOGNIZED` | c'è testo ma nessun giorno con pasti | «Non siamo riusciti a riconoscere un piano alimentare in questo PDF…» |
+| `PDF_ENCRYPTED` / `PDF_INVALID` | protetto da password / danneggiato | messaggi dedicati |
+
+**Se si capisce solo in parte**, il piano si può importare ma l'anteprima mostra un avviso (`metadata.quality`): per esempio «Abbiamo letto 2 giorni su 7», o «In alcuni giorni non abbiamo trovato i nomi dei pasti».
+
+**Limiti noti**: un'impaginazione molto diversa (colonne a posizioni diverse da quelle sopra, tabelle senza intestazioni, testo ruotato) può essere letta male o per niente; il ripiego automatico con Gemini non c'è ancora (dipende da un consenso privacy e da una chiave API, vedi il ticket WF-021). Le unità di misura in grammi (porzione, cucchiaio) si ricavano dalla tabella «Unità di misura» del PDF se esiste; senza, restano porzioni e cucchiai.
+
+I test usano due fixture (`tests/fixtures/`) con le coordinate del testo di due PDF reali, **anonimizzate** (nome, indirizzo, telefono, email, studio e software di origine sostituiti): nessun PDF reale entra nel repository.
+
 ### Motore di conversione (dettaglio)
 
 Regole principali applicate al parsing (le quantità restano indicative: confrontare sempre col PDF):
@@ -238,7 +268,7 @@ OAuth: registrare il redirect `{APP_ORIGIN}/auth/google/callback`. In produzione
 
 ## Sviluppo locale
 
-Requisiti: Node ≥ 22.14.
+Requisiti: Node ≥ 26, lo stesso di CI e Docker (`engines` in `package.json`, `.nvmrc`). Su Windows: `winget upgrade --id OpenJS.NodeJS.LTS`.
 
 ```powershell
 npm ci --ignore-scripts
@@ -254,7 +284,7 @@ Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il 
 ## Test
 
 ```powershell
-npm test               # build + unit/integration (64 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist, log)
+npm test               # build + unit/integration (72 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist, log, impaginazioni dei PDF)
 npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, mobile, settings)
 ```
 

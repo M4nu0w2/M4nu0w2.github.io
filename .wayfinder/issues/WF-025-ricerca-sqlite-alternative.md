@@ -3,8 +3,8 @@ id: WF-025
 title: Verificare lo stato di node:sqlite e le alternative leggere
 parent: WF-MAP-001
 labels: [wayfinder:research]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -56,3 +56,33 @@ con rimando dal ticket. Nessuna modifica al codice.
 
 Alimenta [Definire persistenza server, migrazioni e backup](WF-026-persistenza-migrazioni-backup.md)
 e [Definire l'architettura di un backend leggero e robusto](WF-024-architettura-backend.md).
+
+## Resolution comment
+
+2026-10-31 — ricerca svolta da un agente con contesto nuovo, solo fonti primarie,
+verificate il 2026-10-31. Documento completo, con tabella di confronto e fonte per
+ogni cella: [docs/research/sqlite-alternative.md](../../docs/research/sqlite-alternative.md).
+I fatti qui sotto sono nel documento; la **raccomandazione è una proposta**, non una
+decisione (spetta ai ticket di persistenza).
+
+- **Stabilità di `node:sqlite`**: su Node 22 «Active development» con avviso
+  sperimentale; da Node 24.15, 25.7 e su **Node 26** è «Release candidate», senza
+  avviso. Non è «Stable»: la fonte ammette modifiche incompatibili possibili.
+  Dopo l'RC sono cambiati `defensive` (attivo di default) e il nome della classe
+  (`DatabaseSync` diventa `Database` in Node 26.11, con l'alias ancora esportato).
+- **Node 22** è in Maintenance e finisce il 2027-04-30; `backup()`, `timeout` e
+  `isTransaction` richiedono Node ≥ 22.16. Il repository ora richiede Node ≥ 26
+  (allineato a CI, Docker e macchina di sviluppo il 2026-10-31).
+- **Alternative**: `better-sqlite3` 13 (moduli nativi con prebuild anche musl dentro
+  il pacchetto, 27 MB); `pg` 8 per PostgreSQL 18 (immagine da 120 MB e RAM di base
+  pari a tutta la RAM attuale); `node-sqlite3` è deprecato.
+- **Backup consistente**: API di backup, `VACUUM INTO` o `sqlite3_rsync`. Una copia
+  del file durante una scrittura può essere corrotta.
+- **Proposta**: per la waitlist restare su `node:sqlite` su Node 26, con `timeout`,
+  un backup provato e `PRAGMA user_version` per le migrazioni. Per dati sanitari e
+  più utenti valutare PostgreSQL se servono più istanze o scrittori concorrenti.
+- **Non verificato**: la versione di SQLite dentro la release di Node in uso; se
+  `backup()` blocca l'event loop; consumi di RAM misurati; compatibilità di Kysely
+  e Knex con `node:sqlite`; requisiti legali e di cifratura per dati sanitari.
+
+Alimenta [Definire persistenza server, migrazioni e backup](WF-026-persistenza-migrazioni-backup.md).
