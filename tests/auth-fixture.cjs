@@ -5,7 +5,7 @@ const { createAuthServer, configFromEnv } = require('../server/app.cjs');
 // A simulated Google provider used only by local automated tests. Never a server route.
 async function startFixture(overrides = {}, options = {}) {
   const config = configFromEnv({ APP_ORIGIN: 'http://127.0.0.1:8080', PORT: '0',
-    GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-only', ...overrides });
+    LOG_LEVEL: 'silent', GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-only', ...overrides });
   let clock = Date.now();
   let pending;
   let nextIdentity = {};

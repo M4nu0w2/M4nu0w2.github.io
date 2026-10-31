@@ -3,8 +3,8 @@ id: WF-024
 title: Definire l'architettura di un backend leggero e robusto
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -75,3 +75,37 @@ Non sono decisioni prese.
 - Spostare i piani dei pazienti sul server (decisione di
   [Definire persistenza e dati condivisi con l'assistente](WF-003-dati.md)).
 - Cambiare il frontend React.
+
+## Resolution comment
+
+2026-10-31 — decisioni **delegate dal PO** a Claude («prendi pure decisioni»),
+prese con le skill `codebase-design` (vocabolario: modulo profondo, seam) e
+`ponytail` (soluzione più piccola che funziona). Il PO può annullarle.
+
+Misure fatte oggi sul server attuale: avvio e ascolto 198 ms; 77 MB di RSS dopo
+300 richieste (limite del container: 128 MB); 5 dipendenze di produzione.
+Fastify 5 aggiungerebbe 41 pacchetti (13 MB su disco) e altra RAM, in un
+container che ha già 77 su 128 MB.
+
+1. **Framework: no.** Restano `http` e il router a catena. Il server ha una
+   dozzina di route e 375 righe: il router non è il problema. Un framework
+   costerebbe dipendenze, RAM e la riscrittura di controlli di sicurezza già
+   provati da 64 test. **Soglia per riconsiderarlo**: più di ~25 route, oppure
+   un secondo sviluppatore che aggiunge route senza conoscere i controlli.
+2. **Struttura**: moduli profondi solo dove c'è un seam vero (due adattatori).
+   Fatto: `server/log.cjs` (interfaccia: `info/warn/error(evento, campi)`;
+   adattatori: stdout e un contenitore di prova). `waitlist.cjs` e `gemini.cjs`
+   erano già moduli profondi. **Non** spezzare `app.cjs` ora: un solo
+   adattatore per ciascuna parte sarebbe un seam ipotetico.
+3. **Validazione**: a mano nei due moduli che ricevono input libero
+   (`waitlist.cjs`, `gemini.cjs`), niente libreria di schemi per ~2 funzioni.
+   Da riconsiderare con la soglia del punto 1.
+4. **Linguaggio**: JavaScript CommonJS. TypeScript non porta nulla di
+   verificabile oggi; costa una fase di build nel container.
+5. **Errori**: già un formato unico (`{ error }`) e nessun dettaglio interno
+   all'esterno; ora l'errore inatteso lascia traccia nel log (nome e prima riga
+   dello stack, mai il messaggio).
+6. **Migrazione**: nessuna, per i punti precedenti.
+
+Punto che resta aperto e va deciso con il PO: la guardia CSRF+Origin è scritta
+in due route (logout, chat). Un helper unico è sensato **alla terza**.

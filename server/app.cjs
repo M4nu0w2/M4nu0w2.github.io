@@ -7,6 +7,7 @@ const { isIP } = require('node:net');
 const { OAuth2Client } = require('google-auth-library');
 const { createGeminiService } = require('./gemini.cjs');
 const { validate: validateWaitlist, createWaitlistStore } = require('./waitlist.cjs');
+const { createLogger, LEVELS } = require('./log.cjs');
 
 const ROOT = path.join(__dirname, '..', 'dist');
 const APP = '/app';
@@ -34,6 +35,8 @@ function configFromEnv(env) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
   if (origin.protocol !== 'https:' && !local) throw new Error('APP_ORIGIN requires HTTPS outside localhost');
   const port = Number(env.PORT || 8080);
+  const logLevel = env.LOG_LEVEL || 'info';
+  if (!LEVELS.includes(logLevel)) throw new Error('Invalid LOG_LEVEL');
   const sessionTtl = Number(env.SESSION_TTL_SECONDS || 7776000) * 1000;
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid PORT');
   if (!Number.isSafeInteger(sessionTtl) || sessionTtl < 60000 || sessionTtl > 180 * 86400000) throw new Error('Invalid session duration');
@@ -55,6 +58,7 @@ function configFromEnv(env) {
     allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     deploySha: /^[a-f0-9]{40}$/.test(env.NUTRIPRO_SHA || '') ? env.NUTRIPRO_SHA : 'unknown',
     trustProxy: env.TRUST_PROXY === 'true',
+    logLevel: logLevel,
     landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
     waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite')
   };
@@ -99,14 +103,15 @@ function readChatBody(req, { limit = 131072, parser = text => JSON.parse(text) }
 }
 
 // The OAuth client and clock can be injected by tests only. Production always uses Google's verifier.
-function createAuthServer(config, { oauthClient, now = Date.now, geminiService } = {}) {
+function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger } = {}) {
+  const log = logger || createLogger({ level: config.logLevel });
   const chat = geminiService || createGeminiService({ env: config.gemini || {}, origin: config.origin, now });
   const client = oauthClient || new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret,
     redirectUri: `${config.origin}/auth/google/callback`,
     transporterOptions: { timeout: 10000, retryConfig: { retry: 0 } } });
   // Sessions are signed cookies, so they survive restarts when SESSION_SECRET is configured.
   // Without it a per-process key keeps the previous behaviour: a restart signs everyone out.
-  if (!config.sessionSecret && config.secure) console.warn('SESSION_SECRET not set: sessions end at every restart.');
+  if (!config.sessionSecret && config.secure) log.warn('session_secret_missing', { effect: 'sessions end at every restart' });
   const sessionKey = config.sessionSecret || random();
   const revoked = new Map();
   const flows = new Map();
@@ -184,7 +189,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
     res.end(JSON.stringify(body));
   }
   function redirect(res, location) { res.writeHead(303, { Location: location }); res.end(); }
-  function loginError(res, error) { redirect(res, `${APP}/login?error=${error}`); }
+  function loginError(res, error) { log.warn('login_failed', { reason: error }); redirect(res, `${APP}/login?error=${error}`); }
   // Per-IP and global fixed-window limiter. IP comes from X-Real-IP only behind a proxy which overwrites it.
   function makeLimiter(perIp, perWindow) {
     const buckets = new Map();
@@ -225,10 +230,15 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
     if (data && data.website) return reply(200);
     const result = validateWaitlist(data);
     if (!result.ok) return reply(422, 'validazione', result.errors);
-    try { waitlist.add(result.value); } catch { return reply(500, 'db'); }
+    try { waitlist.add(result.value); } catch (error) { log.error('waitlist_db_error', { code: error.code || error.name }); return reply(500, 'db'); }
+    log.info('waitlist_saved');
     return reply(200);
   }
   const server = http.createServer({ maxHeaderSize: 16384, requestTimeout: 15000, headersTimeout: 10000 }, async (req, res) => {
+    const started = Date.now();
+    // Path only: the query string of the OAuth callback carries one-use credentials.
+    const loggedPath = String(req.url || '').split('?')[0].slice(0, 200);
+    res.on('finish', () => log.info('request', { method: req.method, path: loggedPath, status: res.statusCode, ms: Date.now() - started }));
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Security-Policy', CSP);
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -298,6 +308,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
           const { value } = issueSession({ sub: identity.sub, email: identity.email,
             name: typeof identity.name === 'string' ? identity.name.slice(0, 200) : identity.email, csrf: random() });
           res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
+          log.info('login_ok');
           return redirect(res, `${APP}/`);
         } catch {
           // Do not log provider responses, codes, tokens or personal data.
@@ -324,6 +335,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
           return json(res, 200, await chat.generate(session.sub, input));
         } catch (error) {
           const status = Number.isInteger(error.status) ? error.status : 500;
+          log.warn('chat_error', { status, code: error.code });
           if (status === 429) res.setHeader('Retry-After', '60');
           return json(res, status, { error: error.code || 'chat_error', message: error.safeMessage || 'Messaggio non inviato. Riprova piu tardi.' });
         }
@@ -364,7 +376,9 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService }
       else if (page.type !== LANDING_TYPES['.html']) res.setHeader('Cache-Control', 'public, max-age=3600');
       res.writeHead(200, { 'Content-Type': page.type });
       return res.end(req.method === 'HEAD' ? undefined : fs.readFileSync(page.file));
-    } catch {
+    } catch (error) {
+      // Name and the first stack frame only: messages can carry request data.
+      log.error('server_error', { name: error?.name, where: String(error?.stack).split("\n").find(line => line.includes(' at '))?.trim().slice(0, 160) });
       return json(res, 500, { error: 'server_error' });
     }
   });

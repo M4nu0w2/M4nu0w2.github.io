@@ -1,9 +1,11 @@
 'use strict';
 const { createAuthServer, configFromEnv } = require('./app.cjs');
+const { createLogger } = require('./log.cjs');
 const config = configFromEnv(process.env);
+const log = createLogger({ level: config.logLevel });
 const server = createAuthServer(config);
 server.listen(config.port, '0.0.0.0', () => {
-  console.log(`NutriPro listening on port ${config.port}; Google login ${config.ready ? 'configured' : 'not configured (access closed)'}`);
+  log.info('listening', { port: config.port, loginConfigured: config.ready });
 });
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {

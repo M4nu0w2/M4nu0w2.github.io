@@ -92,6 +92,9 @@ come checklist e per reparto, app installabile.
   settaggi globali per account; acqua attiva, olio spento, unità preferite; olio
   come quantità effettiva sulla voce del pasto; disattivare nasconde, storico conservato.
 
+- [Definire l'architettura di un backend leggero e robusto](.wayfinder/issues/WF-024-architettura-backend.md): nessun framework (77 MB di RAM su 128; Fastify aggiungerebbe 41 pacchetti), moduli profondi solo con un seam vero; decisioni delegate al PO il 2026-10-31.
+- [Definire osservabilità e stato condiviso del backend](.wayfinder/issues/WF-027-osservabilita-stato.md): log JSON su stdout senza dati personali (implementato), stato in memoria con vincolo di una sola istanza; allarmi non ancora implementati.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified

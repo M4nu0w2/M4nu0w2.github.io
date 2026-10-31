@@ -176,6 +176,8 @@ Server `http` di Node senza framework. Route:
 
 **Sessioni**: cookie firmato HMAC-SHA256 (`__Host-nutripro_session` in HTTPS), HttpOnly, durata di default 90 giorni con rinnovo all'uso (max 180). Con `SESSION_SECRET` sopravvivono ai riavvii; senza, ogni restart disconnette tutti (warning a log). La revoca al logout è tenuta in memoria.
 
+**Log** (`server/log.cjs`): una riga JSON per evento su stdout (`ts`, `level`, `event` e campi). Eventi: `request` (metodo, solo il percorso, stato, durata), `login_ok`, `login_failed` (solo il motivo), `waitlist_saved`, `waitlist_db_error`, `chat_error`, `server_error` (nome e prima riga dello stack), `listening`. **Mai nei log**, e coperto da test: query string (contiene i codici OAuth), corpi, token, email, nome o `sub` dell'account, testo di messaggi e piani, messaggi di errore dei fornitori, indirizzi IP. Vincolo di progetto: **una sola istanza**; revoche del logout, rate limit e contatori di Gemini sono in memoria e si azzerano al riavvio.
+
 **Assistente Gemini** (`gemini.cjs`): modello unico ammesso `gemini-3.5-flash-lite`, **spento di default**. Per attivarlo servono insieme `GEMINI_ENABLED=true`, `GEMINI_API_KEY` e `GEMINI_ACCESS_MODE` (`local-dev` solo su localhost; `paid-services` è la decisione esplicita richiesta per client pubblici in SEE). Nessun piano né dato dell'account viene inviato a Google. Limiti: 5 richieste/min e 30/giorno per account, 120/giorno globali, 4 concorrenti, timeout 20 s, nessun retry; input ≤ 2000 caratteri, cronologia ≤ 20 messaggi / 24000 caratteri. Contatori in memoria (reset al riavvio). Stato: WF-010 aperto, mai verificato con provider reale.
 
 ### Container
@@ -225,6 +227,7 @@ Solo backend (per la landing, `SITE_URL` è un parametro di build). Copiare `.en
 | `TRUST_PROXY` | no | `false` | `true` solo dietro il proxy privato che sovrascrive `X-Real-IP`. |
 | `NUTRIPRO_SHA` | no | `unknown` | SHA a 40 hex esposto da `/deploy-version.txt`; impostato dal deploy. |
 | `WAITLIST_DB_PATH` | consigliata | `./data/waitlist.sqlite` (Docker: `/data/waitlist.sqlite`) | File SQLite della waitlist. In produzione deve stare su un volume persistente. |
+| `LOG_LEVEL` | no | `info` | `info`, `warn`, `error` o `silent`. Un valore diverso ferma l'avvio. |
 | `LANDING_DIR` | no | `./landing`, poi `landing_page_nutripro/dist` | Cartella con la build della landing. Se assente, `/` risponde 404 e l'app funziona lo stesso. |
 | `GEMINI_ENABLED` | no | `false` | |
 | `GEMINI_API_KEY` | se attivo | vuoto | Solo server, mai nel client. |
@@ -251,7 +254,7 @@ Docker standalone: `docker compose -f compose.auth.yml up --build -d` (monta il 
 ## Test
 
 ```powershell
-npm test               # build + unit/integration (58 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist)
+npm test               # build + unit/integration (64 test: spesa, auth, piani, gemini, chat, settings, landing/waitlist, log)
 npm run test:browser   # E2E Playwright (login, spesa, piani, import PDF, chat, mobile, settings)
 ```
 
