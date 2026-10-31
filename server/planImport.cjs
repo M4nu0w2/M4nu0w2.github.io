@@ -29,7 +29,7 @@ function validateRequest(body) {
   if (body.consent !== true) throw refused('consent_required', 'Serve il tuo consenso per leggere il piano con l\'assistente.');
   const { pages } = body;
   if (!Array.isArray(pages) || pages.length < 1 || pages.length > 30 || pages.some(page => typeof page !== 'string' || page.length > 20000)) throw refused();
-  if (pages.reduce((sum, page) => sum + page.length, 0) > 80000 || pages.every(page => !page.trim())) throw refused();
+  if (pages.reduce((sum, page) => sum + page.length, 0) > 60000 || pages.every(page => !page.trim())) throw refused();
   return { pages };
 }
 

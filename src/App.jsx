@@ -145,7 +145,7 @@ function ImportDialog({ operation, active, onClose, onSave }) {
       const { pages } = await extractPdfText(await file.arrayBuffer());
       const session = await (await fetch('/api/session', { cache: 'no-store', credentials: 'same-origin' })).json();
       setProgress("Tolgo i dati personali e leggo il piano… può richiedere un minuto");
-      const response = await fetch('/api/plan/import', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(150000),
+      const response = await fetch('/api/plan/import', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(240000),
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf }, body: JSON.stringify({ pages, consent: true }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || 'Lettura non riuscita. Riprova più tardi.');

@@ -31,7 +31,7 @@ function scrub(text) {
 
 // The anonymiser runs in our own container (Rizzo-PII) and is reached over the internal network.
 // Whatever happens here, the caller either gets clean text or an error: never the original text.
-function createAnonymizer({ url = '', fetchImpl = globalThis.fetch, timeoutMs = 120000, maxConcurrent = 2 } = {}) {
+function createAnonymizer({ url = '', fetchImpl = globalThis.fetch, timeoutMs = 150000, maxConcurrent = 2 } = {}) {
   let base = '';
   try { const parsed = new URL(url); if (['http:', 'https:'].includes(parsed.protocol)) base = parsed.origin; } catch {}
   let busy = 0;
