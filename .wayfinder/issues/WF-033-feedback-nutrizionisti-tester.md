@@ -24,7 +24,11 @@ Il PO ha detto (2026-10-18) di avere nutrizionisti disposti a testare.
 
 1. **Elenco dei tester** (3-5 per cominciare) e un referente per ciascuno.
 2. **Campioni di PDF**: per ogni gestionale, 3-4 esempi **anonimizzati** (nome,
-   data di nascita, contatti e studio tolti prima dell'invio). Mai in questo
+   data di nascita, contatti e studio tolti prima dell'invio). Si può usare
+   Rizzo-PII in locale per toglierli (vedi
+   [Decidere dove e come usare Rizzo-PII per anonimizzare i dati prima che escano dal dispositivo](WF-035-anonimizzazione-rizzo-pii.md)):
+   con le categorie consigliate nel documento di valutazione, e controllando comunque a
+   mano il risultato. Mai in questo
    repository né in una chat: cartella privata fuori dal repo. Annotare quale
    software l'ha prodotto e come lo mandano ai pazienti.
 3. **Domande da fare in 20 minuti**: quale software usano; come consegnano
