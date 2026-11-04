@@ -3,7 +3,7 @@ id: WF-011
 title: Implementare pagina settaggi e tracking opzionali
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
+status: closed
 assignee: manu
 assignment: manu
 assignment_mode: flexible

@@ -97,6 +97,10 @@ come checklist e per reparto, app installabile.
 
 - [Verificare lo stato di node:sqlite e le alternative leggere](.wayfinder/issues/WF-025-ricerca-sqlite-alternative.md): `node:sqlite` è release candidate su Node 26 (sperimentale su 22); per la waitlist basta, per dati sanitari e più istanze si valuta PostgreSQL; repository allineato a Node 26.
 
+- [Implementare pagina settaggi e tracking opzionali](.wayfinder/issues/WF-011-settaggi-implementazione.md): implementato localmente (51/51 test); acqua on, olio off, unità PDF, `/settings` protetta; da committare e verificare su prod.
+
+- [Mantenere l'accesso fra aperture dell'app e deploy](.wayfinder/issues/WF-020-sessione-persistente.md): sessione 90 giorni con cookie firmato HMAC-SHA256; implementato localmente (53/53 test); manca `SESSION_SECRET` in `auth.env` su Hermes, poi commit e verifica su prod.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
