@@ -10,6 +10,7 @@ if (window.matchMedia('(display-mode: standalone)').matches || navigator.standal
   if (reduce || location.hash || location.search.indexOf('storyAt') >= 0) return;
   var root = document.documentElement;
   root.classList.add('intro-active');
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   // Paracadute: se il JS non parte, la pagina si sblocca comunque.
   if (location.search.indexOf('introAt') < 0) {
     setTimeout(function () { root.classList.remove('intro-active'); }, 6000);
