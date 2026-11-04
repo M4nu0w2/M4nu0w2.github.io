@@ -3,7 +3,7 @@ id: WF-017
 title: Usare la lista della spesa come checklist in app
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
+status: closed
 assignee: manu
 assignment: manu
 assignment_mode: flexible

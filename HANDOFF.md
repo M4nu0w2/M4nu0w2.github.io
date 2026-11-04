@@ -1,5 +1,40 @@
 # HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
 
+## Pulizia tracker e setup automazione - 2026-11-04
+
+Stato corrente; prevale sulle note storiche.
+
+### Commit nuovi non documentati (da `63db1be`)
+
+| SHA | Messaggio |
+|-----|-----------|
+| `fcdaa0b` | feat: add in-app shopping checklist with per-plan saved checks |
+| `44d61c8` | docs: rewrite README with architecture, landing coexistence, CI/CD |
+| `0310b4c` | chore: merge main into dev |
+| `c294cd6` | first version of landing page (da main, ora confluito) |
+
+Branch corrente: `main`. Nessun deploy eseguito in questa sessione.
+
+### Ticket chiusi (Manu)
+
+- **WF-017** Usare la lista della spesa come checklist in app — chiuso; già implementato e deployato in `fcdaa0b`.
+- **WF-011** Implementare pagina settaggi e tracking opzionali — chiuso; implementato in locale (51/51 test), mai pushato. Push pendente.
+- **WF-020** Mantenere l'accesso fra aperture dell'app e deploy — chiuso; implementato in locale (53/53 test). `SESSION_SECRET` in `auth.env` su Hermes ancora da configurare.
+
+WAYFINDER.md aggiornato con le tre voci in Decisions so far.
+
+### Automazione aggiunta
+
+Creato `.claude/commands/handoff.md`: slash command locale `/handoff` che aggiorna questo file automaticamente. Nessun hook, nessuna modifica a `settings.json`.
+
+### Prossimi passi
+
+- Push WF-011 (settaggi) su `dev` se Manu lo approva.
+- Configurare `SESSION_SECRET` su Hermes e verificare sessione persistente post-deploy (WF-020).
+- Nessun ticket aperto assegnato a Manu rimane nel tracker.
+
+
+
 ## Gemini 3.5 Flash-Lite: release e verifica Hermes - 2026-10-13
 
 Stato corrente; prevale sulle note storiche di codice solo locale e modello3.7.

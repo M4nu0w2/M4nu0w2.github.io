@@ -94,6 +94,19 @@ come checklist e per reparto, app installabile.
 
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
+- [Usare la lista della spesa come checklist in app](.wayfinder/issues/WF-017-spesa-checklist.md):
+  checklist per piano con spunte sulle singole alternative; voci barrate e spostate
+  in fondo; pulsante svuota spunte; implementato e deployato in `fcdaa0b`.
+
+- [Implementare pagina settaggi e tracking opzionali](.wayfinder/issues/WF-011-settaggi-implementazione.md):
+  pagina `/settings` con acqua attiva, olio disattivo, unità del PDF, cancellazione
+  storico con doppia conferma; implementato localmente (51/51 test), da pushare.
+
+- [Mantenere l'accesso fra aperture dell'app e deploy](.wayfinder/issues/WF-020-sessione-persistente.md):
+  cookie firmato HMAC-SHA256 con `SESSION_SECRET`, durata 90 giorni con rinnovo;
+  implementato localmente (53/53 test); richiede `SESSION_SECRET` in `auth.env`
+  su Hermes e verifica post-deploy.
+
 ## Not yet specified
 
 - Esperienza del menu archivio, ricerca dei piani e gestione di errori e duplicati.
