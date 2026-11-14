@@ -121,8 +121,8 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
   const flows = new Map();
   const limiterMaps = [];
   let activeCallbacks = 0;
-  const sessionName = config.secure ? '__Host-nutripro_session' : 'nutripro_session';
-  const flowName = config.secure ? '__Host-nutripro_oauth' : 'nutripro_oauth';
+  const sessionName = config.secure ? '__Host-nutra_session' : 'nutra_session';
+  const flowName = config.secure ? '__Host-nutra_oauth' : 'nutra_oauth';
   const shell = fs.readFileSync(path.join(ROOT, 'index.html'));
   const files = new Map([
     [`${APP}/icon-512.png`, { file: path.join(ROOT, 'icon-512.png'), type: 'image/png' }],

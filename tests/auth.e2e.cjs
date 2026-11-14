@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -54,7 +54,7 @@ test('Google login redirect, protected home, logout and browser back with mobile
   assert.ok(await page.evaluate(() => localStorage.getItem('diet_plan_archive:google-user-1')));
   assert.equal(await page.evaluate(() => Object.keys(localStorage).some(k => /token|session/i.test(k))), false);
   const cookies = await context.cookies();
-  assert.ok(cookies.find(c => c.name === 'nutripro_session').httpOnly);
+  assert.ok(cookies.find(c => c.name === 'nutra_session').httpOnly);
   await page.screenshot({ path: path.join(os.tmpdir(), 'nutripro-auth-home-mobile.png'), fullPage: true });
   await page.getByRole('button', { name: 'Esci', exact: true }).filter({ visible: true }).first().click();
   await page.waitForURL('**/app/login');

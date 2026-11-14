@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -10,7 +10,7 @@ async function setup(t, enabled = true) {
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   await context.route('**/api/chat/status', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled, configured: enabled, model: 'gemini-test' }) }));
   const page = await context.newPage();
   return { fixture, context, page };
@@ -104,7 +104,7 @@ test('provider overload explains the failure, preserves the draft and only retri
   await page.goto(`${fixture.config.origin}/app/chat`);
   await page.getByLabel('La tua domanda').fill('Domanda conservata');
   await page.getByRole('button', { name: 'Invia domanda', exact: true }).click();
-  await page.getByRole('alert').filter({ hasText: 'Gemini Flash-Lite è temporaneamente sovraccarico' }).waitFor();
+  await page.getByRole('alert').filter({ hasText: 'Gemini Flash-Lite Ã¨ temporaneamente sovraccarico' }).waitFor();
   assert.equal(await page.getByLabel('La tua domanda').inputValue(), 'Domanda conservata');
   assert.equal(await page.locator('.chat-message').count(), 0);
   assert.equal(calls, 1);

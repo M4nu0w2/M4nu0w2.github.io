@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const { OAuth2Client } = require('google-auth-library');
 const { createAuthServer, configFromEnv } = require('../server/app.cjs');
 
@@ -45,7 +45,7 @@ async function startFixture(overrides = {}, options = {}) {
     async login() {
       const start = await this.begin();
       const response = await this.request(`/auth/google/callback?state=${start.url.searchParams.get('state')}&code=test-code`, { headers: { Cookie: start.cookie } });
-      const sessionCookie = response.headers.getSetCookie().find(s => s.startsWith('nutripro_session='));
+      const sessionCookie = response.headers.getSetCookie().find(s => s.startsWith('nutra_session='));
       return { response, cookie: sessionCookie?.split(';')[0], start };
     }
   };

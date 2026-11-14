@@ -1,4 +1,4 @@
-// Private PDF remains outside the repository. No document contents are sent to a CDN.
+﻿// Private PDF remains outside the repository. No document contents are sent to a CDN.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -15,7 +15,7 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const login = await fixture.login();
-    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+    await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -42,19 +42,19 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
     assert.equal(data.metadata.unitMeasures['fagioli di soia secchi'].spoonGrams, 16);
     await page.getByRole('button', { name: 'Esporta lista della spesa', exact: true }).click();
     const preview = await page.locator('#shopping-preview').inputValue();
-    assert.ok(preview.includes('Vitello magro — 300 g oppure Coscia di tacchino — 270 g oppure Coscia di pollo — 240 g'));
-    assert.ok(preview.includes('Nasello — 300 g oppure Platessa — 290 g'));
-    assert.ok(preview.includes('Acciughe — 300 g oppure Alici — 300 g'));
-    assert.ok(preview.includes('Riso integrale con le seppie (Riso integrale — 150 g + Seppie — 50 g)'));
-    assert.ok(preview.includes('Uovo di gallina — 4 pezzi oppure Frittata (Uovo di gallina — 4 pezzi)'));
-    assert.ok(preview.includes('Olio extra vergine di oliva — 156 g'));
-    assert.ok(preview.includes("Fiocchi d'avena — 60 g"));
-    assert.ok(preview.includes('Pane integrale — 550 g'));
-    assert.ok(preview.includes('Mirtilli — 140 g'));
-    assert.ok(preview.includes('Semi di sesamo — 36 g'));
-    assert.ok(preview.includes('Parmigiano grattugiato — 40 g'));
-    assert.ok(!preview.includes('Pasto aggiuntivo 1 —'));
-    assert.ok(!preview.includes('quantità non indicata'));
+    assert.ok(preview.includes('Vitello magro â€” 300 g oppure Coscia di tacchino â€” 270 g oppure Coscia di pollo â€” 240 g'));
+    assert.ok(preview.includes('Nasello â€” 300 g oppure Platessa â€” 290 g'));
+    assert.ok(preview.includes('Acciughe â€” 300 g oppure Alici â€” 300 g'));
+    assert.ok(preview.includes('Riso integrale con le seppie (Riso integrale â€” 150 g + Seppie â€” 50 g)'));
+    assert.ok(preview.includes('Uovo di gallina â€” 4 pezzi oppure Frittata (Uovo di gallina â€” 4 pezzi)'));
+    assert.ok(preview.includes('Olio extra vergine di oliva â€” 156 g'));
+    assert.ok(preview.includes("Fiocchi d'avena â€” 60 g"));
+    assert.ok(preview.includes('Pane integrale â€” 550 g'));
+    assert.ok(preview.includes('Mirtilli â€” 140 g'));
+    assert.ok(preview.includes('Semi di sesamo â€” 36 g'));
+    assert.ok(preview.includes('Parmigiano grattugiato â€” 40 g'));
+    assert.ok(!preview.includes('Pasto aggiuntivo 1 â€”'));
+    assert.ok(!preview.includes('quantitÃ  non indicata'));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: path.join(os.tmpdir(), 'nutripro-real-shopping.png') });
     await page.reload();

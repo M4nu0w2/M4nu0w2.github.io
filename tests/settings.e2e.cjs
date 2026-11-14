@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -7,7 +7,7 @@ test('settings toggle water and oil, record effective oil, switch units and clea
   const f = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await f.close(); });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }); const login = await f.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
   const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(f.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
@@ -16,7 +16,7 @@ test('settings toggle water and oil, record effective oil, switch units and clea
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
   const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
   const nav = page.getByRole('navigation', { name: 'Navigazione principale' });
-  const openToday = async () => { await nav.getByRole('link', { name: 'Oggi' }).click(); await page.getByRole('button', { name: 'Lunedì' }).click(); };
+  const openToday = async () => { await nav.getByRole('link', { name: 'Oggi' }).click(); await page.getByRole('button', { name: 'LunedÃ¬' }).click(); };
   const openSettings = async () => { await nav.getByRole('link', { name: 'Settaggi' }).click(); await page.getByRole('heading', { name: 'Settaggi', level: 1 }).waitFor(); };
 
   // Defaults: water on, oil off, PDF units with grams in the note.
@@ -42,14 +42,14 @@ test('settings toggle water and oil, record effective oil, switch units and clea
   assert.equal(await control.count(), 1);
   assert.equal(await control.locator('output').innerText(), '3 cucchiaini (12 g)');
   await control.getByRole('button', { name: 'Meno olio' }).click();
-  assert.equal(await control.locator('output').innerText(), '2 cucchiaini e ½ (10 g)');
+  assert.equal(await control.locator('output').innerText(), '2 cucchiaini e Â½ (10 g)');
   assert.match(await page.locator('#oil-total').innerText(), /10\s*\/ 20 g previsti/);
   assert.deepEqual(Object.values((await archive()).plans[0].oil.lun), [10]);
 
   // Settings and the effective quantity survive a reload; water history is kept while hidden.
   await page.reload(); await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
-  await page.getByRole('button', { name: 'Lunedì' }).click();
-  assert.equal(await page.getByRole('group', { name: /Olio usato/ }).locator('output').innerText(), '2 cucchiaini e ½ (10 g)');
+  await page.getByRole('button', { name: 'LunedÃ¬' }).click();
+  assert.equal(await page.getByRole('group', { name: /Olio usato/ }).locator('output').innerText(), '2 cucchiaini e Â½ (10 g)');
 
   await openSettings();
   await page.getByRole('radio', { name: /Grammi/ }).check();

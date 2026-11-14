@@ -1,6 +1,6 @@
 {
-  "name": "NutriPro Basta",
-  "short_name": "NutriPro",
+  "name": "Nutrà",
+  "short_name": "Nutrà",
   "start_url": "/app/",
   "scope": "/app/",
   "display": "standalone",

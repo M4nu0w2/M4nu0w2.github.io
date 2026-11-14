@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -13,7 +13,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(iphone); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage();
   await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
@@ -31,8 +31,8 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   assert.equal(await days.count(), 7);
   const rows = new Set(await days.evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top))));
   assert.equal(rows.size, 1);
-  await page.getByRole('button', { name: 'Mercoledì' }).click();
-  assert.equal(await page.getByRole('button', { name: 'Mercoledì' }).getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: 'MercoledÃ¬' }).click();
+  assert.equal(await page.getByRole('button', { name: 'MercoledÃ¬' }).getAttribute('aria-pressed'), 'true');
 
   const grid = await page.locator('.stats-grid').boundingBox();
   const orphan = await page.locator('.stats-grid > :last-child').boundingBox();

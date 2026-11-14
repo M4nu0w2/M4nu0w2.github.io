@@ -1,4 +1,4 @@
-// Run with PLAYWRIGHT_MODULE pointing to an existing Playwright installation.
+﻿// Run with PLAYWRIGHT_MODULE pointing to an existing Playwright installation.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -14,7 +14,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     const origin = fixture.config.origin;
     const context = await browser.newContext({ viewport: { width: 375, height: 812 }, permissions: ['clipboard-read', 'clipboard-write'] });
     const login = await fixture.login();
-    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: origin }]);
+    await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: origin }]);
     const page = await context.newPage();
     const errors = [];
     const violations = [];
@@ -43,12 +43,12 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     const downloadEvent = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Scarica .txt', exact: true }).click();
     const download = await downloadEvent;
-    assert.equal(download.suggestedFilename(), 'lista-spesa-nutripro.txt');
+    assert.equal(download.suggestedFilename(), 'lista-spesa-nutra.txt');
     assert.equal(fs.readFileSync(await download.path(), 'utf8'), await page.locator('#shopping-preview').inputValue());
     for (const checkbox of await dialog.getByRole('checkbox').all()) await checkbox.uncheck();
     assert.equal(await page.locator('#shopping-preview').inputValue(), '');
     assert.equal(await page.getByRole('button', { name: 'Copia lista', exact: true }).isDisabled(), true);
-    await dialog.getByRole('checkbox', { name: 'Lunedì' }).check();
+    await dialog.getByRole('checkbox', { name: 'LunedÃ¬' }).check();
     const monday = await page.locator('#shopping-preview').inputValue();
     assert.ok(monday.includes('oppure'));
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }));

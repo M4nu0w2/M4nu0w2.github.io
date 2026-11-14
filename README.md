@@ -1,11 +1,11 @@
-# NutriPro
+# Nutrà
 
 Monorepo di due prodotti distinti che condividono solo il repository:
 
 | Componente | Cartella | Cos'è | Stack | Dove gira |
 | :--- | :--- | :--- | :--- | :--- |
 | **Landing "Nutrà"** | `landing_page_nutripro/` | Sito pubblico, leggero e ottimizzato per i motori di ricerca; raccoglie la waitlist dei nutrizionisti tester | Vite 6 vanilla + GSAP/Lenis, HTML statico | **Radice** del dominio (`/`), servita dal backend Node |
-| **App NutriPro** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF del piano alimentare, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 26 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
+| **App Nutrà** | `/` (root del repo) | Web app autenticata per il paziente: importa il PDF del piano alimentare, mostra pasti, acqua, spesa, assistente | React 19 + Vite 8, backend Node 26 senza framework | **`/app`** dello stesso dominio, container Docker su Hermes |
 
 Oggi il dominio è `nutriprobasta.jirachibot.eu`, **temporaneo e solo per demo interne**. L'impostazione è pensata per reggere anche con un dominio definitivo: landing pubblica e SEO da una parte, web app autenticata dall'altra, senza codice in comune. Il dominio non è scritto nel codice: vedi [Configurazione](#configurazione-variabili-dambiente).
 

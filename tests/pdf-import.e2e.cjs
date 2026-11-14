@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -18,7 +18,7 @@ test('bundled PDF worker imports real PDF bytes without external requests or CSP
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage(); const external = [], errors = [];
   page.on('request', request => { if (!request.url().startsWith(fixture.config.origin)) external.push(request.url()); });
   page.on('pageerror', error => errors.push(error.message));
@@ -38,7 +38,7 @@ test('imports a PDF on browsers without ReadableStream async iteration, as Safar
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage(); const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => { delete ReadableStream.prototype[Symbol.asyncIterator]; delete ReadableStream.prototype.values; });
@@ -58,7 +58,7 @@ test('a PDF that is not a meal plan gets a plain message, imports nothing, and t
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage(); const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(fixture.config.origin + '/app/');
@@ -79,7 +79,7 @@ test('a PDF the reader cannot understand can be read by the assistant, after con
   const fixture = await startFixture({ PII_URL: rizzo.url }, { geminiService: gemini }); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); await rizzo.close(); });
   const context = await browser.newContext(); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage(); const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(fixture.config.origin + '/app/');
@@ -91,7 +91,7 @@ test('a PDF the reader cannot understand can be read by the assistant, after con
   assert.equal(await button.isDisabled(), true); // no consent yet
   await page.getByLabel('Ho capito e acconsento.').check();
   await button.click();
-  await page.getByText(/giorni · .* pasti riconosciuti/).waitFor();
+  await page.getByText(/giorni Â· .* pasti riconosciuti/).waitFor();
   assert.match(await page.locator('.notice.warning').textContent(), /Letto con l'assistente/);
   // Google received the text without the name and the e-mail; the PDF itself never left.
   assert.equal(gemini.calls.length, 1);
@@ -108,7 +108,7 @@ test('without the anonymiser the assistant is not even offered', async t => {
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage();
   await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();

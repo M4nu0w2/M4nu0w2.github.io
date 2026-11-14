@@ -9,7 +9,8 @@ gsap.registerPlugin(ScrollTrigger);
 const DESKTOP = '(min-width: 1024px) and (prefers-reduced-motion: no-preference)';
 
 // Quanti px di scroll per ogni secondo di timeline (in frazioni di viewport).
-const SCROLL_PER_UNIT = 0.33; // ~137vh per scena
+// Era 0.33 (~6.600px a vh=631); ora 0.25 (~4.650px), circa 500–840px per scena.
+const SCROLL_PER_UNIT = 0.25;
 
 export function initStory() {
   const story = document.querySelector('[data-story]');
@@ -220,72 +221,74 @@ function buildStory(story) {
   tl.fromTo(day, { d: 0 }, { d: 2, duration: 1.4, ease: 'none', immediateRender: false }, 5.3);
 
   // ---------- Scena 3: spunta e traccia ----------
+  // Tick stagger ridotto (0.28/0.22 → 0.15), batch 2 sovrapposto al primo scroll,
+  // acqua anticipata: scena compressa da 6.4 a 4.4 unità.
   tl.addLabel('scene3', 7.2);
   textOut(2, 7.2);
   move(POSE.s3, 7.2, 1.1);
   scrollScreen('oggi', offsetOf($('.ui-grid', phone)), 7.4, 0.8);
   textIn(3, 7.9);
-  [0, 1, 2, 3].forEach((i, k) => tick(i, 8.4 + k * 0.28));
-  counter(progressA, 0, 4, 8.4, 1.1, paintProgress);
-  scrollScreen('oggi', offsetOf($('[data-meal="pranzo"]', phone)), 9.7, 0.6);
-  [4, 5, 6, 7, 8].forEach((i, k) => tick(i, 10.4 + k * 0.22));
-  counter(progressB, 4, 9, 10.4, 1.1, paintProgress);
-  scrollScreen('oggi', offsetOf($('.ui-grid', phone)), 11.7, 0.6);
-  counter(water, 0, 1.6, 12.1, 0.9, paintWater);
+  [0, 1, 2, 3].forEach((i, k) => tick(i, 8.4 + k * 0.15));
+  counter(progressA, 0, 4, 8.4, 0.75, paintProgress);
+  scrollScreen('oggi', offsetOf($('[data-meal="pranzo"]', phone)), 9.0, 0.5);
+  [4, 5, 6, 7, 8].forEach((i, k) => tick(i, 9.3 + k * 0.15));
+  counter(progressB, 4, 9, 9.3, 0.75, paintProgress);
+  scrollScreen('oggi', offsetOf($('.ui-grid', phone)), 10.2, 0.5);
+  counter(water, 0, 1.6, 10.6, 0.7, paintWater);
 
   // ---------- Scena 4: calcolatore e lista della spesa ----------
-  tl.addLabel('scene4', 13.6);
-  textOut(3, 13.6);
-  move(POSE.s4, 13.6, 1.1);
-  textIn(4, 14.3);
-  tl.fromTo(modal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, immediateRender: false }, 14.2);
-  tl.fromTo($('.ui-modal', modal), { y: 40, scale: 0.96 }, { y: 0, scale: 1, duration: 0.45, ease: 'power3.out', immediateRender: false }, 14.2);
-  step(14.2, () => setNav('calcolatore'), () => setNav('oggi'));
+  tl.addLabel('scene4', 11.6);
+  textOut(3, 11.6);
+  move(POSE.s4, 11.6, 1.1);
+  textIn(4, 12.3);
+  tl.fromTo(modal, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, immediateRender: false }, 12.2);
+  tl.fromTo($('.ui-modal', modal), { y: 40, scale: 0.96 }, { y: 0, scale: 1, duration: 0.45, ease: 'power3.out', immediateRender: false }, 12.2);
+  step(12.2, () => setNav('calcolatore'), () => setNav('oggi'));
 
   const cookedEl = $('[data-cooked]', modal);
   const cooked = { v: 80 };
   const result1 = cookedEl.parentElement;
-  tl.fromTo(result1, { color: '#f1f5f9' }, { color: '#6ee7b7', duration: 0.3, immediateRender: false }, 14.8);
-  counter(cooked, 80, 176, 14.8, 0.8, () => (cookedEl.textContent = Math.round(cooked.v)));
+  tl.fromTo(result1, { color: '#f1f5f9' }, { color: '#6ee7b7', duration: 0.3, immediateRender: false }, 12.8);
+  counter(cooked, 80, 176, 12.8, 0.8, () => (cookedEl.textContent = Math.round(cooked.v)));
   const measureEl = $('[data-measure]', modal);
   const measure = { v: 0 };
   const result2 = measureEl.parentElement;
-  tl.fromTo(result2, { color: '#f1f5f9' }, { color: '#6ee7b7', duration: 0.3, immediateRender: false }, 15.8);
-  counter(measure, 0, 4, 15.8, 0.6, () => (measureEl.textContent = Math.round(measure.v)));
+  tl.fromTo(result2, { color: '#f1f5f9' }, { color: '#6ee7b7', duration: 0.3, immediateRender: false }, 13.8);
+  counter(measure, 0, 4, 13.8, 0.6, () => (measureEl.textContent = Math.round(measure.v)));
 
-  tl.fromTo(modal, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.35, immediateRender: false }, 16.7);
-  step(16.7, () => setNav('oggi'), () => setNav('calcolatore'));
-  scrollScreen('oggi', 0, 16.8, 0.6);
+  tl.fromTo(modal, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.35, immediateRender: false }, 14.7);
+  step(14.7, () => setNav('oggi'), () => setNav('calcolatore'));
+  scrollScreen('oggi', 0, 14.8, 0.5);
   const exportBtn = $('[data-export]', phone);
-  tl.to(exportBtn, { scale: 0.92, duration: 0.15, ease: 'power1.out' }, 17.5);
-  tl.to(exportBtn, { scale: 1, duration: 0.2, ease: 'back.out(3)' }, 17.65);
+  tl.to(exportBtn, { scale: 0.92, duration: 0.15, ease: 'power1.out' }, 15.5);
+  tl.to(exportBtn, { scale: 1, duration: 0.2, ease: 'back.out(3)' }, 15.65);
   tl.fromTo(
     receipt,
     { autoAlpha: 0, x: 0, y: 0, rotation: 0 },
     { autoAlpha: 1, x: () => wrap.offsetWidth * 0.8, y: -20, rotation: 5, duration: 1.1, ease: 'power3.out', immediateRender: false },
-    17.8,
+    15.8,
   );
 
   // ---------- Scena 5: tutti i piani ----------
-  tl.addLabel('scene5', 19.6);
-  textOut(4, 19.6);
-  tl.to(receipt, { autoAlpha: 0, x: () => wrap.offsetWidth * 0.5, y: 60, rotation: 10, duration: 0.6, ease: 'power2.in' }, 19.6);
-  move(POSE.s5, 19.7, 1.1);
-  switchScreen('oggi', 'piani', 20.0);
-  textIn(5, 20.4);
-  scrollScreen('piani', offsetOf($('.ui-filters', screens.piani)), 21.0, 0.8);
+  tl.addLabel('scene5', 16.9);
+  textOut(4, 16.9);
+  tl.to(receipt, { autoAlpha: 0, x: () => wrap.offsetWidth * 0.5, y: 60, rotation: 10, duration: 0.6, ease: 'power2.in' }, 16.9);
+  move(POSE.s5, 17.0, 1.1);
+  switchScreen('oggi', 'piani', 17.3);
+  textIn(5, 17.7);
+  scrollScreen('piani', offsetOf($('.ui-filters', screens.piani)), 18.3, 0.8);
 
   const filters = $$('.ui-filter', screens.piani);
   const plans = $$('.ui-plan', screens.piani);
   const setFilter = (i) => filters.forEach((f, k) => f.classList.toggle('is-active', k === i));
-  step(22.0, () => setFilter(1), () => setFilter(0));
-  tl.to(plans.slice(1), { autoAlpha: 0.25, duration: 0.3 }, 22.0);
-  tl.fromTo(plans[0], { scale: 1 }, { scale: 1.03, duration: 0.3, yoyo: true, repeat: 1, ease: 'power1.inOut', immediateRender: false }, 22.1);
-  step(22.9, () => setFilter(2), () => setFilter(1));
-  tl.to(plans.slice(1), { autoAlpha: 1, duration: 0.3 }, 22.9);
-  tl.to(plans[0], { autoAlpha: 0.25, duration: 0.3 }, 22.9);
-  step(23.8, () => setFilter(0), () => setFilter(2));
-  tl.to(plans[0], { autoAlpha: 1, duration: 0.3 }, 23.8);
+  step(19.3, () => setFilter(1), () => setFilter(0));
+  tl.to(plans.slice(1), { autoAlpha: 0.25, duration: 0.3 }, 19.3);
+  tl.fromTo(plans[0], { scale: 1 }, { scale: 1.03, duration: 0.3, yoyo: true, repeat: 1, ease: 'power1.inOut', immediateRender: false }, 19.4);
+  step(20.2, () => setFilter(2), () => setFilter(1));
+  tl.to(plans.slice(1), { autoAlpha: 1, duration: 0.3 }, 20.2);
+  tl.to(plans[0], { autoAlpha: 0.25, duration: 0.3 }, 20.2);
+  step(21.1, () => setFilter(0), () => setFilter(2));
+  tl.to(plans[0], { autoAlpha: 1, duration: 0.3 }, 21.1);
 
   // ---------- Scena 6: il collegamento (in arrivo) ----------
   const laptopWrap = $('.story__laptop');
@@ -335,29 +338,29 @@ function buildStory(story) {
     });
   });
 
-  tl.addLabel('scene6', 24.6);
-  textOut(5, 24.6);
-  move(POSE.s6, 24.6, 1.1);
-  switchScreen('piani', 'oggi', 24.8);
-  tl.fromTo(laptopWrap, resolvePose(LPOSE.out, true), { ...LPOSE.s6, duration: 1.2, ease: 'power3.out', immediateRender: false }, 24.9);
-  textIn(6, 25.5);
-  tl.fromTo(linkPath, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.8, immediateRender: false }, 26.0);
+  tl.addLabel('scene6', 21.9);
+  textOut(5, 21.9);
+  move(POSE.s6, 21.9, 1.1);
+  switchScreen('piani', 'oggi', 22.1);
+  tl.fromTo(laptopWrap, resolvePose(LPOSE.out, true), { ...LPOSE.s6, duration: 1.2, ease: 'power3.out', immediateRender: false }, 22.2);
+  textIn(6, 22.8);
+  tl.fromTo(linkPath, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.8, immediateRender: false }, 23.3);
   pulses.forEach((pulse, i) =>
-    tl.fromTo(pulse, { p: 0 }, { p: 1, duration: 0.9, ease: 'power1.inOut', immediateRender: false }, 26.5 + i * 0.3),
+    tl.fromTo(pulse, { p: 0 }, { p: 1, duration: 0.9, ease: 'power1.inOut', immediateRender: false }, 23.8 + i * 0.3),
   );
-  tl.fromTo(live, { autoAlpha: 0, x: 12 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out', immediateRender: false }, 27.4);
+  tl.fromTo(live, { autoAlpha: 0, x: 12 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out', immediateRender: false }, 24.7);
 
   // ---------- Scena 7: dashboard nutrizionista (in arrivo) ----------
-  tl.addLabel('scene7', 28.4);
-  textOut(6, 28.4);
-  tl.fromTo(link, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.4, immediateRender: false }, 28.4);
-  move(POSE.s7, 28.4, 1.1);
-  tl.fromTo([wrap, glow], { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.6, immediateRender: false }, 28.7);
-  tl.fromTo(laptopWrap, resolvePose(LPOSE.s6, true), { ...LPOSE.s7, duration: 1.2, immediateRender: false }, 28.5);
-  textIn(7, 29.2);
-  tl.fromTo(adhBars, { scaleX: 0 }, { scaleX: (i, el) => Number(el.style.getPropertyValue('--v')), duration: 0.7, stagger: 0.08, ease: 'power2.out', immediateRender: false }, 29.6);
-  tl.fromTo(alertBox, { autoAlpha: 0, y: 16, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.6)', immediateRender: false }, 30.3);
-  tl.to({}, { duration: 1 }, 31); // pausa finale prima di sbloccare la sezione
+  tl.addLabel('scene7', 25.7);
+  textOut(6, 25.7);
+  tl.fromTo(link, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.4, immediateRender: false }, 25.7);
+  move(POSE.s7, 25.7, 1.1);
+  tl.fromTo([wrap, glow], { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.6, immediateRender: false }, 26.0);
+  tl.fromTo(laptopWrap, resolvePose(LPOSE.s6, true), { ...LPOSE.s7, duration: 1.2, immediateRender: false }, 25.8);
+  textIn(7, 26.5);
+  tl.fromTo(adhBars, { scaleX: 0 }, { scaleX: (i, el) => Number(el.style.getPropertyValue('--v')), duration: 0.7, stagger: 0.08, ease: 'power2.out', immediateRender: false }, 26.9);
+  tl.fromTo(alertBox, { autoAlpha: 0, y: 16, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.6)', immediateRender: false }, 27.6);
+  tl.to({}, { duration: 1 }, 28.6); // pausa finale prima di sbloccare la sezione
 
   const st = ScrollTrigger.create({
     trigger: story,

@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { configFromEnv } = require('../server/app.cjs');
@@ -32,7 +32,7 @@ test('OIDC code flow uses state, nonce, PKCE and a server-only session; logout r
   assert.ok(start.url.searchParams.get('nonce'));
   assert.equal(response.status, 303);
   assert.equal(response.headers.get('location'), '/app/');
-  const setCookie = response.headers.getSetCookie().find(s => s.startsWith('nutripro_session='));
+  const setCookie = response.headers.getSetCookie().find(s => s.startsWith('nutra_session='));
   assert.match(setCookie, /HttpOnly; SameSite=Lax/);
   const headers = { Cookie: cookie };
   const sessionResponse = await f.request('/api/session', { headers });
@@ -86,7 +86,7 @@ test('invalid Google identities, failed token verification and disallowed accoun
 
 test('sessions expire, fabricated cookies fail and successful login rotates the session', async t => {
   const f = await startFixture({ SESSION_TTL_SECONDS: '60' }); t.after(() => f.close());
-  assert.equal((await f.request('/api/session', { headers: { Cookie: `nutripro_session=${'a'.repeat(43)}` } })).status, 401);
+  assert.equal((await f.request('/api/session', { headers: { Cookie: `nutra_session=${'a'.repeat(43)}` } })).status, 401);
   const login = await f.login();
   f.advance(61000);
   assert.equal((await f.request('/api/session', { headers: { Cookie: login.cookie } })).status, 401);
@@ -101,7 +101,7 @@ test('signed sessions survive a restart with the same key and renew on use for 9
   const secret = 'k'.repeat(32);
   const first = await startFixture({ SESSION_SECRET: secret }); t.after(() => first.close());
   const login = await first.login();
-  assert.match(login.response.headers.getSetCookie().find(c => c.startsWith('nutripro_session=')), /Max-Age=7776000/);
+  assert.match(login.response.headers.getSetCookie().find(c => c.startsWith('nutra_session=')), /Max-Age=7776000/);
   // A new process with the same key accepts the cookie; a different key does not.
   const restarted = await startFixture({ SESSION_SECRET: secret }); t.after(() => restarted.close());
   const session = await restarted.request('/api/session', { headers: { Cookie: login.cookie } });
@@ -132,7 +132,7 @@ test('tampered session cookies fail and logout revokes the signed cookie', async
   const login = await f.login();
   const [data, signature] = login.cookie.split('=')[1].split('.');
   const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url')), sub: 'someone-else' })).toString('base64url');
-  assert.equal((await f.request('/api/session', { headers: { Cookie: `nutripro_session=${forged}.${signature}` } })).status, 401);
+  assert.equal((await f.request('/api/session', { headers: { Cookie: `nutra_session=${forged}.${signature}` } })).status, 401);
   const { csrf } = await (await f.request('/api/session', { headers: { Cookie: login.cookie } })).json();
   const logout = await f.request('/auth/logout', { method: 'POST', headers: { Cookie: login.cookie, Origin: f.config.origin, 'X-CSRF-Token': csrf } });
   assert.equal(logout.status, 200);
@@ -153,7 +153,7 @@ test('production requires HTTPS, sets host-only Secure cookies, and uses a fixed
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
   const r = await fetch(`http://127.0.0.1:${server.address().port}/auth/google`, { redirect: 'manual', headers: { Host: 'evil.test', 'X-Forwarded-Host': 'evil.test' } });
-  assert.match(r.headers.get('set-cookie'), /^__Host-nutripro_oauth=.*; Path=\/; HttpOnly; SameSite=Lax; Max-Age=600; Secure$/);
+  assert.match(r.headers.get('set-cookie'), /^__Host-nutra_oauth=.*; Path=\/; HttpOnly; SameSite=Lax; Max-Age=600; Secure$/);
   const start = await f.begin();
   assert.equal(start.url.searchParams.get('redirect_uri'), `${f.config.origin}/auth/google/callback`);
 });

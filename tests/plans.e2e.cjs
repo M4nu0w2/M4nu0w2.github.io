@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -18,7 +18,7 @@ function dietPdf() {
 async function setup(t) {
   const f = await startFixture(); const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } }); const login = await f.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
   const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
   t.after(async () => { await browser.close(); await f.close(); });
   await page.goto(f.config.origin + '/app/');
