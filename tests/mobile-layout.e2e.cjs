@@ -31,8 +31,8 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   assert.equal(await days.count(), 7);
   const rows = new Set(await days.evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top))));
   assert.equal(rows.size, 1);
-  await page.getByRole('button', { name: 'MercoledÃ¬' }).click();
-  assert.equal(await page.getByRole('button', { name: 'MercoledÃ¬' }).getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: 'Mercoledì' }).click();
+  assert.equal(await page.getByRole('button', { name: 'Mercoledì' }).getAttribute('aria-pressed'), 'true');
 
   const grid = await page.locator('.stats-grid').boundingBox();
   const orphan = await page.locator('.stats-grid > :last-child').boundingBox();

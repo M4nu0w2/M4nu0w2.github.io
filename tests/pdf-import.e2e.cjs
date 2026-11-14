@@ -91,7 +91,7 @@ test('a PDF the reader cannot understand can be read by the assistant, after con
   assert.equal(await button.isDisabled(), true); // no consent yet
   await page.getByLabel('Ho capito e acconsento.').check();
   await button.click();
-  await page.getByText(/giorni Â· .* pasti riconosciuti/).waitFor();
+  await page.getByText(/giorni · .* pasti riconosciuti/).waitFor();
   assert.match(await page.locator('.notice.warning').textContent(), /Letto con l'assistente/);
   // Google received the text without the name and the e-mail; the PDF itself never left.
   assert.equal(gemini.calls.length, 1);

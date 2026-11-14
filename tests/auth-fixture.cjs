@@ -1,6 +1,7 @@
 ﻿'use strict';
 const { OAuth2Client } = require('google-auth-library');
 const { createAuthServer, configFromEnv } = require('../server/app.cjs');
+const { createAppStore } = require('../server/store.cjs');
 
 // A simulated Google provider used only by local automated tests. Never a server route.
 async function startFixture(overrides = {}, options = {}) {
@@ -28,11 +29,12 @@ async function startFixture(overrides = {}, options = {}) {
         exp: Math.floor(clock / 1000) + 3600, nonce: pending.nonce, ...nextIdentity }) };
     }
   };
-  const server = createAuthServer(config, { oauthClient: oauth, now: () => clock, ...options });
+  const appStore = options.appStore || createAppStore(':memory:', () => clock);
+  const server = createAuthServer(config, { oauthClient: oauth, now: () => clock, appStore, ...options });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   config.origin = `http://127.0.0.1:${server.address().port}`;
   return {
-    server, config, oauth,
+    server, config, oauth, store: appStore,
     setIdentity(value) { nextIdentity = value; },
     rejectTokens() { rejectToken = true; },
     advance(ms) { clock += ms; },

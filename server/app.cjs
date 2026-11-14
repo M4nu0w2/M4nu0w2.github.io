@@ -10,6 +10,7 @@ const { validate: validateWaitlist, createWaitlistStore } = require('./waitlist.
 const { createLogger, LEVELS } = require('./log.cjs');
 const { createAnonymizer } = require('./anonymizer.cjs');
 const { createPlanImport } = require('./planImport.cjs');
+const { createAppStore, dayKeyFor } = require('./store.cjs');
 
 const ROOT = path.join(__dirname, '..', 'dist');
 const APP = '/app';
@@ -19,7 +20,8 @@ const LANDING_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8', '.ico': 'image/x-icon' };
 const APP_ROUTES = new Set(['/login', '/plans', '/chat', '/settings']);
-const isAppRoute = route => APP_ROUTES.has(route) || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route);
+const isAppRoute = route => APP_ROUTES.has(route) || /^\/plans\/[a-zA-Z0-9_-]+$/.test(route) ||
+  route === '/nutritionist' || /^\/nutritionist\/[a-zA-Z0-9_\/-]*$/.test(route);
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'";
 const random = () => crypto.randomBytes(32).toString('base64url');
 const digest = value => crypto.createHash('sha256').update(value).digest('base64url');
@@ -29,6 +31,16 @@ const equal = (a, b) => {
   const right = Buffer.from(b);
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Ticked items for one day of a plan, keyed like the client: item.id or `${meal}_${item}`.
+function complianceFor(data, checked, day) {
+  let total = 0, done = 0;
+  (data?.days?.[day]?.meals || []).forEach((meal, mi) => (meal.items || []).forEach((item, ii) => {
+    total++;
+    if (checked?.[item.id || `${mi}_${ii}`]) done++;
+  }));
+  return { done, total };
+}
 
 function configFromEnv(env) {
   const origin = new URL(env.APP_ORIGIN || 'http://localhost:8080');
@@ -63,7 +75,8 @@ function configFromEnv(env) {
     logLevel: logLevel,
     piiUrl: env.PII_URL || '',
     landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
-    waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite')
+    waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite'),
+    appDb: env.APP_DB_PATH || path.join(__dirname, '..', 'data', 'nutra.sqlite')
   };
 }
 
@@ -106,8 +119,9 @@ function readChatBody(req, { limit = 131072, parser = text => JSON.parse(text) }
 }
 
 // The OAuth client and clock can be injected by tests only. Production always uses Google's verifier.
-function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger, planImport } = {}) {
+function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger, planImport, appStore } = {}) {
   const log = logger || createLogger({ level: config.logLevel });
+  const store = appStore || createAppStore(config.appDb, now);
   const chat = geminiService || createGeminiService({ env: config.gemini || {}, origin: config.origin, now });
   const importer = planImport || createPlanImport({ anonymizer: createAnonymizer({ url: config.piiUrl }), gemini: chat, log });
   const client = oauthClient || new OAuth2Client({ clientId: config.clientId, clientSecret: config.clientSecret,
@@ -123,6 +137,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
   let activeCallbacks = 0;
   const sessionName = config.secure ? '__Host-nutra_session' : 'nutra_session';
   const flowName = config.secure ? '__Host-nutra_oauth' : 'nutra_oauth';
+  const joinName = config.secure ? '__Host-nutra_join' : 'nutra_join';
   const shell = fs.readFileSync(path.join(ROOT, 'index.html'));
   const files = new Map([
     [`${APP}/icon-512.png`, { file: path.join(ROOT, 'icon-512.png'), type: 'image/png' }],
@@ -172,7 +187,8 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
     try { session = JSON.parse(Buffer.from(data, 'base64url').toString('utf8')); } catch { return null; }
     if (!session || typeof session.sub !== 'string' || typeof session.email !== 'string' || typeof session.csrf !== 'string' ||
         !Number.isFinite(session.expires) || session.expires <= now()) return null;
-    if (config.allowedEmails.length && !config.allowedEmails.includes(session.email.toLowerCase())) return null;
+    // Accounts with a role in the store (nutritionists, invited patients) pass even when ALLOWED_EMAILS is set.
+    if (config.allowedEmails.length && !config.allowedEmails.includes(session.email.toLowerCase()) && !store.roleOf(session.sub)) return null;
     return session;
   }
   function revoke(value) {
@@ -193,6 +209,8 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
     res.end(JSON.stringify(body));
   }
   function redirect(res, location) { res.writeHead(303, { Location: location }); res.end(); }
+  const badCsrf = (req, session) => req.headers.origin !== config.origin || !equal(session.csrf, req.headers['x-csrf-token']);
+  const isJson = req => /^application\/json(?:;|$)/i.test(req.headers['content-type'] || '');
   function loginError(res, error) { log.warn('login_failed', { reason: error }); redirect(res, `${APP}/login?error=${error}`); }
   // Per-IP and global fixed-window limiter. IP comes from X-Real-IP only behind a proxy which overwrites it.
   function makeLimiter(perIp, perWindow) {
@@ -307,13 +325,26 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
               typeof identity.email !== 'string' || identity.aud !== config.clientId ||
               !['accounts.google.com', 'https://accounts.google.com'].includes(identity.iss) ||
               !Number.isFinite(identity.exp) || identity.exp * 1000 <= now()) throw new Error('Invalid identity');
-          if (config.allowedEmails.length && !config.allowedEmails.includes(identity.email.toLowerCase())) return loginError(res, 'not_allowed');
+          const email = identity.email.toLowerCase();
+          let role = store.roleOf(identity.sub);
+          if (!role) {
+            // Invite link first, then a pending patient row with the same email, then an admin grant.
+            const invited = store.patientByToken(cookies(req)[joinName]);
+            const pending = invited && !invited.googleSub && invited.email === email ? invited : store.unlinkedPatientByEmail(email);
+            if (pending) { store.linkPatient(pending.id, identity.sub); role = 'patient'; }
+            else {
+              const granted = store.takeGrant(email);
+              if (granted) { store.assignRole(identity.sub, granted); role = granted; }
+            }
+          }
+          if (role === 'patient') store.touchPatient(identity.sub);
+          if (config.allowedEmails.length && !config.allowedEmails.includes(email) && !role) return loginError(res, 'not_allowed');
           revoke(cookies(req)[sessionName]);
           const { value } = issueSession({ sub: identity.sub, email: identity.email,
             name: typeof identity.name === 'string' ? identity.name.slice(0, 200) : identity.email, csrf: random() });
-          res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
-          log.info('login_ok');
-          return redirect(res, `${APP}/`);
+          res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(joinName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
+          log.info('login_ok', { role: role || 'none' });
+          return redirect(res, role === 'nutritionist' ? `${APP}/nutritionist/` : `${APP}/`);
         } catch {
           // Do not log provider responses, codes, tokens or personal data.
           return loginError(res, 'invalid_login');
@@ -326,6 +357,100 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
         return await handleWaitlist(req, res);
       }
       const session = sessionFor(req, res);
+      // Patient invite: redeem directly when already signed in with the invited email,
+      // otherwise remember the token in a short-lived cookie and go through Google login.
+      if (route === `${APP}/join` && req.method === 'GET') {
+        const token = url.searchParams.get('token') || '';
+        const invited = store.patientByToken(token);
+        if (session && invited && !invited.googleSub && invited.email === session.email.toLowerCase() && !store.roleOf(session.sub)) {
+          store.linkPatient(invited.id, session.sub);
+          return redirect(res, `${APP}/`);
+        }
+        if (session) return redirect(res, `${APP}/`);
+        if (/^[\w-]{20,100}$/.test(token)) res.appendHeader('Set-Cookie', cookie(joinName, token, config.flowTtl));
+        return redirect(res, '/auth/google');
+      }
+      if (route.startsWith('/api/nutritionist/')) {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        if (store.roleOf(session.sub) !== 'nutritionist') return json(res, 403, { error: 'forbidden' });
+        const inviteUrl = token => `${config.origin}${APP}/join?token=${token}`;
+        if (route === '/api/nutritionist/patients') {
+          if (req.method === 'GET') {
+            const today = dayKeyFor(now());
+            return json(res, 200, { day: today, patients: store.listPatients(session.sub).map(p => {
+              const plan = store.planForPatient(p.id);
+              const checked = plan && p.googleSub ? store.trackingFor(p.googleSub, plan.id, today)[today]?.checked?.value : null;
+              return { id: p.id, name: p.name, email: p.email, status: p.googleSub ? 'active' : 'pending',
+                inviteUrl: p.googleSub ? null : inviteUrl(p.inviteToken), lastSeenAt: p.lastSeenAt, createdAt: p.createdAt,
+                planName: plan?.name || null, compliance: plan && p.googleSub ? complianceFor(plan.data, checked, today) : null };
+            }) });
+          }
+          if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return json(res, 405, { error: 'method_not_allowed' }); }
+          if (badCsrf(req, session)) return json(res, 403, { error: 'forbidden' });
+          if (!isJson(req)) return json(res, 415, { error: 'unsupported_media_type' });
+          const input = await readChatBody(req, { limit: 8192 });
+          const name = String(input?.name ?? '').trim().slice(0, 100);
+          const patientEmail = String(input?.email ?? '').trim().toLowerCase().slice(0, 200);
+          if (!name || !EMAIL_RE.test(patientEmail)) return json(res, 422, { error: 'validation' });
+          try {
+            const patient = store.addPatient(session.sub, { name, email: patientEmail });
+            return json(res, 200, { id: patient.id, name: patient.name, email: patient.email, status: 'pending', inviteUrl: inviteUrl(patient.inviteToken) });
+          } catch { return json(res, 409, { error: 'duplicate_patient' }); }
+        }
+        const match = route.match(/^\/api\/nutritionist\/patients\/(\d{1,10})(\/plan|\/compliance)?$/);
+        if (!match) return json(res, 404, { error: 'not_found' });
+        const patient = store.patientOf(session.sub, Number(match[1]));
+        if (!patient) return json(res, 404, { error: 'not_found' });
+        if (match[2] === '/plan') {
+          if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return json(res, 405, { error: 'method_not_allowed' }); }
+          if (badCsrf(req, session)) return json(res, 403, { error: 'forbidden' });
+          if (!isJson(req)) return json(res, 415, { error: 'unsupported_media_type' });
+          const input = await readChatBody(req, { limit: 524288 });
+          try { return json(res, 200, { planId: store.assignPlan(patient.id, { name: input?.name, data: input?.data }) }); }
+          catch (error) { return json(res, error.status || 500, { error: error.code || 'plan_error' }); }
+        }
+        if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return json(res, 405, { error: 'method_not_allowed' }); }
+        const plan = store.planForPatient(patient.id);
+        return json(res, 200, { day: dayKeyFor(now()),
+          patient: { id: patient.id, name: patient.name, email: patient.email, status: patient.googleSub ? 'active' : 'pending',
+            inviteUrl: patient.googleSub ? null : inviteUrl(patient.inviteToken), lastSeenAt: patient.lastSeenAt, createdAt: patient.createdAt },
+          plan, tracking: plan && patient.googleSub ? store.trackingFor(patient.googleSub, plan.id) : {} });
+      }
+      // The plan assigned by the nutritionist; the server is the source of truth for these patients.
+      if (route === '/api/plan' && req.method === 'GET') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        const patient = store.patientBySub(session.sub);
+        const plan = patient ? store.planForPatient(patient.id) : null;
+        if (patient) store.touchPatient(session.sub);
+        return json(res, 200, { plan, tracking: plan ? store.trackingFor(session.sub, plan.id) : {} });
+      }
+      if (route === '/api/tracking' && req.method === 'POST') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        if (badCsrf(req, session)) return json(res, 403, { error: 'forbidden' });
+        if (!isJson(req)) return json(res, 415, { error: 'unsupported_media_type' });
+        const input = await readChatBody(req);
+        const patient = store.patientBySub(session.sub);
+        const plan = patient ? store.planForPatient(patient.id) : null;
+        if (!plan || plan.id !== input?.planId) return json(res, 409, { error: 'no_server_plan' });
+        try { store.saveTracking(session.sub, plan.id, input.day, input.field, input.value); }
+        catch (error) { return json(res, error.status || 422, { error: error.code || 'invalid_tracking' }); }
+        store.touchPatient(session.sub);
+        return json(res, 200, { ok: true });
+      }
+      // Admin only (ALLOWED_EMAILS): assign the nutritionist role by sub, or by email for the next sign-in.
+      if (route === '/api/admin/roles' && req.method === 'POST') {
+        if (!session) return json(res, 401, { error: 'unauthenticated' });
+        if (!config.allowedEmails.length || !config.allowedEmails.includes(session.email.toLowerCase())) return json(res, 403, { error: 'forbidden' });
+        if (badCsrf(req, session)) return json(res, 403, { error: 'forbidden' });
+        if (!isJson(req)) return json(res, 415, { error: 'unsupported_media_type' });
+        const input = await readChatBody(req, { limit: 8192 });
+        const role = input?.role;
+        if (!['nutritionist', 'patient'].includes(role)) return json(res, 422, { error: 'validation' });
+        if (typeof input.sub === 'string' && /^[a-zA-Z0-9_-]{1,255}$/.test(input.sub)) store.assignRole(input.sub, role);
+        else if (typeof input.email === 'string' && EMAIL_RE.test(input.email.trim().toLowerCase())) store.grantRole(input.email.trim(), role);
+        else return json(res, 422, { error: 'validation' });
+        return json(res, 200, { ok: true });
+      }
       if (route === '/api/chat/status' && req.method === 'GET') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
         return json(res, 200, chat.status());
@@ -365,7 +490,8 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
       if (route === '/api/session' && req.method === 'GET') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
         return json(res, 200, { sub: session.sub, name: session.name, email: session.email,
-          csrf: session.csrf, expiresAt: session.expires });
+          csrf: session.csrf, expiresAt: session.expires, role: store.roleOf(session.sub),
+          admin: !config.allowedEmails.length || config.allowedEmails.includes(session.email.toLowerCase()) });
       }
       if (route === '/auth/logout' && req.method === 'POST') {
         if (!session) return json(res, 401, { error: 'unauthenticated' });
@@ -404,7 +530,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
       return json(res, 500, { error: 'server_error' });
     }
   });
-  server.on('close', () => { clearInterval(sweep); waitlist.close(); });
+  server.on('close', () => { clearInterval(sweep); waitlist.close(); store.close(); });
   return server;
 }
 

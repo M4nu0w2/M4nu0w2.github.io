@@ -1,5 +1,115 @@
 # HANDOFF — NutriPro
 
+## Dashboard nutrizionista multi-tenant (MVP) - 2026-11-14
+
+Stato corrente; prevale sulle sezioni successive per ruoli, API, schema dati e
+test. Lavoro **solo in locale su `dev`, non committato e non pushato**: un push
+senza `[skip ci]` fa partire CI + deploy in produzione.
+
+### Goal
+
+Implementata la spec «MISSIONE E CORE MVP»: dashboard per il nutrizionista
+(gestione pazienti, assegnazione piani via PDF, monitoraggio compliance), ruoli
+multi-tenant sopra l'OAuth esistente, dati dei nuovi flussi sul server. Il
+paziente usa l'app esistente; il localStorage legacy resta invariato (la
+migrazione completa è WF-030, dopo questa dashboard).
+
+### Cosa è stato aggiunto (verificato con i test)
+
+**Backend**
+- `server/store.cjs` (nuovo): store `node:sqlite` con migrazioni versionate
+  (tabella `schema_migrations`, transazione per migrazione). Tabelle: `roles`
+  (sub → nutritionist|patient), `role_grants` (ruolo promesso a un'email,
+  consumato al primo login), `patients` (nutritionist_sub, email, invite_token,
+  google_sub, last_seen_at…), `plans` (JSON del piano per paziente, l'ultimo
+  caricato vince, lo storico resta), `plan_tracking` (upsert per
+  patient_sub+plan_id+day+field, field ∈ checked|water|oil). Apertura pigra come
+  la waitlist; percorso da `APP_DB_PATH` (Docker: `/data/nutra.sqlite`, stesso
+  volume). Nei test lo store è `:memory:` iniettato dalla fixture.
+- `server/app.cjs`: risoluzione del ruolo nel callback OAuth, in ordine: token
+  d'invito (cookie `nutra_join`/`__Host-nutra_join`, 10 min) → paziente pendente
+  con la stessa email → grant admin. Il nutrizionista dopo il login è rediretto
+  a `/app/nutritionist/`. Con `ALLOWED_EMAILS` configurato, chi ha un ruolo nel
+  DB passa comunque (check esteso anche in `readSession`); chi non ha ruolo né
+  email ammessa resta `not_allowed` come prima. `/api/session` ora restituisce
+  anche `role` e `admin` (admin = email in `ALLOWED_EMAILS`; lista vuota = tutti
+  admin, comportamento che tiene verdi fixture e test).
+- Route nuove: `GET /app/join?token=` (riscatta l'invito o parcheggia il token
+  nel cookie e manda al login Google); `GET/POST /api/nutritionist/patients`,
+  `GET /api/nutritionist/patients/:id` (= `/compliance`), `POST
+  /api/nutritionist/patients/:id/plan`; `GET /api/plan` e `POST /api/tracking`
+  per il paziente; `POST /api/admin/roles` (solo `ALLOWED_EMAILS`, assegna per
+  `sub` o promette per `email`). Tutte le POST: CSRF + Origin + content-type;
+  le API nutrizionista hanno role guard e ownership (un nutrizionista non vede
+  i pazienti di un altro).
+- GDPR: il PDF **non** arriva mai al server; il parsing avviene nel browser del
+  nutrizionista e viene caricato solo il JSON (limite 512 KB). WF-034 resta aperto.
+
+**Frontend**
+- `src/components/NutritionistPage.jsx` (nuovo, lazy — chunk separato ~12 KB):
+  lista pazienti con stato invito, ultimo accesso, piano e compliance % di oggi;
+  riga espandibile (progressive disclosure) con pasti del giorno spuntati/non,
+  bicchieri d'acqua e day picker; form nuovo paziente con link d'invito da
+  copiare; upload PDF per paziente. Stessa palette, accento viola per il ruolo
+  (`--role` in `styles.css`, bordo sinistro righe + badge).
+- `src/App.jsx`: smistamento per ruolo dentro `Protected` (nutritionist →
+  dashboard; patient o admin → app; nessuno → schermata «accesso non ancora
+  attivo» con logout). Il paziente al primo accesso riceve il piano dal server
+  (`GET /api/plan`) e lo importa nell'archivio locale col marker `serverId`;
+  ogni spunta/acqua/olio salva in locale e fa anche `POST /api/tracking`
+  fire-and-forget (zero breaking change per gli account legacy senza `serverId`).
+- `src/lib/planStore.mjs`: `importPlan` accetta `serverId` e lo conserva sul piano.
+
+**Config/infra**
+- `.env.example`: documentato `APP_DB_PATH`. `Dockerfile`: default
+  `APP_DB_PATH=/data/nutra.sqlite` (persiste sul volume già montato).
+
+### Test
+
+- `npm test`: **95/95** (nuovi `tests/store.test.cjs` e
+  `tests/nutritionist.test.cjs`; fixture `tests/auth-fixture.cjs` ora espone
+  `store` e lo inietta `:memory:`).
+- `npm run test:browser`: **20/20**, incluso il nuovo
+  `tests/nutritionist.e2e.cjs` con il flusso completo: nutrizionista aggiunge
+  paziente → copia invito → carica PDF (parsato nel browser) → paziente riscatta
+  l'invito, riceve il piano dal server, spunta un pasto e un bicchiere →
+  il nutrizionista rivede compliance 100% e dettaglio; un reload del paziente
+  con localStorage pulito riscarica il piano dal server.
+- Browser test in locale su Windows: `PLAYWRIGHT_MODULE` deve puntare a
+  `%TEMP%\pw\node_modules\playwright` (playwright 1.61.1 installato fuori repo,
+  `playwright install chromium` fatto; shell headless v1228 in
+  `%LOCALAPPDATA%\ms-playwright`).
+
+### Bug preesistente trovato e corretto
+
+Il commit `1d3ac89` (rinomina brand) aveva introdotto **mojibake** (UTF-8
+doppio-encodato: `LunedÃ¬`, `â€”`, `Â·`) in sei file e2e: `settings`,
+`shopping-export` e `pdf-import` **fallivano già su HEAD** prima di questa
+sessione. Corretto con recode riga-per-riga (latin1/cp1252 → UTF-8) via script
+Node. Attenzione su Windows: passare caratteri accentati come literal nei
+comandi PowerShell li corrompe; per fix del genere usare sempre uno script su
+file.
+
+### Non fatto / rimandato (come da spec)
+
+- F-06 template/editor AI e F-07 report/analytics: roadmap, bloccati da Gemini
+  in produzione (WF-010).
+- Invio email dell'invito (SMTP): il nutrizionista copia il link a mano.
+- Migrazione dei pazienti legacy al server: WF-030.
+- Schermata «accesso non ancora attivo» raggiungibile solo con `ALLOWED_EMAILS`
+  vuoto: con la lista piena il non-abilitato resta bloccato al login con
+  `not_allowed` (scelta per non cambiare il contratto dei test esistenti).
+
+### Next Steps
+
+1. Review del PO, poi commit (si può spezzare per step: store → auth → API →
+   frontend → fix encoding) e push su `dev` (parte il deploy).
+2. Su Hermes: nulla da configurare, `APP_DB_PATH` ha il default nel Dockerfile
+   e il volume `/data` esiste già. Primo nutrizionista reale: login admin, poi
+   `POST /api/admin/roles` con `{"email":"…","role":"nutritionist"}` (CSRF della
+   propria sessione) o inserimento diretto nella tabella `roles`.
+3. Valutare backup del nuovo DB insieme a WF-028 (stesso volume).
+
 ## Landing alla radice, app sotto /app, analisi di prodotto e nuova direzione dati - 2026-10-18
 
 Stato corrente; prevale sulle sezioni successive per tutto ciò che riguarda

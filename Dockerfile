@@ -24,7 +24,7 @@ RUN npm run build
 
 FROM node:26-alpine
 WORKDIR /app
-ENV NODE_ENV=production PORT=8080 WAITLIST_DB_PATH=/data/waitlist.sqlite
+ENV NODE_ENV=production PORT=8080 WAITLIST_DB_PATH=/data/waitlist.sqlite APP_DB_PATH=/data/nutra.sqlite
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --chown=node:node server ./server

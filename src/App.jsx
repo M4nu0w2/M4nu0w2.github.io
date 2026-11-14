@@ -5,6 +5,8 @@ import { itemKey, dayOil, stepOil, formatOil, displayQty } from './lib/tracking.
 import ChatPage from './components/ChatPage.jsx';
 import { parseDietPdf, extractPdfText, planFromAssistant, getSampleDiet, buildShoppingList, getFoodChoices } from './lib/dietEngine.mjs';
 
+const NutritionistPage = React.lazy(() => import('./components/NutritionistPage.jsx'));
+
 const dateLabel = value => new Date(value).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 const todayKey = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][new Date().getDay()];
 
@@ -65,7 +67,16 @@ function Protected() {
   }
   const gate = <main className="login-page"><section className="login-card"><p role="status">{logoutError || 'Verifica della sessione…'}</p>{logoutError && <button className="btn secondary" onClick={logout}>Riprova uscita</button>}</section></main>;
   if (!session) return gate;
-  return <>{locked && gate}<div hidden={locked} style={locked ? { visibility: 'hidden' } : undefined} inert={locked ? true : undefined}>{/* Keep state during focus verification, including the native file picker. */}<Workspace session={session} logout={logout} /></div></>;
+  const body = session.role === 'nutritionist'
+    ? <React.Suspense fallback={<main className="login-page"><p role="status">Caricamento dashboard…</p></main>}><NutritionistPage session={session} logout={logout} /></React.Suspense>
+    : session.role === 'patient' || session.admin
+      ? <Workspace session={session} logout={logout} />
+      : <WaitingPage session={session} logout={logout} />;
+  return <>{locked && gate}<div hidden={locked} style={locked ? { visibility: 'hidden' } : undefined} inert={locked ? true : undefined}>{/* Keep state during focus verification, including the native file picker. */}{body}</div></>;
+}
+
+function WaitingPage({ session, logout }) {
+  return <main className="login-page"><section className="login-card"><span className="brand">N<span>✦</span> Nutrà</span><p className="eyebrow">ACCESSO NON ANCORA ATTIVO</p><h1>Ci siamo quasi.</h1><p className="muted">L'account {session.email} non è ancora stato attivato. Se il tuo nutrizionista ti ha inviato un link di invito, aprilo con questo account Google. Altrimenti chiedi al tuo nutrizionista di aggiungerti.</p><button className="btn secondary" onClick={logout}>Esci</button></section></main>;
 }
 
 function Workspace({ session, logout }) {
@@ -81,11 +92,37 @@ function Workspace({ session, logout }) {
     window.addEventListener('storage', refresh); return () => window.removeEventListener('storage', refresh);
   }, [store]);
   function mutate(operation) { try { setArchive(operation()); setError(''); return true; } catch (e) { setError(e.message); try { setArchive(store.read()); } catch { setArchive(null); } return false; } }
+  // Patients of a nutritionist receive the plan from the server; localStorage stays as the local cache.
+  const serverSynced = useRef(false);
+  useEffect(() => {
+    if (session.role !== 'patient' || !archive || serverSynced.current) return;
+    serverSynced.current = true;
+    (async () => {
+      try {
+        const response = await fetch('/api/plan', { cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(15000) });
+        if (!response.ok) return;
+        const { plan, tracking } = await response.json();
+        if (!plan || store.read().plans.some(p => p.serverId === plan.id)) return;
+        if (!mutate(() => store.importPlan(plan.data, { mode: 'new', sourceName: plan.name, serverId: plan.id }))) return;
+        const fields = { checked: {}, water: {}, oil: {} };
+        for (const [day, byField] of Object.entries(tracking || {})) for (const [field, row] of Object.entries(byField)) if (fields[field]) fields[field][day] = row.value;
+        const planId = store.read().activeId;
+        for (const field of ['checked', 'water', 'oil']) if (Object.keys(fields[field]).length) mutate(() => store.saveTracking(planId, field, fields[field]));
+      } catch { /* offline: the local copy keeps working */ }
+    })();
+  }, [session, archive, store]);
   const active = archive?.plans.find(plan => plan.id === archive.activeId);
+  // Fire-and-forget: the server copy follows every local save for server-assigned plans.
+  function syncTracking(plan, field, value, day) {
+    if (session.role !== 'patient' || plan?.serverId === undefined || day === undefined) return;
+    fetch('/api/tracking', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf },
+      body: JSON.stringify({ planId: plan.serverId, day, field, value: value?.[day] ?? null }) }).catch(() => {});
+  }
   const settings = settingsOf(archive);
   function beginImport(mode = 'new') { if (!archive) return; setImportMode({ mode, expectedRevision: archive.revision, targetId: active?.id }); }
   function activate(id) { if (mutate(() => store.setActive(id, archive.revision))) navigate(id ? '/' : '/plans'); }
-  return <div className="app-shell"><a className="skip-link" href="#main-content">Vai al contenuto</a><aside className="sidebar"><Link to="/" className="brand">N<span>✦</span> Nutrà</Link><p className="eyebrow">IL TUO BENESSERE</p><nav aria-label="Navigazione principale"><NavLink to="/" end className="nav-link"><span className="nav-icon" aria-hidden="true">◉</span><span className="nav-label">Oggi</span></NavLink><NavLink to="/plans" className="nav-link"><span className="nav-icon" aria-hidden="true">▤</span><span className="nav-label">I miei piani</span><span className="nav-count">{archive?.plans.length || 0}</span></NavLink><NavLink to="/chat" className="nav-link"><span className="nav-icon" aria-hidden="true">✧</span><span className="nav-label">Assistente</span></NavLink><NavLink to="/settings" className="nav-link"><span className="nav-icon" aria-hidden="true">⚙</span><span className="nav-label">Settaggi</span></NavLink><button className="nav-link" onClick={() => setCalculator(true)}><span className="nav-icon" aria-hidden="true">⇄</span><span className="nav-label">Calcolatore</span></button></nav><div className="sidebar-bottom"><p className="muted">Piani salvati in questo browser, separati per account.</p></div></aside><div className="workspace"><header className="topbar"><span className="muted">Una buona abitudine alla volta.</span><span className="account-chip" title={session.email}><span className="plan-avatar">{session.name?.slice(0, 1).toUpperCase() || 'N'}</span><span id="account-name">{session.name}</span></span><button className="btn secondary small" onClick={logout}>Esci</button></header><main id="main-content" className="page" tabIndex={-1}>{error && <div className="notice error" role="alert">{error}</div>}{!archive && !error && <p role="status">Caricamento piani…</p>}{archive && <Routes><Route path="/" element={<Dashboard plan={active} hasPlans={!!archive.plans.length} beginImport={beginImport} saveTracking={(field, value) => mutate(() => store.saveTracking(active.id, field, value))} settings={settings} />} /><Route path="/plans" element={<PlansPage archive={archive} beginImport={beginImport} activate={activate} />} /><Route path="/plans/:id" element={<PlanDetail archive={archive} activate={activate} settings={settings} />} /><Route path="/chat" element={<ChatPage session={session} />} /><Route path="/settings" element={<SettingsPage settings={settings} save={changes => mutate(() => store.saveSettings(changes))} clear={field => mutate(() => store.clearTracking(field))} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>}</main></div>{importMode && <ImportDialog operation={importMode} active={active} onClose={() => setImportMode(null)} onSave={(data, sourceName) => { const ok = mutate(() => store.importPlan(data, { ...importMode, sourceName })); if (ok) { setImportMode(null); navigate('/'); } return ok; }} />}{calculator && <Calculator onClose={() => setCalculator(false)} />}</div>;
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Vai al contenuto</a><aside className="sidebar"><Link to="/" className="brand">N<span>✦</span> Nutrà</Link><p className="eyebrow">IL TUO BENESSERE</p><nav aria-label="Navigazione principale"><NavLink to="/" end className="nav-link"><span className="nav-icon" aria-hidden="true">◉</span><span className="nav-label">Oggi</span></NavLink><NavLink to="/plans" className="nav-link"><span className="nav-icon" aria-hidden="true">▤</span><span className="nav-label">I miei piani</span><span className="nav-count">{archive?.plans.length || 0}</span></NavLink><NavLink to="/chat" className="nav-link"><span className="nav-icon" aria-hidden="true">✧</span><span className="nav-label">Assistente</span></NavLink><NavLink to="/settings" className="nav-link"><span className="nav-icon" aria-hidden="true">⚙</span><span className="nav-label">Settaggi</span></NavLink><button className="nav-link" onClick={() => setCalculator(true)}><span className="nav-icon" aria-hidden="true">⇄</span><span className="nav-label">Calcolatore</span></button></nav><div className="sidebar-bottom"><p className="muted">Piani salvati in questo browser, separati per account.</p></div></aside><div className="workspace"><header className="topbar"><span className="muted">Una buona abitudine alla volta.</span><span className="account-chip" title={session.email}><span className="plan-avatar">{session.name?.slice(0, 1).toUpperCase() || 'N'}</span><span id="account-name">{session.name}</span></span><button className="btn secondary small" onClick={logout}>Esci</button></header><main id="main-content" className="page" tabIndex={-1}>{error && <div className="notice error" role="alert">{error}</div>}{!archive && !error && <p role="status">Caricamento piani…</p>}{archive && <Routes><Route path="/" element={<Dashboard plan={active} hasPlans={!!archive.plans.length} beginImport={beginImport} saveTracking={(field, value, day) => { if (mutate(() => store.saveTracking(active.id, field, value))) syncTracking(active, field, value, day); }} settings={settings} />} /><Route path="/plans" element={<PlansPage archive={archive} beginImport={beginImport} activate={activate} />} /><Route path="/plans/:id" element={<PlanDetail archive={archive} activate={activate} settings={settings} />} /><Route path="/chat" element={<ChatPage session={session} />} /><Route path="/settings" element={<SettingsPage settings={settings} save={changes => mutate(() => store.saveSettings(changes))} clear={field => mutate(() => store.clearTracking(field))} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>}</main></div>{importMode && <ImportDialog operation={importMode} active={active} onClose={() => setImportMode(null)} onSave={(data, sourceName) => { const ok = mutate(() => store.importPlan(data, { ...importMode, sourceName })); if (ok) { setImportMode(null); navigate('/'); } return ok; }} />}{calculator && <Calculator onClose={() => setCalculator(false)} />}</div>;
 }
 
 function DayPicker({ days, day, setDay }) { return <div className="day-tabs" role="group" aria-label="Giorno del piano">{Object.entries(days).map(([key, value]) => <button key={key} className={`day-tab ${day === key ? 'active' : ''}`} aria-pressed={day === key} aria-label={value.dayName || key} onClick={() => setDay(key)}><span className="day-full">{value.dayName || key}</span><span className="day-short" aria-hidden="true">{(value.dayName || key).slice(0, 3)}</span></button>)}</div>; }
@@ -100,10 +137,10 @@ function Dashboard({ plan, hasPlans, beginImport, saveTracking, settings }) {
   const items = (plan.data.days[day]?.meals || []).flatMap((meal, mi) => meal.items.map((item, ii) => itemKey(item, mi, ii)));
   const completed = items.filter(key => plan.checked?.[day]?.[key]).length;
   const water = plan.water?.[day] || 0;
-  function toggle(key) { saveTracking('checked', { ...plan.checked, [day]: { ...plan.checked?.[day], [key]: !plan.checked?.[day]?.[key] } }); }
-  function setWater(value) { saveTracking('water', { ...plan.water, [day]: Math.max(0, Math.min(12, value)) }); }
+  function toggle(key) { saveTracking('checked', { ...plan.checked, [day]: { ...plan.checked?.[day], [key]: !plan.checked?.[day]?.[key] } }, day); }
+  function setWater(value) { saveTracking('water', { ...plan.water, [day]: Math.max(0, Math.min(12, value)) }, day); }
   const oil = settings.oil ? dayOil(plan, day) : null, grams = value => value.toLocaleString('it-IT', { maximumFractionDigits: 1 });
-  function setOil(key, value) { saveTracking('oil', { ...plan.oil, [day]: { ...plan.oil?.[day], [key]: value } }); }
+  function setOil(key, value) { saveTracking('oil', { ...plan.oil, [day]: { ...plan.oil?.[day], [key]: value } }, day); }
   return <><div className="page-heading"><div><p className="eyebrow">IL TUO PIANO ATTIVO</p><h1>Il menu di oggi</h1><p className="muted">{plan.name}</p></div><div className="actions"><Link className="btn secondary" to="/plans">Gestisci piani</Link><button id="btn-export-shopping" className="btn primary" onClick={() => setShopping(true)}>Esporta lista della spesa</button></div></div><div className="stats-grid"><section className="stat-card"><span className="muted">Progressi del giorno</span><strong>{completed}<small> / {items.length} alimenti</small></strong><progress value={completed} max={items.length || 1} aria-label="Alimenti consumati" /></section>{settings.water && <section className="stat-card"><span className="muted">Idratazione</span><strong>{(water * .2).toLocaleString('it-IT')}<small> / 2,4 litri</small></strong></section>}{oil && <section className="stat-card" id="oil-total"><span className="muted">Olio del giorno</span><strong>{grams(oil.consumed)}<small> / {grams(oil.planned)} g previsti</small></strong></section>}<section className="stat-card"><span className="muted">Il tuo piano</span><strong>{Object.keys(plan.data.days).length}<small> giorni di menu</small></strong></section></div><DayPicker days={plan.data.days} day={day} setDay={setDay} /><div className={`dashboard-grid ${settings.water ? '' : 'single'}`}><Meals plan={plan} day={day} toggle={toggle} units={settings.units} oil={oil && { rows: oil.rows, set: setOil }} />{settings.water && <aside className="water-card"><p className="eyebrow">PICCOLE BUONE ABITUDINI</p><h2>Un bicchiere alla volta</h2><p className="muted">Ogni bicchiere vale 200 ml.</p><strong id="water-badge">{water} / 12 ({(water * .2).toLocaleString('it-IT')} L)</strong><div className="water-grid">{Array.from({ length: 12 }, (_, i) => <button key={i} className={`glass ${water > i ? 'active' : ''}`} aria-label={`${i + 1} bicchieri`} aria-pressed={water > i} onClick={() => setWater(i + 1)}>♧</button>)}</div><div className="water-controls"><button id="btn-water-minus" className="btn secondary" aria-label="Togli un bicchiere" disabled={!water} onClick={() => setWater(water - 1)}>−</button><button id="btn-water-plus" className="btn primary" aria-label="Aggiungi un bicchiere" disabled={water >= 12} onClick={() => setWater(water + 1)}>+</button></div></aside>}</div>{shopping && <Shopping plan={plan} day={day} onClose={() => setShopping(false)} />}</>;
 }
 

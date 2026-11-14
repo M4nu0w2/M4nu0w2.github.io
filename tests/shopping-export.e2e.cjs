@@ -48,7 +48,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     for (const checkbox of await dialog.getByRole('checkbox').all()) await checkbox.uncheck();
     assert.equal(await page.locator('#shopping-preview').inputValue(), '');
     assert.equal(await page.getByRole('button', { name: 'Copia lista', exact: true }).isDisabled(), true);
-    await dialog.getByRole('checkbox', { name: 'LunedÃ¬' }).check();
+    await dialog.getByRole('checkbox', { name: 'Lunedì' }).check();
     const monday = await page.locator('#shopping-preview').inputValue();
     assert.ok(monday.includes('oppure'));
     await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }));
