@@ -5,12 +5,18 @@ parent: WF-MAP-001
 labels: [wayfinder:grilling]
 status: open
 assignee: null
-assignment: null
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Definire l'enum dei tipi di pasto e coprirne tutti gli scenari
+
+## Assignment comment
+
+2026-11-15 — il PO (Manu) ha chiesto di assegnare a Claudio tutte le
+decisioni aperte (ticket `grilling`) del tracker, da sbrigare quando ha
+tempo. Modalità `flexible`: chiunque può comunque lavorarci.
 
 ## Question
 

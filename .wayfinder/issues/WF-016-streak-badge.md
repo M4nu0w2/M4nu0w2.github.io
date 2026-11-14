@@ -42,3 +42,14 @@ Non implementare prima che le risposte del PO siano annotate qui.
   soglia e dei giorni mancanti.
 - Ogni push su `dev` fa deploy automatico: l'ultimo commit di un push che
   contiene codice non deve avere `[skip ci]`.
+
+## Progress note - 2026-11-14
+
+Conferma la dipendenza da
+[Implementare il calendario aderenza](WF-015-calendario-aderenza.md), a sua
+volta bloccato da
+[Definire come conservare le date reali del tracking](WF-014-date-tracking.md).
+Rimando a
+[Andamento compliance e idratazione nel dettaglio paziente](WF-043-andamento-compliance-dettaglio.md),
+che nella vista nutrizionista riuserà le stesse regole di aderenza decise
+qui, non una definizione propria. Nessuna decisione presa su questo ticket.

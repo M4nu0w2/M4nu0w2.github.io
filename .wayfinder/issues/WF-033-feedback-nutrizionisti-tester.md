@@ -5,12 +5,21 @@ parent: WF-MAP-001
 labels: [wayfinder:task]
 status: open
 assignee: null
-assignment: null
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Raccogliere campioni di PDF e feedback dai nutrizionisti tester
+
+## Assignment comment
+
+2026-11-15 — il PO (Manu) ha chiesto di assegnare a Claudio tutte le
+decisioni e i compiti aperti del tracker, da sbrigare quando ha tempo.
+Modalità `flexible`: chiunque può comunque lavorarci. Il ticket resta
+`HITL: richiede le persone` — i nutrizionisti disposti a testare li ha già
+indicati il PO (2026-10-18); il contatto e la raccolta restano un compito
+operativo, non una decisione.
 
 ## Question
 

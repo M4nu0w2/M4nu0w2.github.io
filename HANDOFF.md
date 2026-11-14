@@ -1,5 +1,55 @@
 # HANDOFF — NutriPro
 
+## Decisioni e compiti aperti assegnati a Claudio - 2026-11-15
+
+Stato corrente; prevale su tutto il resto per l'assegnazione dei ticket.
+
+Il PO (Manu) ha chiesto di raggruppare tutte le decisioni di prodotto
+ancora aperte e di assegnarle a Claudio, da sbrigare quando ha tempo. Prima
+i 13 ticket `wayfinder:grilling`, poi (conferma del PO) anche i 3 ticket
+`wayfinder:task` più sotto. Sono i ticket ancora `open` nel tracker
+[.wayfinder/issues/](.wayfinder/issues/): per definizione del tracker
+([.wayfinder/TRACKER.md](.wayfinder/TRACKER.md)) sono le decisioni che
+spettano al PO, non lavoro implementabile senza prima una risposta. Ogni
+ticket ha ora `assignment: claudio`, `assignment_mode: flexible` (chiunque
+può comunque lavorarci, Claudio è solo la preferenza) e una sezione
+`## Assignment comment` con data e provenienza della richiesta.
+
+Ordine consigliato — prima quelle senza bloccanti (la frontiera), poi quelle
+a cascata:
+
+**Nessun bloccante — si può partire subito**
+| Ticket | Tema |
+| :--- | :--- |
+| [WF-030](.wayfinder/issues/WF-030-conservazione-dati-lato-server.md) | Conservazione dati pazienti sul server — la più grossa, sblocca WF-003, WF-026 |
+| [WF-031](.wayfinder/issues/WF-031-nome-del-prodotto.md) | Nome definitivo del prodotto |
+| [WF-032](.wayfinder/issues/WF-032-modello-di-ricavo.md) | Modello di ricavo, due piani a pagamento |
+| [WF-014](.wayfinder/issues/WF-014-date-tracking.md) | Date reali del tracking (locale e server) |
+| [WF-023](.wayfinder/issues/WF-023-tipi-di-pasto-enum.md) | Enum dei tipi di pasto |
+| [WF-035](.wayfinder/issues/WF-035-anonimizzazione-rizzo-pii.md) | Dove/come usare Rizzo-PII |
+| [WF-045](.wayfinder/issues/WF-045-editor-piano-app.md) | Editor del piano nell'app |
+
+**A cascata — sbloccate solo dopo le risposte sopra**
+| Ticket | Bloccato da | Tema |
+| :--- | :--- | :--- |
+| [WF-003](.wayfinder/issues/WF-003-dati.md) | WF-030 | Dati condivisi con l'assistente Gemini |
+| [WF-004](.wayfinder/issues/WF-004-credenziali.md) | WF-003 | Credenziale Gemini e limiti d'uso |
+| [WF-026](.wayfinder/issues/WF-026-persistenza-migrazioni-backup.md) | WF-003, WF-030 | Persistenza server, migrazioni, backup |
+| [WF-044](.wayfinder/issues/WF-044-messaggi-nutrizionista-paziente.md) | WF-034 (task legale, non riassegnato) | Messaggi nutrizionista-paziente |
+| [WF-047](.wayfinder/issues/WF-047-template-dieta-riutilizzabili.md) | WF-045 | Template di dieta riutilizzabili |
+| [WF-048](.wayfinder/issues/WF-048-agenda-indicatori-business.md) | WF-042 (implementation) | Agenda e indicatori di business |
+
+**Ticket `task` assegnati su conferma esplicita del PO** — non sono
+decisioni ma azioni reali (accesso a un server, un professionista,
+nutrizionisti veri); assegnare non le rende meno operative, significa solo
+che è Claudio a occuparsene quando ha tempo:
+
+| Ticket | Tema | Nota |
+| :--- | :--- | :--- |
+| [WF-028](.wayfinder/issues/WF-028-backup-volume-waitlist.md) | Backup volume Hermes | Segnato urgente; `HITL: richiede accesso a Hermes` |
+| [WF-033](.wayfinder/issues/WF-033-feedback-nutrizionisti-tester.md) | Campioni PDF e feedback nutrizionisti | `HITL: richiede le persone` |
+| [WF-034](.wayfinder/issues/WF-034-consulenza-legale-dati-sanitari.md) | Consulenza legale dati sanitari/GDPR | Il ticket riserva al PO solo la scelta del professionista (punto 1 della checklist); il resto è assegnato |
+
 ## Dashboard nutrizionista multi-tenant (MVP) - 2026-11-14
 
 Stato corrente; prevale sulle sezioni successive per ruoli, API, schema dati e

@@ -5,12 +5,21 @@ parent: WF-MAP-001
 labels: [wayfinder:task]
 status: open
 assignee: null
-assignment: null
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Ottenere una consulenza legale su dati sanitari e ruoli GDPR
+
+## Assignment comment
+
+2026-11-15 — il PO (Manu) ha chiesto di assegnare a Claudio tutte le
+decisioni e i compiti aperti del tracker, da sbrigare quando ha tempo.
+Modalità `flexible`: chiunque può comunque lavorarci. Nota: la checklist di
+questo ticket indica "Scegliere il professionista" come incarico del PO
+(punto 1) — l'assegnazione copre preparare la richiesta e raccogliere la
+risposta (punti 2-3), non sostituisce quella scelta.
 
 ## Question
 
@@ -60,3 +69,19 @@ La landing è già pubblica e raccoglie nome ed email di professionisti, con
 ## Out of scope
 
 - Scrivere noi i documenti legali al posto del professionista.
+
+## Progress note - 2026-11-14
+
+Fatto verificato il 2026-11-14: la dashboard nutrizionista multi-tenant è
+stata implementata e distribuita in produzione (vedi
+[HANDOFF.md](../../HANDOFF.md)), con ruoli, pazienti e piani ora persistiti
+sul server (`server/store.cjs`). Questo rende più urgente, non meno, il
+parere richiesto qui: in particolare le domande 1 (ruoli tra NutriPro e
+nutrizionista), 2 (base giuridica) e 5 (hosting su Hermes) sono ora
+condizioni reali del prodotto in uso, non più ipotetiche.
+
+Segnalo anche che
+[Messaggi tra nutrizionista e paziente](WF-044-messaggi-nutrizionista-paziente.md)
+è bloccato da questo ticket: se si procede con il parere legale, vale la
+pena includere nella domanda 1 anche l'eventuale canale di messaggistica
+diretta, per non dover tornare dal consulente due volte.

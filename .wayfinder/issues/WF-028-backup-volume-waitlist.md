@@ -5,12 +5,20 @@ parent: WF-MAP-001
 labels: [wayfinder:task]
 status: open
 assignee: null
-assignment: null
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Eseguire il backup del volume della waitlist su Hermes
+
+## Assignment comment
+
+2026-11-15 — il PO (Manu) ha chiesto di assegnare a Claudio tutte le
+decisioni e i compiti aperti del tracker, da sbrigare quando ha tempo.
+Modalità `flexible`: chiunque può comunque lavorarci. Il ticket resta
+`HITL: richiede accesso a Hermes` — è un compito operativo, non una
+decisione: va fatto, non deciso.
 
 ## Question
 

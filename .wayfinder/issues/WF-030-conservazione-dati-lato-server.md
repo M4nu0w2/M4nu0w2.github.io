@@ -5,12 +5,24 @@ parent: WF-MAP-001
 labels: [wayfinder:grilling]
 status: open
 assignee: null
-assignment: null
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Definire la conservazione sul server dei dati dei pazienti
+
+## Assignment comment
+
+2026-11-15 — il PO (Manu) ha chiesto di assegnare a Claudio tutte le
+decisioni aperte (ticket `grilling`) del tracker, da sbrigare quando ha
+tempo. Modalità `flexible`: chiunque può comunque lavorarci.
+
+Nota per chi riprende il ticket: una sessione di grilling era stata avviata
+in chat il 2026-11-14 su un primo giro di 5 domande (perimetro dati, dove
+vivono i dati, ruoli GDPR, chi vede cosa, offline) con raccomandazioni
+proposte, mai risposte né annotate qui. Non è uno stato del ticket: va
+ripresa da zero o ignorata, a scelta di chi la lavora.
 
 ## Requirement comment
 

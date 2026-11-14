@@ -22,6 +22,16 @@ come checklist e per reparto, app installabile.
 
 ## Notes
 
+- 2026-11-15 — richiesta del PO: assegnare a Claudio tutte le decisioni
+  aperte (ticket `grilling`), da sbrigare quando ha tempo. Elenco,
+  raggruppamento per bloccanti e provenienza in
+  [HANDOFF.md](HANDOFF.md), non qui.
+
+- 2026-11-14 — analisi della dashboard nutrizionista appena implementata:
+  nuovi ticket WF-036…WF-049 nel tracker
+  [.wayfinder/issues/](.wayfinder/issues/). Dettagli, fatti verificati e
+  domande aperte per il PO nei singoli ticket, non qui.
+
 - Richiesta del 2026-10-10 (Manu, in sessione): ticket di implementazione per
   settaggi, obiettivo acqua, sostituzioni rapide, calendario aderenza, streak e
   badge, lista della spesa (checklist e reparti) e app installabile, più un
@@ -116,6 +126,10 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
 - Promemoria facoltativi per acqua e pasti e riepilogo di calorie e macro nei
   settaggi, non ancora approvati.
 - Eventuali altre evolutive che il PO aggiungerà alla raccolta iniziale.
+- Integrazione con wearable e app di fitness.
+- Suggerimento di varianti di ricetta con AI in base a intolleranze.
+- Export PDF del riepilogo a fine ciclo.
+- Scheda anamnesi strutturata con intolleranze e allergie.
 
 ## Out of scope
 

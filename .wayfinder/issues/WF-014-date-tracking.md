@@ -5,12 +5,19 @@ parent: WF-MAP-001
 labels: [wayfinder:grilling]
 status: open
 assignee: null
-assignment: manu
+assignment: claudio
 assignment_mode: flexible
 blocked_by: []
 ---
 
 # Definire come conservare le date reali del tracking
+
+## Assignment comment
+
+2026-11-15 — riassegnato da `manu` a `claudio`: il PO ha chiesto di
+assegnare a Claudio tutte le decisioni aperte (ticket `grilling`) del
+tracker, da sbrigare quando ha tempo. Modalità `flexible`: chiunque può
+comunque lavorarci.
 
 ## Question
 
@@ -41,3 +48,19 @@ Da concordare:
 
 Vincoli: solo localStorage per `sub`, revisione dell'archivio rispettata,
 nessuna nuova chiamata di rete; migrazione senza perdita dei dati esistenti.
+
+## Progress note - 2026-11-14
+
+Fatto verificato il 2026-11-14: con la dashboard nutrizionista
+([HANDOFF.md](../../HANDOFF.md), sezione «Dashboard nutrizionista multi-tenant»),
+esiste ora anche un tracking per data sul server (`plan_tracking` in
+[server/store.cjs](../../server/store.cjs)), con lo stesso problema qui
+descritto ma lato server: chiave per giorno della settimana, non per data
+reale. La formulazione di questo ticket ("restando solo in locale") precede
+quella persistenza e non copre più l'intero perimetro del problema.
+
+Non ho deciso nulla al posto del PO: ho aperto
+[Tracking per data reale anche sul server](WF-042-tracking-data-reale-server.md),
+bloccato da questo ticket, che aspetta la decisione qui annotata prima di
+procedere. Il perimetro di questo ticket (solo locale, o anche server) resta
+una decisione del PO da aggiornare in questo stesso ticket.
