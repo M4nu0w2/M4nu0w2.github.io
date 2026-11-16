@@ -121,6 +121,23 @@ come checklist e per reparto, app installabile.
 
 - [Definire persistenza server, migrazioni e backup](.wayfinder/issues/WF-026-persistenza-migrazioni-backup.md): resta SQLite; migrazioni in transazione, se falliscono il server non parte; backup restic giornaliero (WF-028); waitlist conservata 12 mesi con cancellazione su richiesta; le iscrizioni arrivano per email SMTP (implementato). Candidatura e approvazione del nutrizionista da dashboard admin: WF-050, da fare in seguito.
 
+- Sei ticket `implementation` emersi dall'analisi del 2026-11-14 sulla
+  dashboard nutrizionista, implementati il 2026-11-16 (100/100 `npm test`,
+  22/22 `npm run test:browser`, non ancora pushati):
+  [Scomporre NutritionistPage](.wayfinder/issues/WF-049-scomporre-nutritionist-page.md)
+  (refactor, nessun cambio di comportamento),
+  [Fuso orario del giorno server](.wayfinder/issues/WF-037-fuso-orario-giorno-server.md)
+  (Europe/Rome indipendente dal fuso del container),
+  [Compliance dei piatti composti](.wayfinder/issues/WF-036-compliance-piatti-composti.md)
+  (solo le sottovoci contano, decisione del PO in sessione),
+  [Accessibilità della dashboard](.wayfinder/issues/WF-040-accessibilita-dashboard-nutrizionista.md)
+  (tab giorno `tablist`/`tab`, estesi anche al `DayPicker` lato paziente su
+  conferma del PO; focus del form; `aria-valuetext` della compliance),
+  [Dettaglio nutrizionista completo](.wayfinder/issues/WF-038-dettaglio-nutrizionista-completo.md)
+  (alternative, conversioni, avvisi di import, olio in sola lettura) e
+  [Ricerca e filtri della lista pazienti](.wayfinder/issues/WF-039-lista-pazienti-ricerca-filtri.md)
+  (ricerca, filtri, scorciatoie, refresh su `visibilitychange`).
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
