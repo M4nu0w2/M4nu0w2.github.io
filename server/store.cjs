@@ -13,7 +13,11 @@ function validPlanData(data) {
     Object.values(data.days).some(day => day && Array.isArray(day.meals) && day.meals.some(meal => meal && Array.isArray(meal.items) && meal.items.length)));
 }
 
-const dayKeyFor = now => DAY_KEYS[new Date(now).getDay()];
+// The product and every user are in Italy; the server's "today" must be Rome's local day
+// regardless of the container's own timezone (the Dockerfile sets no TZ, so it runs in UTC).
+const ROME_WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Rome', weekday: 'short' });
+const WEEKDAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const dayKeyFor = now => DAY_KEYS[WEEKDAY_INDEX[ROME_WEEKDAY.format(new Date(now))]];
 
 // Versioned migrations: each entry runs once, inside a transaction, recorded in schema_migrations.
 const MIGRATIONS = [

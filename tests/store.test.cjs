@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { createAppStore, validPlanData, dayKeyFor } = require('../server/store.cjs');
 
 const PLAN = { days: { lun: { dayName: 'Lunedì', meals: [{ name: 'Pranzo', items: [{ name: 'Riso', qty: '80 g' }, { name: 'Pollo', qty: '150 g' }] }] } } };
@@ -108,4 +109,15 @@ test('tracking: upsert per (sub, plan, day, field), read grouped, invalid input 
   assert.throws(() => store.saveTracking('google-anna', planId, 'lun', 'checked', { blob: 'x'.repeat(70000) }), /payload_too_large/);
   assert.equal(dayKeyFor(clock), 'lun');
   store.close();
+});
+
+test('dayKeyFor reads the Italian day, not the container clock\'s (WF-037)', () => {
+  // 23:30 UTC on a Sunday is 00:30 CET Monday in Italy: the deploy container runs in UTC
+  // (no TZ in the Dockerfile), so this is exactly the midnight window the ticket flags.
+  const sundayLateUtc = Date.UTC(2026, 10, 8, 23, 30); // 2026-11-08T23:30Z == 2026-11-09 00:30 Europe/Rome
+  const script = `console.log(require(${JSON.stringify(path.join(__dirname, '..', 'server', 'store.cjs'))}).dayKeyFor(${sundayLateUtc}))`;
+  for (const TZ of ['UTC', 'Europe/Rome', 'America/New_York']) {
+    const result = execFileSync(process.execPath, ['-e', script], { env: { ...process.env, TZ }, encoding: 'utf8' }).trim();
+    assert.equal(result, 'lun', `TZ=${TZ} should still see Monday in Italy`);
+  }
 });

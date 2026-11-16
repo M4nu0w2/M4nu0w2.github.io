@@ -3,8 +3,8 @@ id: WF-037
 title: Giorno "oggi" del server nel fuso corretto
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -55,3 +55,19 @@ mostrata al nutrizionista.
 - Gestire fusi orari diversi dall'Italia: il prodotto è oggi solo in italiano,
   per un pubblico italiano.
 - Il formato della data per il tracking storico (WF-014, WF-042).
+
+## Resolution comment
+
+2026-11-16 — implementato. Confermato il disallineamento: `TZ=UTC node -e
+"new Date(Date.UTC(2026,10,8,23,30)).getDay()"` restituisce `0` (domenica)
+per un istante che in Italia è già lunedì 00:30. `dayKeyFor` in
+[server/store.cjs](../../server/store.cjs) ora calcola il giorno con
+`Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Rome', weekday: 'short' })`,
+indipendente dal fuso del processo: niente da impostare nel Dockerfile, la
+soluzione provvisoria `TZ=Europe/Rome` non serve più. Test di regressione in
+[tests/store.test.cjs](../../tests/store.test.cjs) che esegue `dayKeyFor` in
+processi figli con `TZ` rispettivamente `UTC`, `Europe/Rome` e
+`America/New_York`, sempre con lo stesso risultato corretto. `npm test`
+99/99 verde. Non toccato [WF-014](WF-014-date-tracking.md) (fuso del
+paziente, cambio di mezzanotte lato client): resta un ticket distinto,
+assegnato a Claudio.
