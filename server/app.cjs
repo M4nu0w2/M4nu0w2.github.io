@@ -7,6 +7,7 @@ const { isIP } = require('node:net');
 const { OAuth2Client } = require('google-auth-library');
 const { createGeminiService } = require('./gemini.cjs');
 const { validate: validateWaitlist, createWaitlistStore } = require('./waitlist.cjs');
+const { mailConfigFromEnv, createWaitlistMailer } = require('./mailer.cjs');
 const { createLogger, LEVELS } = require('./log.cjs');
 const { createAnonymizer } = require('./anonymizer.cjs');
 const { createPlanImport } = require('./planImport.cjs');
@@ -74,6 +75,7 @@ function configFromEnv(env) {
     trustProxy: env.TRUST_PROXY === 'true',
     logLevel: logLevel,
     piiUrl: env.PII_URL || '',
+    mail: mailConfigFromEnv(env),
     landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
     waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite'),
     appDb: env.APP_DB_PATH || path.join(__dirname, '..', 'data', 'nutra.sqlite')
@@ -119,7 +121,7 @@ function readChatBody(req, { limit = 131072, parser = text => JSON.parse(text) }
 }
 
 // The OAuth client and clock can be injected by tests only. Production always uses Google's verifier.
-function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger, planImport, appStore } = {}) {
+function createAuthServer(config, { oauthClient, now = Date.now, geminiService, logger, planImport, appStore, mailTransport } = {}) {
   const log = logger || createLogger({ level: config.logLevel });
   const store = appStore || createAppStore(config.appDb, now);
   const chat = geminiService || createGeminiService({ env: config.gemini || {}, origin: config.origin, now });
@@ -165,6 +167,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
   }
   if (config.landingDir) addLanding(config.landingDir, '');
   const waitlist = createWaitlistStore(config.waitlistDb, now);
+  const waitlistMailer = createWaitlistMailer(config.mail, { transport: mailTransport, log });
   const cookie = (name, value, ttl) => `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ttl / 1000)}${config.secure ? '; Secure' : ''}`;
   function prune() {
     for (const collection of [revoked, flows, ...limiterMaps]) {
@@ -252,8 +255,11 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
     if (data && data.website) return reply(200);
     const result = validateWaitlist(data);
     if (!result.ok) return reply(422, 'validazione', result.errors);
-    try { waitlist.add(result.value); } catch (error) { log.error('waitlist_db_error', { code: error.code || error.name }); return reply(500, 'db'); }
+    let added;
+    try { added = waitlist.add(result.value); } catch (error) { log.error('waitlist_db_error', { code: error.code || error.name }); return reply(500, 'db'); }
     log.info('waitlist_saved');
+    // Fire and forget: a mail failure never changes the reply. Duplicates do not send a second mail.
+    if (added) waitlistMailer.notify({ ...result.value, at: new Date(now()).toISOString() });
     return reply(200);
   }
   const server = http.createServer({ maxHeaderSize: 16384, requestTimeout: 15000, headersTimeout: 10000 }, async (req, res) => {

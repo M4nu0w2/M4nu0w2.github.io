@@ -94,3 +94,48 @@ test('a missing database volume fails only the waitlist, not the app', async t =
   assert.equal((await post(f, valid)).status, 500);
   assert.equal((await f.request('/healthz')).status, 200);
 });
+
+function mailEnv(t) {
+  const { dir, ...env } = tempEnv(t);
+  return { dir, env: { ...env, SMTP_HOST: 'smtp.example.test', WAITLIST_NOTIFY_TO: 'info@nutra.example.test' } };
+}
+
+test('a new waitlist entry sends one summary mail; duplicates and honeypot do not', async t => {
+  const { dir, env } = mailEnv(t);
+  const sent = [];
+  let notified;
+  const gotMail = new Promise(resolve => { notified = resolve; });
+  const transport = { async sendMail(message) { sent.push(message); notified(); } };
+  const f = await startFixture(env, { mailTransport: transport });
+  t.after(async () => { await f.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  assert.equal((await post(f, valid)).status, 200);
+  await gotMail;
+  assert.equal((await post(f, valid)).status, 200);
+  assert.equal((await post(f, { ...valid, email: 'bot@example.test', website: 'http://spam.test' })).status, 200);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'info@nutra.example.test');
+  assert.equal(sent[0].replyTo, 'giulia@example.test');
+  assert.doesNotMatch(sent[0].subject, /Giulia/);
+  assert.match(sent[0].text, /Giulia Rossi/);
+  assert.match(sent[0].text, /Nutrizionista/);
+});
+
+test('a failing mail transport never fails the waitlist reply', async t => {
+  const { dir, env } = mailEnv(t);
+  const transport = { async sendMail() { throw Object.assign(new Error('connect refused'), { code: 'ECONNREFUSED' }); } };
+  const f = await startFixture(env, { mailTransport: transport });
+  t.after(async () => { await f.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  assert.equal((await post(f, valid)).status, 200);
+});
+
+test('mail settings are validated and optional', () => {
+  const { mailConfigFromEnv } = require('../server/mailer.cjs');
+  assert.equal(mailConfigFromEnv({}), null);
+  assert.throws(() => mailConfigFromEnv({ SMTP_HOST: 'h' }), /both SMTP_HOST and WAITLIST_NOTIFY_TO/);
+  assert.throws(() => mailConfigFromEnv({ SMTP_HOST: 'h', WAITLIST_NOTIFY_TO: 'no' }), /Invalid WAITLIST_NOTIFY_TO/);
+  assert.throws(() => mailConfigFromEnv({ SMTP_HOST: 'h', WAITLIST_NOTIFY_TO: 'a@b.it', SMTP_USER: 'u' }), /SMTP_USER and SMTP_PASS/);
+  assert.throws(() => mailConfigFromEnv({ SMTP_HOST: 'h', WAITLIST_NOTIFY_TO: 'a@b.it', SMTP_PORT: '0' }), /Invalid SMTP_PORT/);
+  const c = mailConfigFromEnv({ SMTP_HOST: 'h', WAITLIST_NOTIFY_TO: 'a@b.it' });
+  assert.deepEqual([c.port, c.secure, c.from], [587, false, 'a@b.it']);
+});

@@ -45,10 +45,11 @@ function createWaitlistStore(dbPath, now = Date.now) {
     return db;
   }
   return {
-    // An already registered email is not an error and is not revealed.
+    // An already registered email is not an error and is not revealed. Returns true only for a new row.
     add({ name, email, role, patients }) {
-      open().prepare('INSERT INTO waitlist (name, email, role, patients, consent_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING')
+      const result = open().prepare('INSERT INTO waitlist (name, email, role, patients, consent_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING')
         .run(name, email, role, patients, new Date(now()).toISOString());
+      return Number(result.changes) > 0;
     },
     close() { if (db) { db.close(); db = undefined; } }
   };
