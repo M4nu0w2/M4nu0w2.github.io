@@ -3,8 +3,8 @@ id: WF-003
 title: Definire persistenza e dati condivisi con l’assistente
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: claudio
 assignment_mode: flexible
 blocked_by: [WF-001, WF-002, WF-030]
@@ -69,3 +69,28 @@ solo sul telefono dell'utente. La raccomandazione iniziale di questo ticket
 vanno riesaminate. La conservazione sul server è ora decisa nel ticket
 [Definire la conservazione sul server dei dati dei pazienti](WF-030-conservazione-dati-lato-server.md),
 che blocca questo. Resta qui la domanda su quali campi vanno a Gemini.
+
+## Resolution comment
+
+2026-11-16 — risposte reali del PO (Manu/Claudio) in sessione di grilling,
+dopo la chiusura di WF-001, WF-002 e [WF-030](WF-030-conservazione-dati-lato-server.md).
+
+- **Persistenza (da WF-030):** sul server piano + storico + spunte, acqua, olio;
+  si aggiungono le stime nutrizionali per alimento (WF-006) e i settaggi per
+  account (WF-007). PDF originale non conservato.
+- **Campi inviati a Gemini** (solo con l'interruttore per conversazione acceso,
+  WF-002): **pasti, alimenti e quantità del piano di riferimento**, più giorno
+  della settimana e ora locale (WF-002). **Non inviati:** alternative, ricette,
+  equivalenze unità, spunte/acqua/olio, metadati del PDF.
+- **Identità:** mai a Gemini. Nessun nome, email o nome del nutrizionista nel
+  payload; solo contenuto nutrizionale.
+- **Conversazioni:** non conservate. Cronologia solo in memoria della pagina,
+  come oggi (20 messaggi, budget 24.000 caratteri).
+- **Bacchetta delle sostituzioni (WF-006):** invariato, solo nomi degli alimenti
+  e grammature.
+
+Nota: i nomi nel contenuto del piano (PDF con nome del paziente) non sono
+filtrati da questa decisione; filtro a monte in
+[WF-035](WF-035-anonimizzazione-rizzo-pii.md) (Rizzo-PII), ancora aperto.
+Sblocca [WF-004](WF-004-credenziali.md) e [WF-026](WF-026-persistenza-migrazioni-backup.md).
+

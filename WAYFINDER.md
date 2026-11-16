@@ -115,6 +115,8 @@ come checklist e per reparto, app installabile.
 
 - [Definire la conservazione sul server dei dati dei pazienti](.wayfinder/issues/WF-030-conservazione-dati-lato-server.md): dati non sanitari (rischio annotato, verifica con WF-034); si conservano piano + storico + spunte/acqua/olio, non il PDF; visibili a paziente e suo nutrizionista; nutrizionista titolare, NutriPro responsabile; Hermes con backup restic, solo HTTPS; cancellazione su richiesta + export JSON; nessuna migrazione dal locale; offline con sync.
 
+- [Definire persistenza e dati condivisi con l'assistente](.wayfinder/issues/WF-003-dati.md): a Gemini solo pasti, alimenti e quantità del piano di riferimento (con interruttore per conversazione), mai identità, né alternative/ricette/spunte/metadati PDF; conversazioni non conservate; resta aperto il filtro dei nomi nel contenuto (WF-035).
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
