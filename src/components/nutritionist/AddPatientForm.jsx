@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNutriApi } from './api.mjs';
 import { CopyInvite } from './CopyInvite.jsx';
 
-function AddPatientForm({ csrf, onAdded }) {
+function AddPatientForm({ csrf, onAdded, openSignal }) {
   const api = useNutriApi(csrf);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(''), [email, setEmail] = useState('');
@@ -12,6 +12,9 @@ function AddPatientForm({ csrf, onAdded }) {
   // The trigger button stays mounted (hidden, not removed) so it is still there to refocus on close.
   useEffect(() => { if (open) firstField.current?.focus(); else trigger.current?.focus(); }, [open]);
   function openForm() { setOpen(true); setCreated(null); }
+  // The parent increments openSignal (e.g. the "n" shortcut) to open the form without a DOM ref.
+  const lastSignal = useRef(openSignal);
+  useEffect(() => { if (openSignal !== lastSignal.current) { lastSignal.current = openSignal; openForm(); } }, [openSignal]);
   async function save(event) {
     event.preventDefault();
     setSaving(true); setError('');

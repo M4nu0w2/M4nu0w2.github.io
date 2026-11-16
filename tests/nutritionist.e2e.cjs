@@ -143,3 +143,45 @@ test('patient detail shows alternatives, converted units, import warnings and oi
   assert.match(text, /oppure Pasta/); // alternative food
   assert.match(text, /Olio usato: 3 cucchiaini \(12 g\)/); // oil tracked by the patient, read-only here
 });
+
+test('patient list: search, filter, shortcuts and refresh without a full reload (WF-039)', async t => {
+  const f = await startFixture(); const browser = await chromium.launch({ headless: true });
+  t.after(async () => { await browser.close(); await f.close(); });
+  f.store.assignRole('google-doc3', 'nutritionist');
+  f.setIdentity({ sub: 'google-doc3', email: 'doc3@example.test', name: 'Doc' });
+  const docLogin = await f.login();
+  const docSession = await (await f.request('/api/session', { headers: { Cookie: docLogin.cookie } })).json();
+  const asDoc = (route, body) => f.request(route, { method: 'POST', body: JSON.stringify(body),
+    headers: { Cookie: docLogin.cookie, Origin: f.config.origin, 'X-CSRF-Token': docSession.csrf, 'Content-Type': 'application/json' } });
+  await asDoc('/api/nutritionist/patients', { name: 'Anna Rossi', email: 'anna.rossi@example.test' });
+  await asDoc('/api/nutritionist/patients', { name: 'Bruno Neri', email: 'bruno.neri@example.test' });
+
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await context.addCookies([{ name: 'nutra_session', value: docLogin.cookie.split('=')[1], url: f.config.origin }]);
+  const page = await context.newPage();
+  await page.goto(f.config.origin + '/app/');
+  await page.getByRole('heading', { name: 'I tuoi pazienti' }).waitFor();
+  await page.getByText('Bruno Neri').waitFor();
+
+  // "/" focuses search; typing narrows the list to a match by name or email.
+  await page.keyboard.press('/');
+  const search = page.getByPlaceholder(/Cerca per nome o email/);
+  await search.fill('bruno');
+  assert.deepEqual(await page.locator('.nutri-id strong').allInnerTexts(), ['Bruno Neri']);
+  await search.fill('');
+
+  // Both patients are still unredeemed invites, so the "pending" filter keeps them both.
+  await page.getByRole('button', { name: 'Invito in attesa' }).click();
+  assert.deepEqual((await page.locator('.nutri-id strong').allInnerTexts()).sort(), ['Anna Rossi', 'Bruno Neri']);
+  await page.getByRole('button', { name: 'Tutti' }).click();
+
+  // "n" opens the new-patient form, same as the button; closing it does not create anyone.
+  await page.keyboard.press('n');
+  await page.getByLabel('Nome e cognome').waitFor();
+  await page.getByRole('button', { name: 'Annulla' }).click();
+
+  // A patient added out-of-band shows up once the tab regains visibility, without a page reload.
+  await asDoc('/api/nutritionist/patients', { name: 'Carla Bianchi', email: 'carla.bianchi@example.test' });
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.getByText('Carla Bianchi').waitFor();
+});

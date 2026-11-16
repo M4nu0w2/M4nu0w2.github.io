@@ -3,8 +3,8 @@ id: WF-039
 title: Lista pazienti — ricerca, filtri, ordinamento, scorciatoie e aggiornamento
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -57,3 +57,31 @@ La pagina `/plans` lato paziente ha già un pattern di ricerca e filtri simile
 
 - Paginazione: non necessaria alle dimensioni attuali del prodotto.
 - Sincronizzazione in tempo reale (websocket o simili).
+
+## Resolution comment
+
+2026-11-16 — implementato in
+[PatientList.jsx](../../src/components/nutritionist/PatientList.jsx), tutte
+scelte di implementazione (non decisioni del PO, come indicato nel ticket):
+
+- **Ricerca**: per nome o email, nessun debounce (filtro locale su array già
+  in memoria). Scorciatoia `/` porta il focus sul campo, ignorata se si sta
+  già scrivendo in un altro campo.
+- **Filtri**: compliance bassa (< 50%), senza accesso da 7+ giorni (solo
+  attivi), senza piano, invito in attesa. Riusano `.search-input`/
+  `.filter-tabs` di [styles.css](../../src/styles.css), stesso pattern di
+  `PlansPage`.
+- **Ordinamento**: alfabetico per nome (`localeCompare` it-IT), unico
+  criterio, non configurabile.
+- **Scorciatoia `n`**: apre il form "Nuovo paziente" tramite una prop
+  `openSignal` (contatore) che [AddPatientForm.jsx](../../src/components/nutritionist/AddPatientForm.jsx)
+  osserva, non un ref DOM.
+- **Aggiornamento**: su `visibilitychange` (ritorno alla scheda) e ogni 2
+  minuti mentre la scheda è visibile; nessuna nuova dipendenza.
+- Stato vuoto distinto tra "nessun paziente ancora" e "nessun paziente
+  trovato" (ricerca/filtro senza risultati).
+
+Test e2e: ricerca per nome, filtro "Invito in attesa", scorciatoie `/` e
+`n`, aggiornamento senza reload dopo un paziente aggiunto fuori banda, in
+[tests/nutritionist.e2e.cjs](../../tests/nutritionist.e2e.cjs). `npm test`
+100/100, `npm run test:browser` 22/22 verdi.
