@@ -45,3 +45,16 @@ Non implementare prima che le risposte del PO siano annotate qui.
 - `npm test` e `npm run test:browser` verdi, con test sul calcolo per data.
 - Ogni push su `dev` fa deploy automatico: l'ultimo commit di un push che
   contiene codice non deve avere `[skip ci]`.
+
+## Progress note - 2026-11-14
+
+Conferma la dipendenza da
+[Definire come conservare le date reali del tracking](WF-014-date-tracking.md),
+non ancora risolta. Con la dashboard nutrizionista esiste ora anche una
+versione server-side dello stesso problema: vedi
+[Tracking per data reale anche sul server](WF-042-tracking-data-reale-server.md)
+e, per una vista di andamento nel dettaglio paziente che riuserebbe le
+stesse regole di questo ticket,
+[Andamento compliance e idratazione nel dettaglio paziente](WF-043-andamento-compliance-dettaglio.md).
+Nessuna decisione presa qui: restano aperte le stesse domande per il PO già
+annotate sopra.

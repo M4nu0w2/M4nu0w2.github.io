@@ -57,7 +57,7 @@
       // Keep legacy data as a backup; never import unowned keys without an account suffix.
       return write({ version: 1, revision: 0, activeId: plan.id, plans: [plan] });
     }
-    function importPlan(data, { mode = 'new', sourceName, expectedRevision, targetId } = {}) {
+    function importPlan(data, { mode = 'new', sourceName, expectedRevision, targetId, serverId } = {}) {
       const archive = read();
       if (expectedRevision !== undefined && archive.revision !== expectedRevision) throw new Error('Il piano è cambiato in un’altra scheda. Riapri la gestione piani e riprova.');
       if (mode === 'replace') {
@@ -67,6 +67,8 @@
         archive.plans = archive.plans.map(p => p.id === targetId ? { ...replacement, id: target.id, createdAt: target.createdAt } : p);
       } else if (mode === 'new') {
         const plan = makePlan(data, sourceName);
+        // Plans assigned by the nutritionist carry the server id so tracking can sync back.
+        if (serverId !== undefined) plan.serverId = serverId;
         archive.plans.push(plan);
         archive.activeId = plan.id;
       } else throw new Error('Operazione non valida.');

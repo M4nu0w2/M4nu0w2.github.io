@@ -8,3 +8,27 @@
 .btn:active,.nav-link:active,.day-tab:active,.filter-tabs button:active,.glass:active{filter:brightness(1.18)}.skip-link{position:fixed;top:12px;left:12px;z-index:100;padding:12px 18px;min-height:44px;background:var(--green);color:#072b21;border-radius:10px;transform:translateY(-180%)}.skip-link:focus{transform:translateY(0)}
 .dashboard-grid.single{grid-template-columns:minmax(0,1fr)}.food-row:has(+.oil-control){border-bottom:0;padding-bottom:8px}.oil-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 0 14px 34px;border-bottom:1px solid #273548}.oil-control output{min-width:9ch;color:var(--green);font-weight:600}.settings-card{max-width:720px;margin-bottom:20px;padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--panel)}.settings-card h2{margin:0 0 8px;font-size:1.15rem}.setting-options{margin:0;padding:0;border:0}.setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #273548;cursor:pointer}.setting-text{display:grid;gap:4px}.setting-row input{flex:none;width:22px;height:22px;accent-color:var(--green)}
 @media(max-width:400px){.settings-card{padding:16px}.oil-control{padding-left:0}}
+/* Dashboard nutrizionista: stessa palette, accento dedicato al ruolo. */
+.nutri-shell{--role:#c4b5fd;--role-dark:#262046;--role-border:#5b4b9e}
+.nutri-badge{background:var(--role-dark);color:var(--role);border-color:var(--role-border);margin-right:auto}
+.nutri-shell .eyebrow,.nutri-shell .nav-link.active,.nutri-shell span.nav-link{color:var(--role)}
+.nutri-shell span.nav-link{background:var(--role-dark);border-color:var(--role-border)}
+.nutri-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.nutri-row{border:1px solid var(--border);border-left:4px solid var(--role-border);border-radius:16px;background:var(--panel);overflow:hidden}
+.nutri-row.open{border-color:var(--role-border);border-left-width:4px}
+.nutri-row-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;width:100%;min-height:64px;padding:14px 18px;background:transparent;border:0;color:inherit;text-align:left}
+.nutri-row-head:hover{background:var(--panel-hover)}
+.nutri-id{flex:1 1 180px;display:grid;gap:2px;min-width:0}.nutri-id strong{overflow-wrap:anywhere}.nutri-id .muted{font-size:.82rem;overflow-wrap:anywhere}
+.nutri-cell{display:grid;gap:3px;font-size:.88rem}.nutri-cell>.muted{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em}
+.nutri-compliance progress{width:90px;accent-color:var(--role)}
+.nutri-caret{margin-left:auto;color:var(--muted)}
+.nutri-detail{padding:18px;border-top:1px solid var(--border);display:grid;gap:16px}
+.nutri-detail .day-tabs{margin-bottom:0}
+.nutri-meals{display:grid;gap:12px}
+.nutri-tick{width:24px;flex-shrink:0;color:var(--muted);font-weight:700}.nutri-tick.done{color:var(--green)}
+.invite-box{padding:14px 16px;border:1px dashed var(--role-border);border-radius:12px;background:var(--role-dark)}
+.invite-box p{margin-bottom:10px;font-size:.88rem}
+.invite-row{display:flex;gap:10px;flex-wrap:wrap}.invite-row input{flex:1;min-width:200px;font-size:.82rem}
+.nutri-form{width:min(100%,440px);margin-bottom:0}
+.nutri-upload{display:grid;gap:10px;max-width:520px}
+@media(max-width:760px){.nutri-row-head{padding:12px 14px}.nutri-detail{padding:14px}.nutri-shell .sidebar nav{display:none}.nutri-shell .page{padding-bottom:40px}}

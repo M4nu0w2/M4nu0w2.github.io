@@ -1,4 +1,330 @@
-# HANDOFF — NutriPro ("Piano Nutrizionale — Progeo Medical Converter")
+# HANDOFF — NutriPro
+
+## Decisioni e compiti aperti assegnati a Claudio - 2026-11-15
+
+Stato corrente; prevale su tutto il resto per l'assegnazione dei ticket.
+
+Il PO (Manu) ha chiesto di raggruppare tutte le decisioni di prodotto
+ancora aperte e di assegnarle a Claudio, da sbrigare quando ha tempo. Prima
+i 13 ticket `wayfinder:grilling`, poi (conferma del PO) anche i 3 ticket
+`wayfinder:task` più sotto. Sono i ticket ancora `open` nel tracker
+[.wayfinder/issues/](.wayfinder/issues/): per definizione del tracker
+([.wayfinder/TRACKER.md](.wayfinder/TRACKER.md)) sono le decisioni che
+spettano al PO, non lavoro implementabile senza prima una risposta. Ogni
+ticket ha ora `assignment: claudio`, `assignment_mode: flexible` (chiunque
+può comunque lavorarci, Claudio è solo la preferenza) e una sezione
+`## Assignment comment` con data e provenienza della richiesta.
+
+Ordine consigliato — prima quelle senza bloccanti (la frontiera), poi quelle
+a cascata:
+
+**Nessun bloccante — si può partire subito**
+| Ticket | Tema |
+| :--- | :--- |
+| [WF-030](.wayfinder/issues/WF-030-conservazione-dati-lato-server.md) | Conservazione dati pazienti sul server — la più grossa, sblocca WF-003, WF-026 |
+| [WF-031](.wayfinder/issues/WF-031-nome-del-prodotto.md) | Nome definitivo del prodotto |
+| [WF-032](.wayfinder/issues/WF-032-modello-di-ricavo.md) | Modello di ricavo, due piani a pagamento |
+| [WF-014](.wayfinder/issues/WF-014-date-tracking.md) | Date reali del tracking (locale e server) |
+| [WF-023](.wayfinder/issues/WF-023-tipi-di-pasto-enum.md) | Enum dei tipi di pasto |
+| [WF-035](.wayfinder/issues/WF-035-anonimizzazione-rizzo-pii.md) | Dove/come usare Rizzo-PII |
+| [WF-045](.wayfinder/issues/WF-045-editor-piano-app.md) | Editor del piano nell'app |
+
+**A cascata — sbloccate solo dopo le risposte sopra**
+| Ticket | Bloccato da | Tema |
+| :--- | :--- | :--- |
+| [WF-003](.wayfinder/issues/WF-003-dati.md) | WF-030 | Dati condivisi con l'assistente Gemini |
+| [WF-004](.wayfinder/issues/WF-004-credenziali.md) | WF-003 | Credenziale Gemini e limiti d'uso |
+| [WF-026](.wayfinder/issues/WF-026-persistenza-migrazioni-backup.md) | WF-003, WF-030 | Persistenza server, migrazioni, backup |
+| [WF-044](.wayfinder/issues/WF-044-messaggi-nutrizionista-paziente.md) | WF-034 (task legale, non riassegnato) | Messaggi nutrizionista-paziente |
+| [WF-047](.wayfinder/issues/WF-047-template-dieta-riutilizzabili.md) | WF-045 | Template di dieta riutilizzabili |
+| [WF-048](.wayfinder/issues/WF-048-agenda-indicatori-business.md) | WF-042 (implementation) | Agenda e indicatori di business |
+
+**Ticket `task` assegnati su conferma esplicita del PO** — non sono
+decisioni ma azioni reali (accesso a un server, un professionista,
+nutrizionisti veri); assegnare non le rende meno operative, significa solo
+che è Claudio a occuparsene quando ha tempo:
+
+| Ticket | Tema | Nota |
+| :--- | :--- | :--- |
+| [WF-028](.wayfinder/issues/WF-028-backup-volume-waitlist.md) | Backup volume Hermes | Segnato urgente; `HITL: richiede accesso a Hermes` |
+| [WF-033](.wayfinder/issues/WF-033-feedback-nutrizionisti-tester.md) | Campioni PDF e feedback nutrizionisti | `HITL: richiede le persone` |
+| [WF-034](.wayfinder/issues/WF-034-consulenza-legale-dati-sanitari.md) | Consulenza legale dati sanitari/GDPR | Il ticket riserva al PO solo la scelta del professionista (punto 1 della checklist); il resto è assegnato |
+
+## Dashboard nutrizionista multi-tenant (MVP) - 2026-11-14
+
+Stato corrente; prevale sulle sezioni successive per ruoli, API, schema dati e
+test. Lavoro **solo in locale su `dev`, non committato e non pushato**: un push
+senza `[skip ci]` fa partire CI + deploy in produzione.
+
+### Goal
+
+Implementata la spec «MISSIONE E CORE MVP»: dashboard per il nutrizionista
+(gestione pazienti, assegnazione piani via PDF, monitoraggio compliance), ruoli
+multi-tenant sopra l'OAuth esistente, dati dei nuovi flussi sul server. Il
+paziente usa l'app esistente; il localStorage legacy resta invariato (la
+migrazione completa è WF-030, dopo questa dashboard).
+
+### Cosa è stato aggiunto (verificato con i test)
+
+**Backend**
+- `server/store.cjs` (nuovo): store `node:sqlite` con migrazioni versionate
+  (tabella `schema_migrations`, transazione per migrazione). Tabelle: `roles`
+  (sub → nutritionist|patient), `role_grants` (ruolo promesso a un'email,
+  consumato al primo login), `patients` (nutritionist_sub, email, invite_token,
+  google_sub, last_seen_at…), `plans` (JSON del piano per paziente, l'ultimo
+  caricato vince, lo storico resta), `plan_tracking` (upsert per
+  patient_sub+plan_id+day+field, field ∈ checked|water|oil). Apertura pigra come
+  la waitlist; percorso da `APP_DB_PATH` (Docker: `/data/nutra.sqlite`, stesso
+  volume). Nei test lo store è `:memory:` iniettato dalla fixture.
+- `server/app.cjs`: risoluzione del ruolo nel callback OAuth, in ordine: token
+  d'invito (cookie `nutra_join`/`__Host-nutra_join`, 10 min) → paziente pendente
+  con la stessa email → grant admin. Il nutrizionista dopo il login è rediretto
+  a `/app/nutritionist/`. Con `ALLOWED_EMAILS` configurato, chi ha un ruolo nel
+  DB passa comunque (check esteso anche in `readSession`); chi non ha ruolo né
+  email ammessa resta `not_allowed` come prima. `/api/session` ora restituisce
+  anche `role` e `admin` (admin = email in `ALLOWED_EMAILS`; lista vuota = tutti
+  admin, comportamento che tiene verdi fixture e test).
+- Route nuove: `GET /app/join?token=` (riscatta l'invito o parcheggia il token
+  nel cookie e manda al login Google); `GET/POST /api/nutritionist/patients`,
+  `GET /api/nutritionist/patients/:id` (= `/compliance`), `POST
+  /api/nutritionist/patients/:id/plan`; `GET /api/plan` e `POST /api/tracking`
+  per il paziente; `POST /api/admin/roles` (solo `ALLOWED_EMAILS`, assegna per
+  `sub` o promette per `email`). Tutte le POST: CSRF + Origin + content-type;
+  le API nutrizionista hanno role guard e ownership (un nutrizionista non vede
+  i pazienti di un altro).
+- GDPR: il PDF **non** arriva mai al server; il parsing avviene nel browser del
+  nutrizionista e viene caricato solo il JSON (limite 512 KB). WF-034 resta aperto.
+
+**Frontend**
+- `src/components/NutritionistPage.jsx` (nuovo, lazy — chunk separato ~12 KB):
+  lista pazienti con stato invito, ultimo accesso, piano e compliance % di oggi;
+  riga espandibile (progressive disclosure) con pasti del giorno spuntati/non,
+  bicchieri d'acqua e day picker; form nuovo paziente con link d'invito da
+  copiare; upload PDF per paziente. Stessa palette, accento viola per il ruolo
+  (`--role` in `styles.css`, bordo sinistro righe + badge).
+- `src/App.jsx`: smistamento per ruolo dentro `Protected` (nutritionist →
+  dashboard; patient o admin → app; nessuno → schermata «accesso non ancora
+  attivo» con logout). Il paziente al primo accesso riceve il piano dal server
+  (`GET /api/plan`) e lo importa nell'archivio locale col marker `serverId`;
+  ogni spunta/acqua/olio salva in locale e fa anche `POST /api/tracking`
+  fire-and-forget (zero breaking change per gli account legacy senza `serverId`).
+- `src/lib/planStore.mjs`: `importPlan` accetta `serverId` e lo conserva sul piano.
+
+**Config/infra**
+- `.env.example`: documentato `APP_DB_PATH`. `Dockerfile`: default
+  `APP_DB_PATH=/data/nutra.sqlite` (persiste sul volume già montato).
+
+### Test
+
+- `npm test`: **95/95** (nuovi `tests/store.test.cjs` e
+  `tests/nutritionist.test.cjs`; fixture `tests/auth-fixture.cjs` ora espone
+  `store` e lo inietta `:memory:`).
+- `npm run test:browser`: **20/20**, incluso il nuovo
+  `tests/nutritionist.e2e.cjs` con il flusso completo: nutrizionista aggiunge
+  paziente → copia invito → carica PDF (parsato nel browser) → paziente riscatta
+  l'invito, riceve il piano dal server, spunta un pasto e un bicchiere →
+  il nutrizionista rivede compliance 100% e dettaglio; un reload del paziente
+  con localStorage pulito riscarica il piano dal server.
+- Browser test in locale su Windows: `PLAYWRIGHT_MODULE` deve puntare a
+  `%TEMP%\pw\node_modules\playwright` (playwright 1.61.1 installato fuori repo,
+  `playwright install chromium` fatto; shell headless v1228 in
+  `%LOCALAPPDATA%\ms-playwright`).
+
+### Bug preesistente trovato e corretto
+
+Il commit `1d3ac89` (rinomina brand) aveva introdotto **mojibake** (UTF-8
+doppio-encodato: `LunedÃ¬`, `â€”`, `Â·`) in sei file e2e: `settings`,
+`shopping-export` e `pdf-import` **fallivano già su HEAD** prima di questa
+sessione. Corretto con recode riga-per-riga (latin1/cp1252 → UTF-8) via script
+Node. Attenzione su Windows: passare caratteri accentati come literal nei
+comandi PowerShell li corrompe; per fix del genere usare sempre uno script su
+file.
+
+### Non fatto / rimandato (come da spec)
+
+- F-06 template/editor AI e F-07 report/analytics: roadmap, bloccati da Gemini
+  in produzione (WF-010).
+- Invio email dell'invito (SMTP): il nutrizionista copia il link a mano.
+- Migrazione dei pazienti legacy al server: WF-030.
+- Schermata «accesso non ancora attivo» raggiungibile solo con `ALLOWED_EMAILS`
+  vuoto: con la lista piena il non-abilitato resta bloccato al login con
+  `not_allowed` (scelta per non cambiare il contratto dei test esistenti).
+
+### Next Steps
+
+1. Review del PO, poi commit (si può spezzare per step: store → auth → API →
+   frontend → fix encoding) e push su `dev` (parte il deploy).
+2. Su Hermes: nulla da configurare, `APP_DB_PATH` ha il default nel Dockerfile
+   e il volume `/data` esiste già. Primo nutrizionista reale: login admin, poi
+   `POST /api/admin/roles` con `{"email":"…","role":"nutritionist"}` (CSRF della
+   propria sessione) o inserimento diretto nella tabella `roles`.
+3. Valutare backup del nuovo DB insieme a WF-028 (stesso volume).
+
+## Landing alla radice, app sotto /app, analisi di prodotto e nuova direzione dati - 2026-10-18
+
+Stato corrente; prevale sulle sezioni successive per tutto ciò che riguarda
+percorsi, deploy, README e direzione dei dati. L'utente scrive in italiano e ha
+attivato in chat lo stile telegrafico («caveman ultra»); codice, commit e
+documenti restano in forma normale.
+
+### Goal
+
+Portare NutriPro da «PWA per leggere un PDF» a un prodotto vendibile: landing
+pubblica e leggera alla radice, web app autenticata sotto `/app`, backend
+robusto, conservazione dei dati sul server, due piani a pagamento (nutrizionista
+e paziente individuale).
+
+### Current Progress (verificato)
+
+**In produzione** (`https://nutriprobasta.jirachibot.eu`, dominio **temporaneo**
+per demo interne; versione `7c41bea`, `/healthz` ok, login Google configurato):
+- `/` e `/privacy/`: landing «Nutrà», servita dal backend Node (build di
+  `landing_page_nutripro/` nell'immagine, cartella `landing/`), con CSP propria.
+- `/app/*`: web app React (Vite `base: '/app/'`, router `basename="/app"`). Senza
+  sessione → `/app/login`. Vecchie URL (`/login`, `/plans`, `/chat`, `/settings`,
+  `/index.html`) → redirect 303 a `/app/...`. `/auth/*`, `/api/*`, `/healthz` sono
+  rimasti alla radice: il redirect OAuth su Google **non è cambiato**.
+- `POST /api/waitlist` nel backend (`server/waitlist.cjs`), SQLite (`node:sqlite`)
+  su volume Docker `nutripro-data` montato in `/data`. Sostituisce Pages
+  Functions + D1 (file Cloudflare rimossi). Validazione, Origin, honeypot,
+  rate limit 5/min per IP, 8 KB.
+- `CONTACT_EMAIL` e `SITE_URL` sono parametri di build della landing (vuoto =
+  nessun contatto mostrato). Una PWA già installata che apre `/` viene mandata a
+  `/app/` (`landing_page_nutripro/public/intro-boot.js`).
+- Repo Orchestrator (`../JirachiBotOrchestrator`, **pushato**, commit `6692071`):
+  `services/nutripro/Dockerfile` (stadio `landing`, `/data`), `docker-compose.yml`
+  (volume), proxy nginx **senza** CSP propria (le CSP si intersecano e
+  bloccherebbero i font Google della landing; `csp-nutripro.conf` rimosso),
+  `smoke-auth.sh` riscritto, README del servizio. **Ordine di rilascio usato e da
+  rispettare in futuro per cambi di proxy: prima Orchestrator, poi push NutriPro.**
+- Deploy riuscito (CI verde, richiesta deploy riuscita, smoke passato). Il run
+  fallito del 2026-10-13 (sezione sotto) questa volta non si è ripetuto; causa
+  mai diagnosticata.
+- Test: `npm test` 58/58, `npm run test:browser` 16/16 (nuovo
+  `tests/landing.test.cjs`). README riscritto e allineato.
+- Gemini resta **disattivato** in produzione; WF-010 aperto.
+
+**Solo in locale, non pushato** (`dev` è «ahead 5», tutti commit di sola
+documentazione con `[skip ci]`): ticket Wayfinder WF-021 … WF-034 e note di
+aggiornamento in WF-003 e WF-026. Pushare un commit senza `[skip ci]` fa partire
+CI + deploy in produzione.
+
+### Decisioni del PO in questa sessione
+
+- Landing sul dominio base, app su `/app`. Il dominio attuale è temporaneo; la
+  struttura (marketing/SEO separato dall'app autenticata) deve valere anche con il
+  dominio definitivo.
+- **Pagano entrambi**: il nutrizionista con un piano dedicato e il paziente
+  individuale con un piano dedicato. Dettagli da decidere.
+- **Il nome del gestionale di origine dei PDF va tolto ovunque come riferimento** (WF-029, fatto il 2026-10-19).
+- **Cambio di direzione sui dati: «conserveremo tutto» sul server**, non più solo
+  sul telefono. Supera le premesse di WF-001/WF-003 e la promessa del README «il
+  piano non lascia il browser» (README da riscrivere dopo WF-030).
+- Il nome del prodotto non è deciso (Nutrà sulla landing, NutriPro nell'app,
+  «NutriPro Basta» nel manifest).
+- Esistono nutrizionisti disposti a testare; nessun campione di PDF ancora.
+
+### Ticket aperti creati in questa sessione (tracker locale `.wayfinder/issues/`)
+
+| Ticket | Tipo | Stato |
+| :--- | :--- | :--- |
+| WF-021 Comprendere i pasti di qualsiasi PDF con Gemini | implementation | bloccato da WF-010, WF-023 |
+| WF-022 Landing alla radice, app sotto /app | implementation | implementato e in produzione; **resta aperto** (vedi Next Steps) |
+| WF-023 Enum dei tipi di pasto (20 scenari) | grilling | libero |
+| WF-024 Architettura backend leggero e robusto | grilling | libero |
+| WF-025 Stato di `node:sqlite` e alternative | research | libero, **non lanciato** |
+| WF-026 Persistenza server, migrazioni, backup | grilling | bloccato da WF-003, WF-025, WF-030 |
+| WF-027 Osservabilità e stato condiviso | grilling | bloccato da WF-024 |
+| WF-028 Backup del volume della waitlist su Hermes | task | libero, **urgente** |
+| WF-029 Rimuovere il riferimento al gestionale d'origine | implementation | chiuso |
+| WF-030 Conservazione sul server dei dati dei pazienti | grilling | libero, **sposta tutto il resto** |
+| WF-031 Nome del prodotto | grilling | libero |
+| WF-032 Modello di ricavo e due piani | grilling | libero |
+| WF-033 Campioni di PDF e feedback dai nutrizionisti | task | libero |
+| WF-034 Consulenza legale su dati sanitari e GDPR | task | libero (serve una persona abilitata) |
+
+Il tracker `.wayfinder/` è escluso da `.git/info/exclude`: per committare un
+ticket nuovo serve `git add -f`. La mappa `WAYFINDER.md` non è stata aggiornata
+con i link dei ticket nuovi (regola del tracker: si aggiunge alla chiusura).
+Una sessione di grilling su WF-003 è stata iniziata e **abbandonata** su richiesta:
+l'assegnatario è tornato `null`, nessuna risposta dell'utente registrata.
+
+### Analisi di prodotto (solo in conversazione, non nel repo)
+
+Fatta una ricerca web sui concorrenti. Fonti per lo più di terzi (Capterra,
+Software Advice, schede degli store): **prezzi e funzioni non verificati**.
+Verificato dal sito ufficiale: Nutrium ha app cliente, strumenti AI di
+monitoraggio, 7 lingue italiano compreso. Un altro gestionale italiano vende un cloud da
+browser per il professionista; un'app per il paziente non è stata trovata
+(ipotesi da verificare con un nutrizionista). Nutriplan ha un'app cliente
+italiana. Dimensione del mercato italiano non trovata.
+Priorità proposte: ora → titolare privacy, backup, cancellazione dati,
+disclaimer, nome unico, SEO di base, analisi senza cookie, schermata di revisione
+dell'import; poi → import di qualunque template (enum dei pasti + Gemini di
+ripiego), offline vero, promemoria, «ho mangiato altro», report di aderenza per il
+nutrizionista, invito a QR, demo interattiva sulla landing; più avanti → dashboard
+per il professionista, sincronizzazione, sostituzioni, peso/misure. Sconsigliato:
+un tracker di calorie con database alimentare.
+
+### What Worked
+
+- Un solo processo Node che serve landing e app con CSP diverse per percorso; asset
+  senza collisioni (`/assets` landing, `/app/assets` app); `/auth` e `/api` alla
+  radice per non toccare l'OAuth.
+- `node:sqlite` per la waitlist, aperto in modo pigro: senza volume l'app parte e
+  solo la waitlist risponde 500 (testato).
+- Provare l'immagine vera: build con il Dockerfile dell'Orchestrator, container
+  con volume, riavvio, candidatura che sopravvive, smoke eseguito in un container
+  Linux (`python:3.12-alpine` + `--network container:<nome>`).
+- Controllare il dominio vero dopo il deploy (landing 200, `/app/` → login,
+  `GET /api/waitlist` 405, CSP della landing, `/healthz`).
+
+### What Didn't Work (non ripetere)
+
+- **Test con SQLite su Windows**: la cartella temporanea non si cancella finché il
+  server tiene aperto il file. In `tests/landing.test.cjs` la chiusura del server
+  avviene prima della rimozione (`start()` registra un solo hook).
+- **`smoke-auth.sh` in Git Bash per Windows** fallisce per conversione dei percorsi
+  (`/app` diventa un percorso Windows) e per differenze con `pipefail`. Va
+  eseguito su Linux (container) come sul runner.
+- **Inline `<script>` e `style=` nella landing** violano la CSP. Script spostato in
+  `public/intro-boot.js`; per gli attributi `style` la landing ammette
+  `style-src-attr 'unsafe-inline'` (script restano `'self'`).
+- Una CSP aggiunta anche da nginx **si somma** a quella del backend: rimossa dal proxy.
+- Script Python lunghi dentro heredoc del tool Bash si interrompono: scriverli su
+  file con lo strumento di scrittura. Lo strumento di modifica richiede una lettura
+  del file nella stessa conversazione.
+- `/wayfinder` e `/handoff` non compaiono sempre nell'elenco delle skill; sono in
+  `~/.claude/skills`. `/CAVEMAN` in maiuscolo non è stato riconosciuto.
+- Playwright non è nel repo: installato in `%TEMP%\pw` e usato con
+  `PLAYWRIGHT_MODULE=%TEMP%\pw\node_modules\playwright` (come la CI, versione 1.61.1).
+  Docker Desktop va avviato a mano (`Docker Desktop.exe`).
+
+### Next Steps
+
+1. **Decidere se pushare i 5 commit di ticket.** Sono `[skip ci]`: nessun deploy.
+2. **Provare a mano**: login Google su `/app/` (mai verificato dopo lo spostamento) e
+   invio del form waitlist dalla landing sul dominio vero.
+3. **WF-028 backup** del volume `nutripro-data` (oggi nessun backup; contiene nomi
+   ed email di professionisti).
+4. **Completare «Titolare del trattamento»** e «Conservazione e diritti» in
+   `landing_page_nutripro/privacy/index.html` (segnaposto): finché non lo è, la
+   landing pubblica non è a norma. Collegato a WF-034.
+5. **Lavorare WF-030** (conservazione sul server): è il ticket che sblocca
+   WF-003, WF-026, il modello di ricavo e il resto. Punto di attenzione: l'hosting
+   è un mini-PC di casa senza backup; per dati sanitari di clienti paganti va
+   discusso. Poi riscrivere README e informativa.
+6. **WF-029 (fatto)**: il filtro delle intestazioni usava il nome del
+   gestionale; ora scarta righe con indirizzi web, `https?:` e `©`. Non è stato
+   provato sul PDF reale di riferimento (privato): eseguire
+   `tests/reference-pdf.e2e.cjs` con `REFERENCE_PDF` prima del prossimo rilascio.
+7. **WF-033/WF-034**: servono persone (campioni di PDF anonimizzati dai
+   nutrizionisti tester; consulente legale). Nessun PDF reale nel repository.
+8. Per chiudere WF-022: volume nei backup, `CONTACT_EMAIL`/`SITE_URL` definitivi,
+   PWA già installate da reinstallare da `/app/`. Rollback a SHA precedenti alla
+   landing non si costruisce più con il Dockerfile dell'Orchestrator.
+9. Aperti da prima: WF-010 (Gemini mai provato con provider reale; attivazione
+   pubblica richiede tier a pagamento SEE), WF-011/012/013/014/015/016/017/018/019/020.
 
 ## Gemini 3.5 Flash-Lite: release e verifica Hermes - 2026-10-13
 
@@ -462,7 +788,7 @@ completo, verifiche, rollback e rischi. Qui solo ciò che serve a chi sviluppa.
 |---|---|---|
 | `tests/shopping-list.test.cjs` (20 test, motore e parser) | sì | `node --test tests/shopping-list.test.cjs` |
 | `tests/shopping-export.e2e.cjs` (browser, CSP di produzione) | sì | `node --test tests/shopping-export.e2e.cjs` con `PLAYWRIGHT_MODULE` |
-| `tests/progeo-pdf.e2e.cjs` (PDF di riferimento **privato**) | **NO** | solo in locale, con `REAL_PROGEO_PDF` e `PDFJS_ASSET_DIR` |
+| `tests/reference-pdf.e2e.cjs` (PDF di riferimento **privato**) | **NO** | solo in locale, con `REFERENCE_PDF` e `PDFJS_ASSET_DIR` |
 
 **La CI copre 21 test su 22. Il test sul PDF reale NON fa da cancello al deploy**:
 richiede un documento che non sta nel repo e lancia un errore all'avvio se manca.
@@ -521,8 +847,8 @@ progetto: è un prototipo/uso personale di `M4nu0w2`, non un prodotto Jirachi.
 **Una Single Page Application in un solo `index.html`** (2443 righe, ~82 KB) più
 `icon-512.png` (558 KB), 100% client-side:
 
-1. L'utente carica il PDF del piano alimentare generato da **Progeo Medical**.
-2. `pdf.js` (3.11.174, da cdnjs) lo legge **nel browser** e `parseProgeoPdf()`
+1. L'utente carica il PDF del piano alimentare generato dal gestionale del professionista.
+2. `pdf.js` (3.11.174, da cdnjs) lo legge **nel browser** e `parseDietPdf()`
    estrae pasti e dosi.
 3. `convertQuantityEngine()` converte dosi in cucchiai/bicchieri/legumi secchi
    in grammi (o peso del cotto sgocciolato).
@@ -544,8 +870,8 @@ altrove senza chiederlo al PO.
 | 1303-2441 | **`<script>`** unico: logica |
 
 Funzioni principali: `normalizeText`, `parseSpoonCount`, `convertQuantityEngine`
-(conversioni, ~120 righe), `getSampleProgeoDiet` (piano di esempio incorporato),
-`parseProgeoPdf` (~250 righe, il pezzo più delicato), `initAppState`,
+(conversioni, ~120 righe), `getSampleDiet` (piano di esempio incorporato),
+`parseDietPdf` (~250 righe, il pezzo più delicato), `initAppState`,
 `saveDietData`/`saveCheckedState`/`saveWaterState`, `renderDayTabs`,
 `renderActiveDay`, `toggleItemCheck`, `renderWaterTracker`, `handlePdfFile`,
 `setupCalculatorLogic`.
@@ -595,7 +921,7 @@ Il test del PDF reale verifica il collegamento di tutti gli alimenti con codice
 quantità settimanali quali olio 156 g, fiocchi d’avena 60 g e pane 550 g.
 
 22 test passati: `tests/shopping-list.test.cjs`, `tests/shopping-export.e2e.cjs`
-e `tests/progeo-pdf.e2e.cjs`; comandi nel README. Browser test con CSP; l’ultimo
+e `tests/reference-pdf.e2e.cjs`; comandi nel README. Browser test con CSP; l’ultimo
 usa il worker reale di pdf.js e il PDF privato esterno al repo, senza inviarlo
 alle CDN. Il PDF e le estrazioni di lavoro non sono nel repository. Nessun commit, push o
 deploy effettuato per questa funzione: la verifica online precedente non la include.

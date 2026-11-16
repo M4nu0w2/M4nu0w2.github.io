@@ -1,0 +1,277 @@
+/* Elementi di scena: visibili solo nella versione pinnata (desktop con animazioni). */
+.pdf,
+.receipt,
+.story__link,
+.story__laptop {
+  display: none;
+}
+
+/* Accensione telefono: splash in dissolvenza */
+.app__splash {
+  transition: opacity 0.5s, visibility 0.5s;
+}
+
+/* ---------- Versione pinnata (classe aggiunta da story.js) ---------- */
+.story.is-pinned {
+  height: 100svh;
+  overflow: hidden;
+}
+
+.is-pinned .story__stage {
+  position: absolute;
+  inset: 0;
+  height: auto;
+}
+
+.is-pinned .story__phone,
+.is-pinned .story__glow {
+  top: 50%;
+  left: 50%;
+  transform: none; /* le trasformazioni le gestisce GSAP */
+}
+
+.is-pinned .story__phone .phone {
+  --w: min(360px, 38svh);
+}
+
+.is-pinned .story__scenes {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+}
+
+.is-pinned .scene {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  padding: var(--nav-h) 0 0;
+  pointer-events: none;
+}
+
+.is-pinned .scene__text {
+  max-width: min(26rem, 30vw);
+  pointer-events: auto;
+}
+
+.is-pinned .scene--hero {
+  align-items: flex-start;
+  padding-top: calc(var(--nav-h) + 4svh);
+}
+
+.is-pinned .hero__text {
+  max-width: 54rem;
+}
+
+.is-pinned .hero__text h1 {
+  font-size: clamp(2.5rem, min(5.2vw, 8.5svh), 5.25rem);
+}
+
+/* PDF del nutrizionista */
+.is-pinned .pdf {
+  --pdf-w: clamp(210px, 19vw, 290px);
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 3vw - var(--pdf-w) / 2);
+  z-index: 2; /* le righe volano sopra il telefono */
+  display: grid;
+  gap: 14px;
+  width: var(--pdf-w);
+  margin-top: calc(var(--pdf-w) * -0.7);
+  padding: 22px 20px 26px;
+  border-radius: 6px;
+  background: #d5dae1;
+  color: #4b5563;
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.7);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.pdf__head {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #b6bdc7;
+}
+
+.pdf__title {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pdf__meta {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.pdf__row {
+  display: grid;
+  gap: 1px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #c9cfd7;
+}
+
+.pdf__row b {
+  color: #1f2937;
+  font-size: 11.5px;
+}
+
+.pdf__filler {
+  display: grid;
+  gap: 7px;
+  padding: 4px 2px 0;
+}
+
+.pdf__filler i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: #bcc3cc;
+}
+
+.pdf__filler i:nth-child(2n) {
+  width: 72%;
+}
+
+.pdf__filler i:nth-child(3n) {
+  width: 86%;
+}
+
+.pdf__tag {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Scontrino della lista della spesa (dietro al telefono, esce di lato) */
+.is-pinned .receipt {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  z-index: 0;
+  display: grid;
+  gap: 4px;
+  width: 62%;
+  margin-left: -31%;
+  padding: 18px 16px 26px;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-size: 12px;
+  box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.75);
+  -webkit-mask: conic-gradient(from 135deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 7px repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat;
+  mask: conic-gradient(from 135deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 7px repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat;
+}
+
+.receipt__title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.receipt__meta {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #94a3b8;
+  color: #64748b;
+  font-size: 10.5px;
+}
+
+.receipt ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.receipt li {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.receipt li b {
+  color: #047857;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-pinned .story__phone {
+  z-index: 1;
+}
+
+/* Scene 6-7 */
+.is-pinned .scene--center {
+  align-items: flex-start;
+  padding-top: calc(var(--nav-h) + 5svh);
+}
+
+.is-pinned .scene--center .scene__text {
+  max-width: 40rem;
+}
+
+.is-pinned .story__laptop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: block;
+}
+
+.is-pinned .story__laptop .laptop {
+  --lw: min(50vw, 118svh);
+}
+
+.scene__text > .badge-soon {
+  justify-self: start;
+}
+
+.scene--center .scene__text > .badge-soon {
+  justify-self: center;
+}
+
+.story__laptop-glow {
+  inset: -10% -6%;
+}
+
+.is-pinned .story__link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.story__link-path {
+  fill: none;
+  stroke: var(--mint);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 6px rgb(16 185 129 / 0.8));
+}
+
+.story__link-dot {
+  fill: var(--mint);
+  filter: drop-shadow(0 0 6px rgb(110 231 183 / 0.9));
+  opacity: 0;
+}
+
+.is-pinned .story__phone .phone {
+  z-index: 1;
+}

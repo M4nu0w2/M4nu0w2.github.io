@@ -13,7 +13,7 @@ async function setup(t, service) {
 
 test('chat page and APIs require session; configured disabled service makes no provider calls', async t => {
   const { fixture, headers } = await setup(t);
-  assert.equal((await fixture.request('/chat')).status, 303);
+  assert.equal((await fixture.request('/app/chat')).status, 303);
   assert.equal((await fixture.request('/api/chat/status')).status, 401);
   assert.equal((await fixture.request('/api/chat', { method: 'POST' })).status, 401);
   const status = await fixture.request('/api/chat/status', { headers });

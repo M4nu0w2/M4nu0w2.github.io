@@ -1,4 +1,4 @@
-# NutriPro
+# Nutrà
 
 Termini del prodotto condivisi per la gestione dei piani alimentari e della
 lista della spesa. Le definizioni descrivono il dominio, non l’implementazione.
@@ -20,11 +20,11 @@ Sovrascrive contenuto e tracking di quel piano; non archivia la versione sostitu
 _Avoid_: Caricamento di un nuovo piano, che conserva invece il precedente.
 
 **Account Google**:
-Identità verificata da Google per accedere a NutriPro, riconosciuta tramite
+Identità verificata da Google per accedere a Nutrà, riconosciuta tramite
 l'identificativo stabile `sub`. L'email è un attributo, non la chiave dei piani.
 _Avoid_: Token API Gemini come credenziale per la login.
 
-**Sessione NutriPro**:
+**Sessione Nutrà**:
 Accesso temporaneo creato dal server dopo la verifica Google; termina alla
 scadenza, al logout o al riavvio del servizio.
 _Avoid_: Login come sinonimo di archivio remoto o sincronizzazione dei piani.

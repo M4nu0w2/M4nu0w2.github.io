@@ -1,4 +1,4 @@
-// Private PDF remains outside the repository. No document contents are sent to a CDN.
+﻿// Private PDF remains outside the repository. No document contents are sent to a CDN.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -6,8 +6,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { startFixture } = require('./auth-fixture.cjs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const pdfPath = process.env.REAL_PROGEO_PDF;
-if (!pdfPath) throw new Error('Set REAL_PROGEO_PDF to the private reference PDF.');
+const pdfPath = process.env.REFERENCE_PDF;
+if (!pdfPath) throw new Error('Set REFERENCE_PDF to the private reference PDF.');
 
 test('real reference PDF: appendix links, complete recipes, accurate shopping totals, reload', async () => {
   const fixture = await startFixture();
@@ -15,7 +15,7 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const login = await fixture.login();
-    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+    await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -23,7 +23,7 @@ test('real reference PDF: appendix links, complete recipes, accurate shopping to
       window.cspViolations = [];
       document.addEventListener('securitypolicyviolation', event => window.cspViolations.push(event.violatedDirective));
     });
-    await page.goto(fixture.config.origin);
+    await page.goto(fixture.config.origin + '/app/');
     await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
     await page.getByLabel('PDF del piano').setInputFiles(pdfPath);
     await page.getByRole('button', { name: 'Importa e attiva' }).click();

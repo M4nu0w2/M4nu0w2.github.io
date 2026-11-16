@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Schermate — anteprima (solo sviluppo)</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
+    <style>
+      .gallery { display: flex; flex-wrap: wrap; gap: 48px 40px; justify-content: center; padding: 48px 24px; }
+      .gallery figure { display: grid; gap: 14px; justify-items: center; margin: 0; }
+      .gallery figcaption { color: var(--text-2); font-size: 14px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <!-- Pagina di controllo della fase 2: non entra nella build. -->
+    <div class="gallery">
+      <figure><div data-phone-mount="oggi" data-state="splash"></div><figcaption>Splash</figcaption></figure>
+      <figure><div data-phone-mount="oggi"></div><figcaption>Oggi</figcaption></figure>
+      <figure><div data-phone-mount="oggi" data-scroll="days"></div><figcaption>Oggi — menu</figcaption></figure>
+      <figure><div data-phone-mount="piani"></div><figcaption>I miei piani</figcaption></figure>
+      <figure><div data-phone-mount="calcolatore"></div><figcaption>Calcolatore porzioni</figcaption></figure>
+      <figure><div data-phone-mount="assistente"></div><figcaption>Assistente</figcaption></figure>
+      <figure><div data-phone-mount="settaggi"></div><figcaption>Settaggi</figcaption></figure>
+      <figure><div data-phone-mount="oggi" data-state="off"></div><figcaption>Schermo spento</figcaption></figure>
+    </div>
+    <script type="module">
+      import './src/styles/main.css';
+      import { mountPhones } from './src/components/phone.js';
+
+      const scrolls = [...document.querySelectorAll('[data-scroll]')].map((el) => el.parentElement);
+      mountPhones();
+      // "Oggi — menu": scorre il contenuto fino al selettore dei giorni, come nel secondo screenshot.
+      scrolls.forEach((fig) => {
+        const scroll = fig.querySelector('.screen.is-active .screen__scroll');
+        const days = scroll.querySelector('[data-days]');
+        scroll.style.transform = `translateY(${-(days.offsetTop - 16)}px)`;
+      });
+    </script>
+  </body>
+</html>

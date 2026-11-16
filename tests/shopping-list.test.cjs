@@ -7,7 +7,7 @@ function app(pdfLines = [], extraPages = []) {
     numPages: pages.length, getPage: async pageNum => ({ getTextContent: async () => ({ items: pages[pageNum - 1].flatMap((line, i) =>
       line.map(([x, str]) => ({ str, transform: [1, 0, 0, 1, x, 800 - i * 20] }))) }) })
   }) }) };
-  return { ...engine, parseProgeoPdf: buffer => engine.parseProgeoPdf(buffer, undefined, pdf) };
+  return { ...engine, parseDietPdf: buffer => engine.parseDietPdf(buffer, undefined, pdf) };
 }
 const food = (name, qty, extras = {}) => ({ name, qty, rawName: name, rawQty: qty, ...extras });
 const diet = (...items) => ({ days: { lun: { dayName: 'Lunedì', meals: [{ items }] } } });
@@ -58,24 +58,24 @@ test('recognizes inline explicit alternatives with separate or shared quantities
 test('PDF parser attaches explicit alternative rows to preceding food', async () => {
   const context = app([[[40, 'Lunedì']], [[40, 'Pranzo']], [[40, 'Vitello'], [250, 'g 150']],
     [[40, 'oppure Pollo'], [250, 'g 180']], [[40, 'Pane'], [250, 'g 50']]]);
-  const result = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const result = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(result, ['lun'])),
     ['Vitello — 150 g oppure Pollo — 180 g', 'Pane — 50 g']);
 });
 test('PDF parser retains inline alternatives before cleaning quantity suffixes', async () => {
   const context = app([[[40, 'Lunedì']], [[40, 'Cena']], [[40, 'Vitello 150 g oppure Pollo 180 g']]]);
-  const result = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const result = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(result, ['lun'])), ['Vitello — 150 g oppure Pollo — 180 g']);
 });
 test('sample retains its existing alternative', () => {
-  assert.ok(app().buildShoppingList(app().getSampleProgeoDiet(), ['lun']).some(line => line.includes('oppure')));
+  assert.ok(app().buildShoppingList(app().getSampleDiet(), ['lun']).some(line => line.includes('oppure')));
 });
 
 test('standalone connectors attach multiple choices, but never cross meals', async () => {
   const context = app([[[40, 'Lunedì']], [[40, 'Pranzo']], [[40, 'Vitello'], [250, '150 g']],
     [[40, 'oppure']], [[40, 'Pollo'], [250, '180 g']], [[40, 'oppure Tacchino'], [250, '160 g']],
     [[40, 'oppure']], [[40, 'Cena']], [[40, 'Pane'], [250, '50 g']]]);
-  const result = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const result = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(result, ['lun'])),
     ['Vitello — 150 g oppure Pollo — 180 g oppure Tacchino — 160 g', 'Pane — 50 g']);
 });
@@ -96,7 +96,7 @@ test('coded appendix links alternatives, including pages without the appendix ti
     [[[142, '2217: Orata']], [[146, 'Alimento'], [396, 'Quantità 1']], [[146, 'Orata'], [400, 'g'], [431, '300']],
       [[146, 'Salmone fresco'], [400, 'g'], [428, '230']]]
   ]);
-  const data = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const data = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(data, ['mer'])), ['Vitello magro — 300 g oppure Coscia di pollo — 240 g']);
   assert.equal(data.days.mer.meals[0].items[0].alternativeCode, '2136');
   assert.equal(data.days.gio.meals.length, 0);
@@ -110,7 +110,7 @@ test('recipe alternatives keep all ingredients together and do not duplicate bas
       [[146, 'Riso e seppie']], [[146, '- Riso integrale'], [381, '7 cucchiai e ½']],
       [[146, '- Seppie'], [400, 'g'], [437, '50']]]
   ]);
-  const data = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const data = await context.parseDietPdf(new ArrayBuffer(0));
   const lines = plain(context.buildShoppingList(data, ['lun']));
   assert.equal(lines.length, 2);
   assert.ok(lines[0].includes('Riso integrale — 160 g + Zucca — q.b.'));
@@ -120,7 +120,7 @@ test('recipe alternatives keep all ingredients together and do not duplicate bas
 test('meal headers never match extra virgin oil; additional meals are headers', async () => {
   const context = app([[[40, 'Lunedì']], [[260, 'Pranzo']], [[78, 'Olio extra vergine di oliva'], [393, '4 cucchiaini']],
     [[241, 'Pasto aggiuntivo 1']], [[78, 'Melone'], [411, 'g'], [429, '200']]]);
-  const data = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const data = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(data, ['lun'])), ['Olio extra vergine di oliva — 16 g', 'Melone — 200 g']);
   assert.equal(data.days.lun.meals.length, 2);
 });
@@ -140,7 +140,7 @@ test('PDF unit measures override generic coefficients and preserve counts', asyn
       [[46, 'Fagioli di soia secchi'], [183, 'Un cucchiaio da minestra contiene circa g 16.']],
       [[46, 'Semi di chia'], [183, 'Un cucchiaino di misura media contiene circa g 3.']]]
   ]);
-  const data = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const data = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(data, ['mar'])),
     ['Lenticchie cotte in scatola — 400 g oppure Fagioli di soia cotti in scatola — 280 g', 'Semi di chia — 6 g', 'Uovo di gallina — 4 pezzi']);
 });
@@ -151,7 +151,7 @@ test('appendix preserves inline aliases and scales every nested alternative', as
       [[146, 'Merluzzo o Nasello'], [400, 'g'], [431, '300']],
       [[146, 'Acciughe o Alici'], [400, 'g'], [431, '240']]]
   ]);
-  const data = await context.parseProgeoPdf(new ArrayBuffer(0));
+  const data = await context.parseDietPdf(new ArrayBuffer(0));
   assert.deepEqual(plain(context.buildShoppingList(data, ['lun'])),
     ['Merluzzo — 600 g oppure Nasello — 600 g oppure Acciughe — 480 g oppure Alici — 480 g']);
 });

@@ -1,11 +1,12 @@
-'use strict';
+﻿'use strict';
 const { OAuth2Client } = require('google-auth-library');
 const { createAuthServer, configFromEnv } = require('../server/app.cjs');
+const { createAppStore } = require('../server/store.cjs');
 
 // A simulated Google provider used only by local automated tests. Never a server route.
 async function startFixture(overrides = {}, options = {}) {
   const config = configFromEnv({ APP_ORIGIN: 'http://127.0.0.1:8080', PORT: '0',
-    GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-only', ...overrides });
+    LOG_LEVEL: 'silent', GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'test-only', ...overrides });
   let clock = Date.now();
   let pending;
   let nextIdentity = {};
@@ -28,11 +29,12 @@ async function startFixture(overrides = {}, options = {}) {
         exp: Math.floor(clock / 1000) + 3600, nonce: pending.nonce, ...nextIdentity }) };
     }
   };
-  const server = createAuthServer(config, { oauthClient: oauth, now: () => clock, ...options });
+  const appStore = options.appStore || createAppStore(':memory:', () => clock);
+  const server = createAuthServer(config, { oauthClient: oauth, now: () => clock, appStore, ...options });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   config.origin = `http://127.0.0.1:${server.address().port}`;
   return {
-    server, config, oauth,
+    server, config, oauth, store: appStore,
     setIdentity(value) { nextIdentity = value; },
     rejectTokens() { rejectToken = true; },
     advance(ms) { clock += ms; },
@@ -45,7 +47,7 @@ async function startFixture(overrides = {}, options = {}) {
     async login() {
       const start = await this.begin();
       const response = await this.request(`/auth/google/callback?state=${start.url.searchParams.get('state')}&code=test-code`, { headers: { Cookie: start.cookie } });
-      const sessionCookie = response.headers.getSetCookie().find(s => s.startsWith('nutripro_session='));
+      const sessionCookie = response.headers.getSetCookie().find(s => s.startsWith('nutra_session='));
       return { response, cookie: sessionCookie?.split(';')[0], start };
     }
   };

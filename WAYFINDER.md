@@ -22,6 +22,16 @@ come checklist e per reparto, app installabile.
 
 ## Notes
 
+- 2026-11-15 — richiesta del PO: assegnare a Claudio tutte le decisioni
+  aperte (ticket `grilling`), da sbrigare quando ha tempo. Elenco,
+  raggruppamento per bloccanti e provenienza in
+  [HANDOFF.md](HANDOFF.md), non qui.
+
+- 2026-11-14 — analisi della dashboard nutrizionista appena implementata:
+  nuovi ticket WF-036…WF-049 nel tracker
+  [.wayfinder/issues/](.wayfinder/issues/). Dettagli, fatti verificati e
+  domande aperte per il PO nei singoli ticket, non qui.
+
 - Richiesta del 2026-10-10 (Manu, in sessione): ticket di implementazione per
   settaggi, obiettivo acqua, sostituzioni rapide, calendario aderenza, streak e
   badge, lista della spesa (checklist e reparti) e app installabile, più un
@@ -92,6 +102,15 @@ come checklist e per reparto, app installabile.
   settaggi globali per account; acqua attiva, olio spento, unità preferite; olio
   come quantità effettiva sulla voce del pasto; disattivare nasconde, storico conservato.
 
+- [Definire l'architettura di un backend leggero e robusto](.wayfinder/issues/WF-024-architettura-backend.md): nessun framework (77 MB di RAM su 128; Fastify aggiungerebbe 41 pacchetti), moduli profondi solo con un seam vero; decisioni delegate al PO il 2026-10-31.
+- [Definire osservabilità e stato condiviso del backend](.wayfinder/issues/WF-027-osservabilita-stato.md): log JSON su stdout senza dati personali (implementato), stato in memoria con vincolo di una sola istanza; allarmi non ancora implementati.
+
+- [Verificare lo stato di node:sqlite e le alternative leggere](.wayfinder/issues/WF-025-ricerca-sqlite-alternative.md): `node:sqlite` è release candidate su Node 26 (sperimentale su 22); per la waitlist basta, per dati sanitari e più istanze si valuta PostgreSQL; repository allineato a Node 26.
+
+- [Implementare pagina settaggi e tracking opzionali](.wayfinder/issues/WF-011-settaggi-implementazione.md): implementato localmente (51/51 test); acqua on, olio off, unità PDF, `/settings` protetta; da committare e verificare su prod.
+
+- [Mantenere l'accesso fra aperture dell'app e deploy](.wayfinder/issues/WF-020-sessione-persistente.md): sessione 90 giorni con cookie firmato HMAC-SHA256; implementato localmente (53/53 test); manca `SESSION_SECRET` in `auth.env` su Hermes, poi commit e verifica su prod.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
@@ -107,6 +126,10 @@ Le altre raccomandazioni nei ticket non sono decisioni approvate.
 - Promemoria facoltativi per acqua e pasti e riepilogo di calorie e macro nei
   settaggi, non ancora approvati.
 - Eventuali altre evolutive che il PO aggiungerà alla raccolta iniziale.
+- Integrazione con wearable e app di fitness.
+- Suggerimento di varianti di ricetta con AI in base a intolleranze.
+- Export PDF del riepilogo a fine ciclo.
+- Scheda anamnesi strutturata con intolleranze e allergie.
 
 ## Out of scope
 

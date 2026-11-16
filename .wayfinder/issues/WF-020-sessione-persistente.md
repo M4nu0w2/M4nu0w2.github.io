@@ -3,7 +3,7 @@ id: WF-020
 title: Mantenere l'accesso fra aperture dell'app e deploy
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
+status: closed
 assignee: manu
 assignment: manu
 assignment_mode: flexible

@@ -50,3 +50,15 @@ Non implementare prima che le risposte del PO siano annotate qui.
 - `npm test` e `npm run test:browser` verdi.
 - Ogni push su `dev` fa deploy automatico: l'ultimo commit di un push che
   contiene codice non deve avere `[skip ci]`.
+
+## Progress note - 2026-11-14
+
+Fatto verificato il 2026-11-14: con la dashboard nutrizionista
+([src/components/NutritionistPage.jsx](../../src/components/NutritionistPage.jsx))
+la lista della spesa (`buildShoppingList`,
+[src/lib/dietEngine.mjs](../../src/lib/dietEngine.mjs)) esiste solo lato
+paziente (componente `Shopping` in [src/App.jsx](../../src/App.jsx)); il
+nutrizionista non ha alcuna vista sulla lista della spesa dei propri
+pazienti. Non è una decisione, solo un fatto da tenere presente
+nell'implementazione di questo ticket e di
+[Raggruppare la lista della spesa per reparto](WF-018-spesa-reparti.md).

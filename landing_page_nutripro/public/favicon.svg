@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0B1220"/>
+  <defs>
+  <linearGradient id="nGrad1" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#6EE7B7"/>
+    <stop offset="1" stop-color="#10B981"/>
+  </linearGradient></defs>
+  <g fill="none" stroke="url(#nGrad1)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path class="logo-n" d="M0 22 V50 M0 34 C0 26.5 5.5 22 13 22 C20.5 22 26 26.5 26 34 V50" transform="translate(14 0)"/>
+  </g>
+  
+  <g class="logo-leaf" transform="translate(40 20) rotate(-8) scale(1.35)">
+    <path d="M0 0 C2.5 -6.5 8 -10.5 15 -10.5 C13.5 -4 8.5 0.8 0 0 Z" fill="#A3E635"/>
+    <path d="M2 -1.2 L11.5 -7.6" stroke="#4D7C0F" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

@@ -47,12 +47,17 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 26
 
       - name: Installa dipendenze del servizio login
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Test autenticazione, motore e parser
+      - name: Build della landing (servita dal backend alla radice)
+        run: |
+          npm ci --prefix landing_page_nutripro --ignore-scripts --no-audit --no-fund
+          npm run build --prefix landing_page_nutripro
+
+      - name: Test autenticazione, motore, parser, landing e waitlist
         run: npm test
 
       # Playwright fuori dal repo: i test
@@ -68,8 +73,8 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright
 
-      # NON eseguito qui di proposito: tests/progeo-pdf.e2e.cjs richiede il PDF
-      # di riferimento PRIVATO (REAL_PROGEO_PDF), che non sta nel repository, e
+      # NON eseguito qui di proposito: tests/reference-pdf.e2e.cjs richiede il PDF
+      # di riferimento PRIVATO (REFERENCE_PDF), che non sta nel repository, e
       # lancia un errore all'avvio se manca. Resta un controllo LOCALE da fare
       # prima di pushare modifiche al parser: la CI NON lo copre.
 

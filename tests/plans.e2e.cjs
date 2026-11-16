@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -18,12 +18,12 @@ function dietPdf() {
 async function setup(t) {
   const f = await startFixture(); const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } }); const login = await f.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: f.config.origin }]);
   const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
   t.after(async () => { await browser.close(); await f.close(); });
-  await page.goto(f.config.origin);
+  await page.goto(f.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
-  await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
+  await page.getByRole('button', { name: 'Carica Piano di Prova' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
   const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('diet_plan_archive:google-user-1')));
@@ -78,8 +78,8 @@ test('React stale replacement cannot overwrite a newer plan from another tab', a
   const { page, archive, upload, manage, context, f } = await setup(t);
   await manage(); await page.getByRole('button', { name: 'Sostituisci PDF' }).click(); await page.getByRole('button', { name: 'Confermo: voglio sostituire il piano attuale' }).click();
   await upload('Correzione.pdf'); await page.getByRole('checkbox', { name: /Confermo definitivamente/ }).waitFor();
-  const other = await context.newPage(); await other.goto(`${f.config.origin}/plans`);
-  await other.getByRole('button', { name: '+ Nuovo piano' }).click(); await other.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click(); await other.getByRole('button', { name: 'Importa e attiva' }).click();
+  const other = await context.newPage(); await other.goto(`${f.config.origin}/app/plans`);
+  await other.getByRole('button', { name: '+ Nuovo piano' }).click(); await other.getByRole('button', { name: 'Carica Piano di Prova' }).click(); await other.getByRole('button', { name: 'Importa e attiva' }).click();
   await other.getByRole('heading', { name: 'Il menu di oggi' }).waitFor(); await page.bringToFront(); const snapshot = await archive();
   await page.getByRole('checkbox', { name: /Confermo definitivamente/ }).check(); await page.getByRole('button', { name: 'Sostituisci definitivamente' }).click(); await page.getByRole('alert').first().waitFor(); assert.deepEqual(await archive(), snapshot);
 });

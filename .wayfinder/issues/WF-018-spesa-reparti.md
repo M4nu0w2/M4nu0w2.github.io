@@ -45,3 +45,10 @@ Non implementare prima che le risposte del PO siano annotate qui.
 - `npm test` e `npm run test:browser` verdi.
 - Ogni push su `dev` fa deploy automatico: l'ultimo commit di un push che
   contiene codice non deve avere `[skip ci]`.
+
+## Progress note - 2026-11-14
+
+Stesso fatto verificato annotato in
+[Usare la lista della spesa come checklist in app](WF-017-spesa-checklist.md):
+la lista della spesa esiste solo lato paziente, il nutrizionista non la
+vede. Da tenere presente coordinando le modifiche ai due ticket.

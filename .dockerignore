@@ -9,3 +9,16 @@
 !public/**
 !index.html
 !vite.config.js
+!landing_page_nutripro/
+!landing_page_nutripro/package.json
+!landing_page_nutripro/package-lock.json
+!landing_page_nutripro/index.html
+!landing_page_nutripro/vite.config.js
+!landing_page_nutripro/privacy/
+!landing_page_nutripro/privacy/**
+!landing_page_nutripro/public/
+!landing_page_nutripro/public/**
+!landing_page_nutripro/scripts/
+!landing_page_nutripro/scripts/**
+!landing_page_nutripro/src/
+!landing_page_nutripro/src/**

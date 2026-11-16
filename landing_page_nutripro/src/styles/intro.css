@@ -1,0 +1,54 @@
+/* Overlay dell'intro: visibile solo con html.intro-active (messa dallo script in <head>). */
+.intro {
+  display: none;
+}
+
+.intro-active {
+  overflow: hidden;
+}
+
+.intro-active .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: var(--bg-page); /* copre la pagina anche prima che il JS costruisca il logo */
+  cursor: pointer;
+}
+
+.intro.is-ready {
+  background: transparent;
+}
+
+.intro__bg {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-page);
+}
+
+.intro__logo {
+  position: relative;
+}
+
+.intro__logo svg {
+  width: min(70vw, 480px);
+  height: auto;
+  overflow: visible;
+  color: var(--text);
+}
+
+/* Navbar nascosta durante l'intro: il logo "atterra" al posto di quello vero. */
+.intro-active .nav__brand {
+  visibility: hidden;
+}
+
+.nav__links,
+.nav__cta {
+  transition: opacity 0.5s var(--ease-out);
+}
+
+.intro-active .nav__links,
+.intro-active .nav__cta {
+  opacity: 0;
+}

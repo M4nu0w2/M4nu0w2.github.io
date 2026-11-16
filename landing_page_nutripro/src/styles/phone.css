@@ -1,0 +1,95 @@
+/*
+ * Telefono in CSS. Tutto è in em: la dimensione si controlla solo con --w.
+ * font-size = larghezza schermo / 20  (a --w: 344px, 1em = 16px)
+ */
+.phone {
+  --w: 340px;
+  --frame: #2b2533;
+  --rim: #6d5f7d;
+  position: relative;
+  width: var(--w);
+  aspect-ratio: 720 / 1460;
+  padding: 0.75em;
+  border-radius: 3.45em;
+  background: #050507;
+  box-shadow:
+    inset 0 0 0 0.16em var(--rim),
+    inset 0 0 0 0.3em var(--frame),
+    0 2.5em 5em -1em rgb(0 0 0 / 0.65);
+  font-size: calc(var(--w) * 0.0465);
+  line-height: 1.4;
+  color: var(--text);
+  text-align: left;
+  letter-spacing: normal;
+  user-select: none;
+}
+
+/* Tasti laterali */
+.phone::before,
+.phone::after {
+  content: '';
+  position: absolute;
+  width: 0.2em;
+  border-radius: 0.2em;
+  background: var(--rim);
+}
+
+.phone::before {
+  left: -0.14em;
+  top: 19%;
+  height: 3.4em;
+  box-shadow: 0 4.4em 0 var(--rim);
+}
+
+.phone::after {
+  right: -0.14em;
+  top: 31%;
+  height: 5.4em;
+}
+
+.phone__screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 2.75em;
+  background: var(--bg-app);
+  isolation: isolate;
+}
+
+.phone__island {
+  position: absolute;
+  z-index: 20;
+  top: 0.62em;
+  left: 50%;
+  width: 6.2em;
+  height: 1.78em;
+  border-radius: 1em;
+  background: #000;
+  transform: translateX(-50%);
+}
+
+.phone__island i {
+  position: absolute;
+  right: 0.55em;
+  top: 50%;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3b3f6b, #0b0c1a 60%);
+  transform: translateY(-50%);
+}
+
+/* Schermo spento */
+.phone__off {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: linear-gradient(155deg, #0d0f14 0%, #030305 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.phone[data-state='off'] .phone__off {
+  opacity: 1;
+}

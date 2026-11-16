@@ -3,7 +3,9 @@ import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from '
 import { createStore, settingsOf } from './lib/planStore.mjs';
 import { itemKey, dayOil, stepOil, formatOil, displayQty } from './lib/tracking.mjs';
 import ChatPage from './components/ChatPage.jsx';
-import { parseProgeoPdf, getSampleProgeoDiet, buildShoppingList, getFoodChoices } from './lib/dietEngine.mjs';
+import { parseDietPdf, extractPdfText, planFromAssistant, getSampleDiet, buildShoppingList, getFoodChoices } from './lib/dietEngine.mjs';
+
+const NutritionistPage = React.lazy(() => import('./components/NutritionistPage.jsx'));
 
 const dateLabel = value => new Date(value).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 const todayKey = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][new Date().getDay()];
@@ -24,7 +26,7 @@ function Login() {
   }
   useEffect(() => { check(); }, []);
   const messages = { expired: 'La sessione è terminata. Accedi di nuovo.', account_changed: 'Account cambiato. Accedi di nuovo.', cancelled: 'Accesso annullato.', invalid_login: 'Accesso non riuscito. Riprova con Google.', not_allowed: 'Questo account non è abilitato.', too_many_attempts: 'Troppi tentativi. Attendi un minuto.' };
-  return <main className="login-page"><section className="login-card"><span className="brand">N<span>✦</span> NutriPro</span><p className="eyebrow">IL TUO SPAZIO PERSONALE</p><h1>Il tuo piano.<br />Ogni giorno.</h1><p className="muted">Accedi per ritrovare i tuoi piani alimentari, seguire i pasti e organizzare la settimana.</p><p id="login-status" role="status">{error || messages[new URLSearchParams(location.search).get('error')] || (status ? status.configured ? 'Continua con il tuo account Google.' : 'Accesso Google non ancora disponibile.' : 'Verifica accesso…')}</p>{status?.configured && <a id="google-login" className="btn primary" href="/auth/google">Accedi con Google</a>}{(error || status && !status.configured) && <button className="btn secondary" onClick={check}>Riprova</button>}</section></main>;
+  return <main className="login-page"><section className="login-card"><span className="brand">N<span>✦</span> Nutrà</span><p className="eyebrow">IL TUO SPAZIO PERSONALE</p><h1>Il tuo piano.<br />Ogni giorno.</h1><p className="muted">Accedi per ritrovare i tuoi piani alimentari, seguire i pasti e organizzare la settimana.</p><p id="login-status" role="status">{error || messages[new URLSearchParams(location.search).get('error')] || (status ? status.configured ? 'Continua con il tuo account Google.' : 'Accesso Google non ancora disponibile.' : 'Verifica accesso…')}</p>{status?.configured && <a id="google-login" className="btn primary" href="/auth/google">Accedi con Google</a>}{(error || status && !status.configured) && <button className="btn secondary" onClick={check}>Riprova</button>}</section></main>;
 }
 
 function Protected() {
@@ -35,7 +37,7 @@ function Protected() {
   const loggingOut = useRef(false);
   useEffect(() => {
     let disposed = false, pending = false, expiry;
-    const leave = (reason = 'expired') => { setLocked(true); location.replace(`/login?error=${reason}`); };
+    const leave = (reason = 'expired') => { setLocked(true); location.replace(`/app/login?error=${reason}`); };
     async function verify() {
       if (pending || disposed || loggingOut.current) return;
       pending = true;
@@ -60,12 +62,21 @@ function Protected() {
   async function logout() {
     loggingOut.current = true;
     setLocked(true);
-    try { const response = await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': identity.current.csrf }, signal: AbortSignal.timeout(10000) }); if (!response.ok && response.status !== 401) throw new Error(); location.replace('/login'); }
+    try { const response = await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': identity.current.csrf }, signal: AbortSignal.timeout(10000) }); if (!response.ok && response.status !== 401) throw new Error(); location.replace('/app/login'); }
     catch { setLogoutError('Uscita non riuscita. Controlla la connessione e riprova.'); }
   }
   const gate = <main className="login-page"><section className="login-card"><p role="status">{logoutError || 'Verifica della sessione…'}</p>{logoutError && <button className="btn secondary" onClick={logout}>Riprova uscita</button>}</section></main>;
   if (!session) return gate;
-  return <>{locked && gate}<div hidden={locked} style={locked ? { visibility: 'hidden' } : undefined} inert={locked ? true : undefined}>{/* Keep state during focus verification, including the native file picker. */}<Workspace session={session} logout={logout} /></div></>;
+  const body = session.role === 'nutritionist'
+    ? <React.Suspense fallback={<main className="login-page"><p role="status">Caricamento dashboard…</p></main>}><NutritionistPage session={session} logout={logout} /></React.Suspense>
+    : session.role === 'patient' || session.admin
+      ? <Workspace session={session} logout={logout} />
+      : <WaitingPage session={session} logout={logout} />;
+  return <>{locked && gate}<div hidden={locked} style={locked ? { visibility: 'hidden' } : undefined} inert={locked ? true : undefined}>{/* Keep state during focus verification, including the native file picker. */}{body}</div></>;
+}
+
+function WaitingPage({ session, logout }) {
+  return <main className="login-page"><section className="login-card"><span className="brand">N<span>✦</span> Nutrà</span><p className="eyebrow">ACCESSO NON ANCORA ATTIVO</p><h1>Ci siamo quasi.</h1><p className="muted">L'account {session.email} non è ancora stato attivato. Se il tuo nutrizionista ti ha inviato un link di invito, aprilo con questo account Google. Altrimenti chiedi al tuo nutrizionista di aggiungerti.</p><button className="btn secondary" onClick={logout}>Esci</button></section></main>;
 }
 
 function Workspace({ session, logout }) {
@@ -81,11 +92,37 @@ function Workspace({ session, logout }) {
     window.addEventListener('storage', refresh); return () => window.removeEventListener('storage', refresh);
   }, [store]);
   function mutate(operation) { try { setArchive(operation()); setError(''); return true; } catch (e) { setError(e.message); try { setArchive(store.read()); } catch { setArchive(null); } return false; } }
+  // Patients of a nutritionist receive the plan from the server; localStorage stays as the local cache.
+  const serverSynced = useRef(false);
+  useEffect(() => {
+    if (session.role !== 'patient' || !archive || serverSynced.current) return;
+    serverSynced.current = true;
+    (async () => {
+      try {
+        const response = await fetch('/api/plan', { cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(15000) });
+        if (!response.ok) return;
+        const { plan, tracking } = await response.json();
+        if (!plan || store.read().plans.some(p => p.serverId === plan.id)) return;
+        if (!mutate(() => store.importPlan(plan.data, { mode: 'new', sourceName: plan.name, serverId: plan.id }))) return;
+        const fields = { checked: {}, water: {}, oil: {} };
+        for (const [day, byField] of Object.entries(tracking || {})) for (const [field, row] of Object.entries(byField)) if (fields[field]) fields[field][day] = row.value;
+        const planId = store.read().activeId;
+        for (const field of ['checked', 'water', 'oil']) if (Object.keys(fields[field]).length) mutate(() => store.saveTracking(planId, field, fields[field]));
+      } catch { /* offline: the local copy keeps working */ }
+    })();
+  }, [session, archive, store]);
   const active = archive?.plans.find(plan => plan.id === archive.activeId);
+  // Fire-and-forget: the server copy follows every local save for server-assigned plans.
+  function syncTracking(plan, field, value, day) {
+    if (session.role !== 'patient' || plan?.serverId === undefined || day === undefined) return;
+    fetch('/api/tracking', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf },
+      body: JSON.stringify({ planId: plan.serverId, day, field, value: value?.[day] ?? null }) }).catch(() => {});
+  }
   const settings = settingsOf(archive);
   function beginImport(mode = 'new') { if (!archive) return; setImportMode({ mode, expectedRevision: archive.revision, targetId: active?.id }); }
   function activate(id) { if (mutate(() => store.setActive(id, archive.revision))) navigate(id ? '/' : '/plans'); }
-  return <div className="app-shell"><a className="skip-link" href="#main-content">Vai al contenuto</a><aside className="sidebar"><Link to="/" className="brand">N<span>✦</span> NutriPro</Link><p className="eyebrow">IL TUO BENESSERE</p><nav aria-label="Navigazione principale"><NavLink to="/" end className="nav-link"><span className="nav-icon" aria-hidden="true">◉</span><span className="nav-label">Oggi</span></NavLink><NavLink to="/plans" className="nav-link"><span className="nav-icon" aria-hidden="true">▤</span><span className="nav-label">I miei piani</span><span className="nav-count">{archive?.plans.length || 0}</span></NavLink><NavLink to="/chat" className="nav-link"><span className="nav-icon" aria-hidden="true">✧</span><span className="nav-label">Assistente</span></NavLink><NavLink to="/settings" className="nav-link"><span className="nav-icon" aria-hidden="true">⚙</span><span className="nav-label">Settaggi</span></NavLink><button className="nav-link" onClick={() => setCalculator(true)}><span className="nav-icon" aria-hidden="true">⇄</span><span className="nav-label">Calcolatore</span></button></nav><div className="sidebar-bottom"><p className="muted">Piani salvati in questo browser, separati per account.</p></div></aside><div className="workspace"><header className="topbar"><span className="muted">Una buona abitudine alla volta.</span><span className="account-chip" title={session.email}><span className="plan-avatar">{session.name?.slice(0, 1).toUpperCase() || 'N'}</span><span id="account-name">{session.name}</span></span><button className="btn secondary small" onClick={logout}>Esci</button></header><main id="main-content" className="page" tabIndex={-1}>{error && <div className="notice error" role="alert">{error}</div>}{!archive && !error && <p role="status">Caricamento piani…</p>}{archive && <Routes><Route path="/" element={<Dashboard plan={active} hasPlans={!!archive.plans.length} beginImport={beginImport} saveTracking={(field, value) => mutate(() => store.saveTracking(active.id, field, value))} settings={settings} />} /><Route path="/plans" element={<PlansPage archive={archive} beginImport={beginImport} activate={activate} />} /><Route path="/plans/:id" element={<PlanDetail archive={archive} activate={activate} settings={settings} />} /><Route path="/chat" element={<ChatPage session={session} />} /><Route path="/settings" element={<SettingsPage settings={settings} save={changes => mutate(() => store.saveSettings(changes))} clear={field => mutate(() => store.clearTracking(field))} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>}</main></div>{importMode && <ImportDialog operation={importMode} active={active} onClose={() => setImportMode(null)} onSave={(data, sourceName) => { const ok = mutate(() => store.importPlan(data, { ...importMode, sourceName })); if (ok) { setImportMode(null); navigate('/'); } return ok; }} />}{calculator && <Calculator onClose={() => setCalculator(false)} />}</div>;
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Vai al contenuto</a><aside className="sidebar"><Link to="/" className="brand">N<span>✦</span> Nutrà</Link><p className="eyebrow">IL TUO BENESSERE</p><nav aria-label="Navigazione principale"><NavLink to="/" end className="nav-link"><span className="nav-icon" aria-hidden="true">◉</span><span className="nav-label">Oggi</span></NavLink><NavLink to="/plans" className="nav-link"><span className="nav-icon" aria-hidden="true">▤</span><span className="nav-label">I miei piani</span><span className="nav-count">{archive?.plans.length || 0}</span></NavLink><NavLink to="/chat" className="nav-link"><span className="nav-icon" aria-hidden="true">✧</span><span className="nav-label">Assistente</span></NavLink><NavLink to="/settings" className="nav-link"><span className="nav-icon" aria-hidden="true">⚙</span><span className="nav-label">Settaggi</span></NavLink><button className="nav-link" onClick={() => setCalculator(true)}><span className="nav-icon" aria-hidden="true">⇄</span><span className="nav-label">Calcolatore</span></button></nav><div className="sidebar-bottom"><p className="muted">Piani salvati in questo browser, separati per account.</p></div></aside><div className="workspace"><header className="topbar"><span className="muted">Una buona abitudine alla volta.</span><span className="account-chip" title={session.email}><span className="plan-avatar">{session.name?.slice(0, 1).toUpperCase() || 'N'}</span><span id="account-name">{session.name}</span></span><button className="btn secondary small" onClick={logout}>Esci</button></header><main id="main-content" className="page" tabIndex={-1}>{error && <div className="notice error" role="alert">{error}</div>}{!archive && !error && <p role="status">Caricamento piani…</p>}{archive && <Routes><Route path="/" element={<Dashboard plan={active} hasPlans={!!archive.plans.length} beginImport={beginImport} saveTracking={(field, value, day) => { if (mutate(() => store.saveTracking(active.id, field, value))) syncTracking(active, field, value, day); }} settings={settings} />} /><Route path="/plans" element={<PlansPage archive={archive} beginImport={beginImport} activate={activate} />} /><Route path="/plans/:id" element={<PlanDetail archive={archive} activate={activate} settings={settings} />} /><Route path="/chat" element={<ChatPage session={session} />} /><Route path="/settings" element={<SettingsPage settings={settings} save={changes => mutate(() => store.saveSettings(changes))} clear={field => mutate(() => store.clearTracking(field))} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>}</main></div>{importMode && <ImportDialog operation={importMode} active={active} onClose={() => setImportMode(null)} onSave={(data, sourceName) => { const ok = mutate(() => store.importPlan(data, { ...importMode, sourceName })); if (ok) { setImportMode(null); navigate('/'); } return ok; }} />}{calculator && <Calculator onClose={() => setCalculator(false)} />}</div>;
 }
 
 function DayPicker({ days, day, setDay }) { return <div className="day-tabs" role="group" aria-label="Giorno del piano">{Object.entries(days).map(([key, value]) => <button key={key} className={`day-tab ${day === key ? 'active' : ''}`} aria-pressed={day === key} aria-label={value.dayName || key} onClick={() => setDay(key)}><span className="day-full">{value.dayName || key}</span><span className="day-short" aria-hidden="true">{(value.dayName || key).slice(0, 3)}</span></button>)}</div>; }
@@ -100,10 +137,10 @@ function Dashboard({ plan, hasPlans, beginImport, saveTracking, settings }) {
   const items = (plan.data.days[day]?.meals || []).flatMap((meal, mi) => meal.items.map((item, ii) => itemKey(item, mi, ii)));
   const completed = items.filter(key => plan.checked?.[day]?.[key]).length;
   const water = plan.water?.[day] || 0;
-  function toggle(key) { saveTracking('checked', { ...plan.checked, [day]: { ...plan.checked?.[day], [key]: !plan.checked?.[day]?.[key] } }); }
-  function setWater(value) { saveTracking('water', { ...plan.water, [day]: Math.max(0, Math.min(12, value)) }); }
+  function toggle(key) { saveTracking('checked', { ...plan.checked, [day]: { ...plan.checked?.[day], [key]: !plan.checked?.[day]?.[key] } }, day); }
+  function setWater(value) { saveTracking('water', { ...plan.water, [day]: Math.max(0, Math.min(12, value)) }, day); }
   const oil = settings.oil ? dayOil(plan, day) : null, grams = value => value.toLocaleString('it-IT', { maximumFractionDigits: 1 });
-  function setOil(key, value) { saveTracking('oil', { ...plan.oil, [day]: { ...plan.oil?.[day], [key]: value } }); }
+  function setOil(key, value) { saveTracking('oil', { ...plan.oil, [day]: { ...plan.oil?.[day], [key]: value } }, day); }
   return <><div className="page-heading"><div><p className="eyebrow">IL TUO PIANO ATTIVO</p><h1>Il menu di oggi</h1><p className="muted">{plan.name}</p></div><div className="actions"><Link className="btn secondary" to="/plans">Gestisci piani</Link><button id="btn-export-shopping" className="btn primary" onClick={() => setShopping(true)}>Esporta lista della spesa</button></div></div><div className="stats-grid"><section className="stat-card"><span className="muted">Progressi del giorno</span><strong>{completed}<small> / {items.length} alimenti</small></strong><progress value={completed} max={items.length || 1} aria-label="Alimenti consumati" /></section>{settings.water && <section className="stat-card"><span className="muted">Idratazione</span><strong>{(water * .2).toLocaleString('it-IT')}<small> / 2,4 litri</small></strong></section>}{oil && <section className="stat-card" id="oil-total"><span className="muted">Olio del giorno</span><strong>{grams(oil.consumed)}<small> / {grams(oil.planned)} g previsti</small></strong></section>}<section className="stat-card"><span className="muted">Il tuo piano</span><strong>{Object.keys(plan.data.days).length}<small> giorni di menu</small></strong></section></div><DayPicker days={plan.data.days} day={day} setDay={setDay} /><div className={`dashboard-grid ${settings.water ? '' : 'single'}`}><Meals plan={plan} day={day} toggle={toggle} units={settings.units} oil={oil && { rows: oil.rows, set: setOil }} />{settings.water && <aside className="water-card"><p className="eyebrow">PICCOLE BUONE ABITUDINI</p><h2>Un bicchiere alla volta</h2><p className="muted">Ogni bicchiere vale 200 ml.</p><strong id="water-badge">{water} / 12 ({(water * .2).toLocaleString('it-IT')} L)</strong><div className="water-grid">{Array.from({ length: 12 }, (_, i) => <button key={i} className={`glass ${water > i ? 'active' : ''}`} aria-label={`${i + 1} bicchieri`} aria-pressed={water > i} onClick={() => setWater(i + 1)}>♧</button>)}</div><div className="water-controls"><button id="btn-water-minus" className="btn secondary" aria-label="Togli un bicchiere" disabled={!water} onClick={() => setWater(water - 1)}>−</button><button id="btn-water-plus" className="btn primary" aria-label="Aggiungi un bicchiere" disabled={water >= 12} onClick={() => setWater(water + 1)}>+</button></div></aside>}</div>{shopping && <Shopping plan={plan} day={day} onClose={() => setShopping(false)} />}</>;
 }
 
@@ -136,16 +173,32 @@ function ImportDialog({ operation, active, onClose, onSave }) {
   const replacement = operation.mode === 'replace';
   const [firstConfirm, setFirstConfirm] = useState(!replacement), [finalConfirm, setFinalConfirm] = useState(false);
   const [parsed, setParsed] = useState(null), [source, setSource] = useState(''), [loading, setLoading] = useState(false), [progress, setProgress] = useState(''), [error, setError] = useState('');
+  const [file, setFile] = useState(null), [errorCode, setErrorCode] = useState(''), [assistant, setAssistant] = useState(false), [consent, setConsent] = useState(false);
+  // The assistant is offered only when the server says it can anonymise first and read after.
+  useEffect(() => { fetch('/api/plan/status', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).then(v => setAssistant(Boolean(v?.available))).catch(() => {}); }, []);
+  async function readWithAssistant() {
+    setLoading(true); setError(''); setErrorCode(''); setProgress("Preparo il testo…");
+    try {
+      const { pages } = await extractPdfText(await file.arrayBuffer());
+      const session = await (await fetch('/api/session', { cache: 'no-store', credentials: 'same-origin' })).json();
+      setProgress("Tolgo i dati personali e leggo il piano… può richiedere un minuto");
+      const response = await fetch('/api/plan/import', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(240000),
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf }, body: JSON.stringify({ pages, consent: true }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || 'Lettura non riuscita. Riprova più tardi.');
+      setParsed(planFromAssistant(body.plan)); setConsent(false);
+    } catch (e) { setError(e.message || 'Lettura non riuscita. Riprova più tardi.'); } finally { setLoading(false); }
+  }
   async function load(file) {
     if (!file) return;
-    setParsed(null); setFinalConfirm(false); setError('');
+    setParsed(null); setFinalConfirm(false); setError(''); setErrorCode(''); setConsent(false); setFile(file);
     if (!/\.pdf$/i.test(file.name) || file.type && file.type !== 'application/pdf') { setError('Scegli un file PDF.'); return; }
     if (file.size > 30 * 1024 * 1024) { setError('Il PDF supera 30 MB. Scegli un file più piccolo.'); return; }
     setLoading(true); setSource(file.name);
-    try { const data = await parseProgeoPdf(await file.arrayBuffer(), message => setProgress(String(message))); if (!Object.values(data?.days || {}).some(day => day.meals?.some(meal => meal.items?.length))) throw new Error('Nessun piano alimentare leggibile nel PDF.'); setParsed(data); }
-    catch (e) { setError(e.message || 'PDF non leggibile.'); } finally { setLoading(false); }
+    try { const data = await parseDietPdf(await file.arrayBuffer(), message => setProgress(String(message))); if (!Object.values(data?.days || {}).some(day => day.meals?.some(meal => meal.items?.length))) throw new Error('Nessun piano alimentare leggibile nel PDF.'); setParsed(data); }
+    catch (e) { setError(e.message || 'PDF non leggibile.'); setErrorCode(e.code || ''); } finally { setLoading(false); }
   }
-  return <Modal title={replacement ? 'Sostituisci il piano attuale' : 'Importa un nuovo piano'} onClose={loading ? () => {} : onClose}>{replacement && <div className="notice warning"><strong>Operazione distruttiva</strong><p>Il contenuto di “{active?.name}”, le spunte e il conteggio acqua saranno sostituiti. Gli altri piani restano conservati.</p></div>}{!firstConfirm ? <><p>Conferma di voler sostituire questo piano prima di selezionare il nuovo PDF.</p><button className="btn danger" onClick={() => setFirstConfirm(true)}>Confermo: voglio sostituire il piano attuale</button></> : <><p className="muted">{replacement ? 'Scegli il PDF corretto. Potrai verificarlo prima della conferma finale.' : 'Il nuovo piano diventerà attivo. Il precedente resterà disponibile nello storico.'}</p><label className="drop-zone">▤ <strong>Scegli il PDF del piano</strong><input aria-label="PDF del piano" type="file" accept="application/pdf,.pdf" disabled={loading} onChange={event => load(event.target.files[0])} /></label>{!replacement && <button id="btn-load-sample" className="btn secondary" disabled={loading} onClick={() => { setParsed(getSampleProgeoDiet()); setSource('Piano di prova Progeo'); }}>Carica Piano di Prova Progeo</button>}{loading && <p role="status">Lettura PDF… {progress}</p>}{parsed && <div className="notice"><strong>{source}</strong><p>{Object.keys(parsed.days).length} giorni · {Object.values(parsed.days).reduce((sum, day) => sum + day.meals.length, 0)} pasti riconosciuti</p></div>}{replacement && parsed && <label className="confirm-check"><input type="checkbox" checked={finalConfirm} onChange={event => setFinalConfirm(event.target.checked)} />Confermo definitivamente: sostituisci il piano attuale e azzera il suo tracking.</label>}{error && <p className="notice error" role="alert">{error}</p>}<div className="actions"><button className="btn secondary" disabled={loading} onClick={onClose}>Annulla</button><button className={`btn ${replacement ? 'danger' : 'primary'}`} disabled={!parsed || loading || replacement && !finalConfirm} onClick={() => { if (!onSave(parsed, source)) setError('Importazione non completata. Chiudi e riapri la finestra per verificare lo stato del piano.'); }}>{replacement ? 'Sostituisci definitivamente' : 'Importa e attiva'}</button></div></>}</Modal>;
+  return <Modal title={replacement ? 'Sostituisci il piano attuale' : 'Importa un nuovo piano'} onClose={loading ? () => {} : onClose}>{replacement && <div className="notice warning"><strong>Operazione distruttiva</strong><p>Il contenuto di “{active?.name}”, le spunte e il conteggio acqua saranno sostituiti. Gli altri piani restano conservati.</p></div>}{!firstConfirm ? <><p>Conferma di voler sostituire questo piano prima di selezionare il nuovo PDF.</p><button className="btn danger" onClick={() => setFirstConfirm(true)}>Confermo: voglio sostituire il piano attuale</button></> : <><p className="muted">{replacement ? 'Scegli il PDF corretto. Potrai verificarlo prima della conferma finale.' : 'Il nuovo piano diventerà attivo. Il precedente resterà disponibile nello storico.'}</p><label className="drop-zone">▤ <strong>Scegli il PDF del piano</strong><input aria-label="PDF del piano" type="file" accept="application/pdf,.pdf" disabled={loading} onChange={event => load(event.target.files[0])} /></label>{!replacement && <button id="btn-load-sample" className="btn secondary" disabled={loading} onClick={() => { setParsed(getSampleDiet()); setSource('Piano di prova'); }}>Carica Piano di Prova</button>}{loading && <p role="status">Lettura PDF… {progress}</p>}{parsed && <div className={`notice${parsed.metadata?.quality?.warnings?.length ? ' warning' : ''}`}><strong>{source}</strong><p>{parsed.metadata?.quality?.recognizedDays ?? Object.keys(parsed.days).length} giorni · {Object.values(parsed.days).reduce((sum, day) => sum + day.meals.length, 0)} pasti riconosciuti</p>{(parsed.metadata?.quality?.warnings || []).map(text => <p key={text}>{text}</p>)}</div>}{assistant && file && !loading && (errorCode === 'PLAN_NOT_RECOGNIZED' || (parsed?.metadata?.quality?.warnings?.length > 0 && !parsed.metadata.assistant)) && <div className="notice"><strong>Leggi con l'assistente</strong><p>Il testo del PDF viene inviato al nostro servizio, che toglie i dati personali (nome, indirizzo, telefono, email, codice fiscale…), e solo dopo a Google (Gemini) per leggere il piano. Il controllo non è infallibile: non usarlo se il PDF contiene dati che non vuoi condividere.</p><label className="confirm-check"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} />Ho capito e acconsento.</label><button className="btn secondary" disabled={!consent} onClick={readWithAssistant}>Leggi con l'assistente</button></div>}{replacement && parsed && <label className="confirm-check"><input type="checkbox" checked={finalConfirm} onChange={event => setFinalConfirm(event.target.checked)} />Confermo definitivamente: sostituisci il piano attuale e azzera il suo tracking.</label>}{error && <p className="notice error" role="alert">{error}</p>}<div className="actions"><button className="btn secondary" disabled={loading} onClick={onClose}>Annulla</button><button className={`btn ${replacement ? 'danger' : 'primary'}`} disabled={!parsed || loading || replacement && !finalConfirm} onClick={() => { if (!onSave(parsed, source)) setError('Importazione non completata. Chiudi e riapri la finestra per verificare lo stato del piano.'); }}>{replacement ? 'Sostituisci definitivamente' : 'Importa e attiva'}</button></div></>}</Modal>;
 }
 
 function Shopping({ plan, day, onClose }) {
@@ -153,8 +206,8 @@ function Shopping({ plan, day, onClose }) {
   const preview = useRef(null);
   const lines = buildShoppingList(plan.data, selection), text = lines.join('\n');
   async function copy() { try { await navigator.clipboard.writeText(text); setStatus('Lista copiata.'); } catch { preview.current?.focus(); preview.current?.select(); setStatus('Copia non disponibile. Testo selezionato: copialo manualmente.'); } }
-  async function share() { try { await navigator.share({ title: 'Lista della spesa NutriPro', text }); setStatus('Lista condivisa.'); } catch (e) { setStatus(e.name === 'AbortError' ? 'Condivisione annullata.' : 'Condivisione non disponibile. Usa Copia lista o Scarica.'); } }
-  function download() { const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = 'lista-spesa-nutripro.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setStatus('Lista scaricata.'); }
+  async function share() { try { await navigator.share({ title: 'Lista della spesa Nutrà', text }); setStatus('Lista condivisa.'); } catch (e) { setStatus(e.name === 'AbortError' ? 'Condivisione annullata.' : 'Condivisione non disponibile. Usa Copia lista o Scarica.'); } }
+  function download() { const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })); const link = document.createElement('a'); link.href = url; link.download = 'lista-spesa-nutra.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setStatus('Lista scaricata.'); }
   return <Modal title="Esporta lista della spesa" onClose={onClose}><p className="muted">Scegli i giorni. Le alternative restano insieme alle rispettive quantità.</p><fieldset className="shopping-days"><legend>Giorni della spesa</legend>{Object.entries(plan.data.days).map(([key, value]) => <label key={key}><input type="checkbox" checked={selection.includes(key)} onChange={event => setSelection(event.target.checked ? [...selection, key] : selection.filter(item => item !== key))} />{value.dayName || key}</label>)}</fieldset><label className="form-field">Anteprima: {lines.length} voci<textarea ref={preview} id="shopping-preview" readOnly value={text} rows={10} /></label><div className="actions"><button id="btn-copy-shopping" className="btn primary" disabled={!lines.length} onClick={copy}>Copia lista</button>{typeof navigator.share === 'function' && <button className="btn secondary" disabled={!lines.length} onClick={share}>Condividi</button>}<button id="btn-download-shopping" className="btn secondary" disabled={!lines.length} onClick={download}>Scarica .txt</button></div><p id="shopping-status" role="status" aria-live="polite">{status}</p></Modal>;
 }
 function Calculator({ onClose }) {

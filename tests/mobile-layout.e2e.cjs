@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { startFixture } = require('./auth-fixture.cjs');
@@ -13,11 +13,11 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const fixture = await startFixture(); const browser = await chromium.launch({ headless: true });
   t.after(async () => { await browser.close(); await fixture.close(); });
   const context = await browser.newContext(iphone); const login = await fixture.login();
-  await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
+  await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: fixture.config.origin }]);
   const page = await context.newPage();
-  await page.goto(fixture.config.origin);
+  await page.goto(fixture.config.origin + '/app/');
   await page.getByRole('button', { name: 'Carica il tuo PDF' }).click();
-  await page.getByRole('button', { name: 'Carica Piano di Prova Progeo' }).click();
+  await page.getByRole('button', { name: 'Carica Piano di Prova' }).click();
   await page.getByRole('button', { name: 'Importa e attiva' }).click();
   await page.getByRole('heading', { name: 'Il menu di oggi' }).waitFor();
 
@@ -46,7 +46,7 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   assert.ok(lastCard.y + lastCard.height <= bar.y, 'last card hidden behind the tab bar');
 
   for (const route of ['/plans', '/chat', '/settings']) {
-    await page.goto(fixture.config.origin + route);
+    await page.goto(fixture.config.origin + '/app' + route);
     await nav.waitFor();
     assert.ok(await noHorizontalScroll(page), `horizontal scroll on ${route}`);
   }

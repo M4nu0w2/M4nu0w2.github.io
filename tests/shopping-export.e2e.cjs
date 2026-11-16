@@ -1,4 +1,4 @@
-// Run with PLAYWRIGHT_MODULE pointing to an existing Playwright installation.
+﻿// Run with PLAYWRIGHT_MODULE pointing to an existing Playwright installation.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -14,7 +14,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     const origin = fixture.config.origin;
     const context = await browser.newContext({ viewport: { width: 375, height: 812 }, permissions: ['clipboard-read', 'clipboard-write'] });
     const login = await fixture.login();
-    await context.addCookies([{ name: 'nutripro_session', value: login.cookie.split('=')[1], url: origin }]);
+    await context.addCookies([{ name: 'nutra_session', value: login.cookie.split('=')[1], url: origin }]);
     const page = await context.newPage();
     const errors = [];
     const violations = [];
@@ -25,9 +25,9 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     });
     await page.route('https://**/*', route => route.fulfill({ status: 200,
       contentType: route.request().url().endsWith('.js') ? 'application/javascript' : 'text/css', body: '' }));
-    await page.goto(origin);
+    await page.goto(origin + '/app/');
     await page.getByRole('button', { name: 'Carica il tuo PDF', exact: true }).click();
-  await page.getByRole('button', { name: /Carica Piano di Prova Progeo/i }).click();
+  await page.getByRole('button', { name: /Carica Piano di Prova/i }).click();
   await page.getByRole('button', { name: 'Importa e attiva', exact: true }).click();
     const snapshot = await page.evaluate(() => localStorage.getItem('diet_plan_archive:google-user-1'));
     await page.getByRole('button', { name: 'Esporta lista della spesa', exact: true }).click();
@@ -43,7 +43,7 @@ test('mobile export: preview, day selection, clipboard, download, cancel and per
     const downloadEvent = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Scarica .txt', exact: true }).click();
     const download = await downloadEvent;
-    assert.equal(download.suggestedFilename(), 'lista-spesa-nutripro.txt');
+    assert.equal(download.suggestedFilename(), 'lista-spesa-nutra.txt');
     assert.equal(fs.readFileSync(await download.path(), 'utf8'), await page.locator('#shopping-preview').inputValue());
     for (const checkbox of await dialog.getByRole('checkbox').all()) await checkbox.uncheck();
     assert.equal(await page.locator('#shopping-preview').inputValue(), '');
