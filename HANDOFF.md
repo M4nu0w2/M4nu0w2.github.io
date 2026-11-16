@@ -1,5 +1,88 @@
 # HANDOFF — NutriPro
 
+## Sei ticket implementation della dashboard nutrizionista chiusi e pushati - 2026-11-16 (notte)
+
+Stato corrente; prevale sulla sezione sotto per questi sei ticket (restano
+validi chiusura WF-026, WF-050, mail SMTP). **Commit pushati dal PO.**
+
+### Goal
+
+Lavorare i ticket `implementation` emersi dall'analisi del 2026-11-14 sulla
+dashboard nutrizionista che non avevano domande aperte per il PO né
+bloccanti: sei su undici. Gli altri cinque restano apertI (vedi sotto).
+
+### Current Progress — chiusi in questa sessione
+
+- **[WF-049](.wayfinder/issues/WF-049-scomporre-nutritionist-page.md)**
+  refactor: `NutritionistPage.jsx` (149 righe, 17 `useState`) scomposto in
+  `src/components/nutritionist/` (`CopyInvite`, `AddPatientForm`,
+  `PlanUpload`, `PatientDetail`, `PatientList`), con `useNutriApi`/
+  `useLoader` al posto della funzione `api()` e del pattern load/error
+  duplicato. Nessun cambio visivo o di comportamento.
+- **[WF-037](.wayfinder/issues/WF-037-fuso-orario-giorno-server.md)** fix:
+  `dayKeyFor` usava `new Date(now).getDay()`, dipendente dal fuso del
+  processo — confermato il bug (`TZ=UTC` dava domenica per un istante già
+  lunedì in Italia, e il Dockerfile non imposta `TZ`). Ora usa
+  `Intl.DateTimeFormat` con `timeZone: 'Europe/Rome'`, indipendente dal
+  fuso del container. Test di regressione con `TZ` UTC/Europe/Rome/
+  America/New_York.
+- **[WF-036](.wayfinder/issues/WF-036-compliance-piatti-composti.md)** fix:
+  **decisione del PO raccolta in sessione** — un piatto composto (riga
+  madre + sottovoci `isSubItem`) pesava 3 voci invece di 1 nel conteggio
+  di compliance. Confermato: solo le sottovoci contano, mai la riga madre.
+  Regola `isCountedItem` in `tracking.mjs` lato client; duplicata a mano
+  (non importata) in `complianceFor` lato server, come già `itemKey`/`isOil`.
+- **[WF-040](.wayfinder/issues/WF-040-accessibilita-dashboard-nutrizionista.md)**
+  accessibilità: **decisione del PO raccolta in sessione** — estendere il
+  pattern anche al `DayPicker` condiviso lato paziente, non solo alla
+  dashboard nutrizionista. Tab giorno `role="tablist"`/`"tab"`/
+  `aria-selected` con navigazione a freccia (`src/lib/tabs.mjs`, condiviso);
+  focus del form "Nuovo paziente" gestito all'apertura/chiusura (il
+  bottone resta montato ma `hidden`, per poterlo rifocalizzare); `<progress>`
+  di compliance con `aria-valuetext`.
+- **[WF-038](.wayfinder/issues/WF-038-dettaglio-nutrizionista-completo.md)**
+  feature: il dettaglio paziente mostrava solo nome e quantità grezza.
+  Ora riusa `displayQty` (unità PDF + nota di conversione) e
+  `getFoodChoices` (alternative) come lato paziente, mostra gli avvisi di
+  qualità dell'importazione una volta per piano, e il tracking dell'olio
+  in sola lettura. Nessuna azione di modifica dalla vista.
+- **[WF-039](.wayfinder/issues/WF-039-lista-pazienti-ricerca-filtri.md)**
+  feature: lista pazienti con ricerca (nome/email, scorciatoia `/`), filtri
+  (compliance bassa <50%, senza accesso da 7+ giorni, senza piano, invito
+  in attesa — soglie scelte in implementazione, non decisioni del PO),
+  ordinamento alfabetico, scorciatoia `n` per il nuovo paziente, refresh su
+  `visibilitychange` e ogni 2 minuti. Nessuna nuova dipendenza.
+
+**Verifiche**: `npm test` 100/100, `npm run test:browser` 22/22 verdi dopo
+ogni singolo commit (non solo alla fine).
+
+**Git** — 7 commit su `dev` (6 feature/fix uno per ticket + 1 doc
+`WAYFINDER.md`), **pushati dal PO**.
+
+### Ticket della stessa analisi ancora aperti (non toccati)
+
+- **Domande per il PO non ancora risposte, quindi non implementati**:
+  [WF-017](.wayfinder/issues/WF-017-spesa-checklist.md) (checklist lista
+  spesa), [WF-018](.wayfinder/issues/WF-018-spesa-reparti.md) (reparti),
+  [WF-019](.wayfinder/issues/WF-019-pwa-installabile.md) (nome/icona PWA),
+  [WF-050](.wayfinder/issues/WF-050-candidatura-nutrizionista-dashboard-admin.md)
+  (dashboard admin candidature, 6 decisioni aperte).
+- **[WF-022](.wayfinder/issues/WF-022-landing-radice-app-sotto-app.md)**:
+  già implementato e in produzione da prima; resta aperto solo per
+  l'ordine di rilascio coordinato con l'altro repo (Orchestrator).
+- **[WF-046](.wayfinder/issues/WF-046-database-alimentare-ricerca.md)**:
+  `research`, non `implementation`, non lanciato.
+- **WF-041** (`task`, ridurre il peso di `icon-512.png`): non fa parte di
+  questa analisi delegata a Claudio né di questa sessione; `assignment`
+  ancora `null`, da chiedere al PO se assegnarlo.
+
+### Next Steps
+
+1. Se il PO vuole sbloccare gli altri quattro, rispondere alle domande nei
+   rispettivi ticket (non deciderle per lui).
+2. WF-022: coordinare l'ordine di rilascio con l'Orchestrator prima di
+   chiuderlo definitivamente (vedi la sezione dedicata più sotto).
+
 ## Aggiornamento di fine giornata - 2026-11-16 (sera)
 
 Stato corrente; prevale sulla sezione sotto dove diverge (in particolare:
