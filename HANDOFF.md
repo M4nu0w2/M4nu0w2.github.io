@@ -1,5 +1,45 @@
 # HANDOFF — NutriPro
 
+## Aggiornamento di fine giornata - 2026-11-16 (sera)
+
+Stato corrente; prevale sulla sezione sotto dove diverge (in particolare:
+**chiusi anche WF-026**, nuovo ticket WF-050, mail SMTP implementata, i
+commit ora sono pushati).
+
+**Fatto dopo la sezione sotto**
+- **WF-026 chiuso**: resta SQLite; migrazioni in transazione, se falliscono il
+  server non parte; backup restic (WF-028); waitlist conservata 12 mesi,
+  cancellazione su richiesta; le iscrizioni si leggono via **email**.
+- **Mail SMTP per la waitlist (codice, commit `8646b28`)**: `server/mailer.cjs`
+  (nodemailer 10.3.1 fissato), invio fire-and-forget dopo il salvataggio, una
+  sola mail per iscrizione nuova (no duplicati/honeypot), errore solo nel log
+  senza dati personali. Variabili in `.env.example`: `WAITLIST_NOTIFY_TO`
+  (es. info@nutra.it), `SMTP_HOST`, `SMTP_PORT` (587 STARTTLS; 465 +
+  `SMTP_SECURE=true`), `SMTP_USER`/`SMTP_PASS`, `MAIL_FROM`. Config parziale =
+  il server non parte. `npm test`: 98/98. **L'invio SMTP reale non è provato**
+  (solo trasporto simulato).
+- **Nuovo WF-050** (implementation, da fare in seguito): candidatura del
+  nutrizionista e dashboard amministrativa per approvare e gestire/monitorare
+  l'utenza. Domande aperte per il PO elencate nel ticket.
+- **WF-035 (Rizzo-PII) iniziato e interrotto**: nessuna risposta del PO
+  registrata, ticket ancora `open`. Misurato Hermes: Atom x5-Z8300 1,44 GHz,
+  4 core, 3,7 GB RAM (2,4 GB usati, 1,7 GB di swap in uso, load medio 5,8),
+  436 GB liberi sull'SSD. Rizzo-PII (≈0,8 GB RAM, ≈3 core, 15-30 s per
+  documento su macchina più veloce) probabilmente non regge su Hermes insieme
+  agli altri prodotti. Domande preparate (non poste): dove gira
+  (raccomandato: non su Hermes ora, solo locale per i campioni), quali flussi,
+  cosa fare se il modello lascia passare un nome (consenso + anteprima).
+
+**Da fare prima di usare la mail in produzione**
+1. Mettere `WAITLIST_NOTIFY_TO`, `SMTP_*`, `MAIL_FROM` in
+   `/home/hermes/.config/nutripro/auth.env` su Hermes (segreti, non in Git).
+2. Provare una candidatura vera dopo il deploy.
+3. Testo «conservazione 12 mesi» nella privacy
+   (`landing_page_nutripro/privacy/`) e procedura di cancellazione su richiesta.
+
+**Ticket ancora aperti assegnati a Claudio:** WF-014, 023, 031, 032, 035, 045
+(liberi); WF-044 (←WF-034), 047 (←WF-045), 048 (←WF-042); task WF-033, WF-034.
+
 ## Sessione ticket Claudio: WF-028, 030, 003, 004 chiusi - 2026-11-16
 
 Stato corrente; prevale sulla sezione 2026-11-15 per lo stato dei ticket.
