@@ -3,8 +3,8 @@ id: WF-028
 title: Eseguire il backup del volume della waitlist su Hermes
 parent: WF-MAP-001
 labels: [wayfinder:task]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: claudio
 assignment_mode: flexible
 blocked_by: []
@@ -59,3 +59,25 @@ nuovo; la politica di lungo periodo è in
 
 - Cambiare database o schema.
 - Politica di conservazione e cancellazione (WF-026).
+
+## Resolution comment
+
+2026-11-16 — eseguito su richiesta del PO (Manu/Claudio) via `ssh hermes`.
+
+- **Meccanismo:** Hermes aveva già un backup notturno restic
+  (`JirachiBotOrchestrator/backup/backup.sh`, cron 02:00, repo cifrato e
+  staging su SSD esterno `/mnt/ssd/backups`, nessuna cancellazione automatica).
+  Aggiunto il blocco NutriPro: dal container `nutripro-frontend-1`,
+  `VACUUM INTO` su ogni `/data/*.sqlite` (waitlist e `nutra.sqlite`), copia in
+  staging, poi snapshot. Non fatale: un errore è nel log, gli altri prodotti
+  proseguono. Commit `3189b07` su `main` di Orchestrator.
+- **Frequenza:** giornaliera, 02:00. **Destinazione:** SSD esterno, repo restic
+  cifrato. **Conservazione:** tutti gli snapshot (deduplicati).
+- **Prova:** backup + ripristino su DB di test (3 righe) in container con la
+  stessa immagine: 3 righe, `integrity_check` ok. Esecuzione reale dello script:
+  esito 0, snapshot `4f012672` con cartella `nutripro`, **vuota** perché il
+  volume non contiene ancora DB. Ripristino da restic di un DB NutriPro reale
+  da rifare quando ci saranno dati.
+- **Fuori ambito:** copia offsite fuori dall'host. Il PO precisa che non ci
+  saranno dati sanitari: se ne parla nei ticket di persistenza (WF-026, WF-030).
+

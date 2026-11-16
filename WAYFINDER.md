@@ -111,6 +111,8 @@ come checklist e per reparto, app installabile.
 
 - [Mantenere l'accesso fra aperture dell'app e deploy](.wayfinder/issues/WF-020-sessione-persistente.md): sessione 90 giorni con cookie firmato HMAC-SHA256; implementato localmente (53/53 test); manca `SESSION_SECRET` in `auth.env` su Hermes, poi commit e verifica su prod.
 
+- [Eseguire il backup del volume della waitlist su Hermes](.wayfinder/issues/WF-028-backup-volume-waitlist.md): volume NutriPro incluso nel restic notturno (02:00, SSD esterno, cifrato) con copia SQLite consistente; ripristino provato su DB di test, volume reale ancora vuoto; offsite rimandato a WF-026/WF-030.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
