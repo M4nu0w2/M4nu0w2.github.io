@@ -113,6 +113,8 @@ come checklist e per reparto, app installabile.
 
 - [Eseguire il backup del volume della waitlist su Hermes](.wayfinder/issues/WF-028-backup-volume-waitlist.md): volume NutriPro incluso nel restic notturno (02:00, SSD esterno, cifrato) con copia SQLite consistente; ripristino provato su DB di test, volume reale ancora vuoto; offsite rimandato a WF-026/WF-030.
 
+- [Definire la conservazione sul server dei dati dei pazienti](.wayfinder/issues/WF-030-conservazione-dati-lato-server.md): dati non sanitari (rischio annotato, verifica con WF-034); si conservano piano + storico + spunte/acqua/olio, non il PDF; visibili a paziente e suo nutrizionista; nutrizionista titolare, NutriPro responsabile; Hermes con backup restic, solo HTTPS; cancellazione su richiesta + export JSON; nessuna migrazione dal locale; offline con sync.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified

@@ -3,8 +3,8 @@ id: WF-030
 title: Definire la conservazione sul server dei dati dei pazienti
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: claudio
 assignment_mode: flexible
 blocked_by: []
@@ -108,3 +108,33 @@ Non sono decisioni prese.
 
 - Implementazione e scelta del fornitore (ticket successivi).
 - Il modello di prezzo (ticket a parte).
+
+## Resolution comment
+
+2026-11-16 — risposte reali del PO (Manu/Claudio) in sessione di grilling.
+
+| # | Decisione | Risposta |
+| :-- | :-- | :-- |
+| 1 | Natura dei dati | **Non sanitari** (scelta del PO; rischio annotato sotto) |
+| 1 | Perimetro «tutto» | Piano strutturato + storico dei piani + spunte, acqua, olio. **Esclusi**: PDF originale (resta nel browser), peso/misure/foto/conversazioni (non esistono ancora) |
+| 2 | Chi vede cosa | Paziente + suo nutrizionista. Staff NutriPro solo accesso tecnico eccezionale |
+| 3 | Ruoli GDPR | Nutrizionista titolare, NutriPro responsabile (accordo coi professionisti). Paziente individuale: NutriPro titolare |
+| 4 | Dove vivono i dati | Hermes (mini-PC di casa) + backup restic su SSD (WF-028) |
+| 5 | Cifratura | Solo HTTPS + backup restic cifrati. Niente disco cifrato né cifratura per campo |
+| 6 | Cancellazione/export | Cancellazione su richiesta + export JSON del proprio piano |
+| 7 | Migrazione dal locale | Nessuna: gli utenti con dati solo nel browser sono test |
+| 8 | Offline | Copia locale + sincronizzazione al ritorno online |
+| 9 | Gemini | Invariato (WF-002): invio del piano solo con consenso per conversazione. Non ridiscusso in sessione |
+| 10 | Comunicazione | Conseguenza, non scelta: README e informativa vanno riscritti («il piano non lascia il browser» è falso per i pazienti con nutrizionista) |
+
+**Rischio annotato.** Il PO considera i dati non sanitari. Un piano dietetico
+prescritto da un professionista rientra di norma nell'art. 9 GDPR. Se
+[WF-034](WF-034-consulenza-legale-dati-sanitari.md) lo qualifica sanitario,
+cadono: cifratura (punto 5), hosting casalingo senza offsite (punto 4), base
+giuridica e DPA. Decisioni da rivedere in quel caso.
+
+**Da fare, non decisioni.** README e informativa riscritti; titolare del
+trattamento e «Conservazione e diritti» in `landing_page_nutripro/privacy/`;
+endpoint di cancellazione ed export JSON; sincronizzazione offline del tracking
+(oggi POST fire-and-forget senza coda); copia offsite rimandata a WF-026.
+
