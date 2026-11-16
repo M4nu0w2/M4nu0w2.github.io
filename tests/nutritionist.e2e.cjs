@@ -98,3 +98,48 @@ test('full flow: nutritionist adds a patient, assigns a plan; the patient tracks
   assert.match(await anna.locator('.meal-list').innerText(), /Pane/);
   assert.deepEqual(errors, []);
 });
+
+test('patient detail shows alternatives, converted units, import warnings and oil tracking (WF-038)', async t => {
+  const f = await startFixture(); const browser = await chromium.launch({ headless: true });
+  t.after(async () => { await browser.close(); await f.close(); });
+  f.store.assignRole('google-doc2', 'nutritionist');
+  f.setIdentity({ sub: 'google-doc2', email: 'doc2@example.test', name: 'Doc' });
+  const docLogin = await f.login();
+  const docSession = await (await f.request('/api/session', { headers: { Cookie: docLogin.cookie } })).json();
+  const asDoc = (route, body) => f.request(route, { method: 'POST', body: JSON.stringify(body),
+    headers: { Cookie: docLogin.cookie, Origin: f.config.origin, 'X-CSRF-Token': docSession.csrf, 'Content-Type': 'application/json' } });
+  const anna = await (await asDoc('/api/nutritionist/patients', { name: 'Anna Bruni', email: 'annab@example.test' })).json();
+
+  const TODAY = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][new Date().getDay()];
+  const PLAN = { metadata: { quality: { warnings: ['Abbiamo letto 1 giorni su 7: controlla che il piano sia completo.'] } },
+    days: { [TODAY]: { dayName: 'Oggi', meals: [
+      { name: 'Pranzo', items: [
+        { name: 'Riso', qty: '24 g', isConverted: true, rawQty: '3 cucchiai', conversionNote: '(coefficiente generico)' },
+        { name: 'Riso oppure Pasta', qty: '80 g' },
+        { name: "Olio extra vergine d'oliva", qty: '12 g' }
+      ] }
+    ] } } };
+  const upload = await (await asDoc(`/api/nutritionist/patients/${anna.id}/plan`, { name: 'piano.pdf', data: PLAN })).json();
+
+  // The patient ticks the oil row, so the detail shows it as used, not just planned.
+  f.setIdentity({ sub: 'google-annab', email: 'annab@example.test', name: 'Anna' });
+  const annaLogin = await f.login();
+  const annaSession = await (await f.request('/api/session', { headers: { Cookie: annaLogin.cookie } })).json();
+  await f.request('/api/tracking', { method: 'POST', body: JSON.stringify({ planId: upload.planId, day: TODAY, field: 'checked', value: { '0_2': true } }),
+    headers: { Cookie: annaLogin.cookie, Origin: f.config.origin, 'X-CSRF-Token': annaSession.csrf, 'Content-Type': 'application/json' } });
+
+  const docContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await docContext.addCookies([{ name: 'nutra_session', value: docLogin.cookie.split('=')[1], url: f.config.origin }]);
+  const page = await docContext.newPage();
+  await page.goto(f.config.origin + '/app/');
+  await page.getByRole('button', { name: /Anna Bruni/ }).waitFor();
+  await page.getByRole('button', { name: /Anna Bruni/ }).click();
+  const detail = page.locator('.nutri-detail');
+  await detail.locator('.nutri-meals').waitFor();
+  const text = await detail.innerText();
+  assert.match(text, /Abbiamo letto 1 giorni su 7/); // import quality warning
+  assert.match(text, /3 cucchiai/); // original PDF unit shown
+  assert.match(text, /= 24 g/); // conversion note alongside it
+  assert.match(text, /oppure Pasta/); // alternative food
+  assert.match(text, /Olio usato: 3 cucchiaini \(12 g\)/); // oil tracked by the patient, read-only here
+});

@@ -3,8 +3,8 @@ id: WF-038
 title: Vista di dettaglio nutrizionista completa
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -54,3 +54,21 @@ Non mostra:
 
 - Qualunque azione di modifica del piano dalla vista di dettaglio (vedi
   [Editor del piano nell'app](WF-045-editor-piano-app.md)).
+
+## Resolution comment
+
+2026-11-16 — implementato in
+[PatientDetail.jsx](../../src/components/nutritionist/PatientDetail.jsx):
+`displayQty` (unità PDF, nota di conversione), `getFoodChoices` (alternative),
+`metadata.quality.warnings` del piano (una volta, sopra i tab giorno) e
+tracking olio (`dayOil`/`formatOil`, in sola lettura: solo testo "Olio
+usato: …", nessun controllo +/−). Nessuna logica duplicata: stesse funzioni
+di [src/lib/tracking.mjs](../../src/lib/tracking.mjs) e
+[src/lib/dietEngine.mjs](../../src/lib/dietEngine.mjs) usate lato paziente.
+Unità non configurabile per il nutrizionista (i settaggi sono solo lato
+paziente, non sincronizzati); usa sempre l'unità del PDF, come un paziente
+che non ha mai aperto Settaggi — scelta di implementazione, non una
+decisione del PO. Test e2e con piano via API (conversione, alternativa
+testuale "oppure", riga olio spuntata dal paziente, warning di importazione)
+in [tests/nutritionist.e2e.cjs](../../tests/nutritionist.e2e.cjs). `npm test`
+100/100, `npm run test:browser` 21/21 verdi.
