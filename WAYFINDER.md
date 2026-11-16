@@ -117,6 +117,8 @@ come checklist e per reparto, app installabile.
 
 - [Definire persistenza e dati condivisi con l'assistente](.wayfinder/issues/WF-003-dati.md): a Gemini solo pasti, alimenti e quantità del piano di riferimento (con interruttore per conversazione), mai identità, né alternative/ricette/spunte/metadati PDF; conversazioni non conservate; resta aperto il filtro dei nomi nel contenuto (WF-035).
 
+- [Definire gestione della credenziale Gemini e limiti d'uso](.wayfinder/issues/WF-004-credenziali.md): chiave di progetto solo backend; limiti attuali (5/min, 30/giorno/account, 120/giorno globali); nessuna spesa ammessa, il tetto gratuito non va raggiunto; Gemini spento in produzione finché WF-010 non è verificato; da controllare quote gratuite e compatibilità coi termini SEE.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified
