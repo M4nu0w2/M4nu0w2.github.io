@@ -1,5 +1,103 @@
 # HANDOFF — NutriPro
 
+## Sessione ticket Claudio: WF-028, 030, 003, 004 chiusi - 2026-11-16
+
+Stato corrente; prevale sulla sezione 2026-11-15 per lo stato dei ticket.
+Il PO (Manu/Claudio) ha lavorato i ticket assegnati a Claudio; risposte reali
+del PO raccolte con grilling, registrate in `Resolution comment` di ciascun
+ticket e nel link in `WAYFINDER.md` («Decisions so far»).
+
+### Goal
+
+Smaltire i 16 ticket aperti assegnati a Claudio (vedi sezione sotto), partendo
+da WF-028 (urgente) e dai ticket che sbloccano gli altri.
+
+### Current Progress
+
+**Chiusi in questa sessione**
+- **WF-028 backup** (task): su Hermes esisteva già un restic notturno
+  (`JirachiBotOrchestrator/backup/backup.sh`, cron 02:00, repo cifrato in
+  `/mnt/ssd/backups`, SSD esterno, nessuna cancellazione). Aggiunto blocco
+  NutriPro: dal container `nutripro-frontend-1`, `VACUUM INTO` di ogni
+  `/data/*.sqlite` (waitlist + `nutra.sqlite`), non fatale. **Pushato** su
+  `main` di Orchestrator, commit `3189b07` (autorizzato dal PO). Prova di
+  ripristino su DB di test (3 righe, integrity ok) e esecuzione reale dello
+  script (snapshot `4f012672`). **Il volume reale era vuoto**: la cartella
+  `nutripro` nello snapshot è vuota, ripristino da restic di un DB NutriPro
+  vero ancora da provare quando ci saranno dati.
+- **WF-030 conservazione dati sul server**: dati **non sanitari** (scelta del
+  PO, rischio annotato); si conservano piano + storico + spunte/acqua/olio, non
+  il PDF; visibili a paziente + suo nutrizionista; nutrizionista titolare,
+  NutriPro responsabile (paziente individuale: NutriPro titolare); Hermes con
+  backup restic, solo HTTPS (niente disco cifrato); cancellazione su richiesta
+  + export JSON; nessuna migrazione dal locale (utenti legacy = test); offline
+  con copia locale + sync.
+- **WF-003 dati a Gemini**: solo pasti, alimenti e quantità del piano di
+  riferimento (con interruttore per conversazione); mai identità; non inviati
+  alternative, ricette, equivalenze, spunte, metadati PDF; conversazioni non
+  conservate.
+- **WF-004 credenziale**: chiave di progetto solo backend; limiti invariati
+  (5/min, 30/giorno/account, 120/giorno globali, 4 concorrenti); **nessuna
+  spesa ammessa, il tetto gratuito non va raggiunto**; Gemini spento in prod
+  finché WF-010 non è verificato.
+
+**Git** — su `dev`, **4 commit locali non pushati**, tutti `[skip ci]` e solo
+documentazione: chiusura WF-028, WF-030, WF-003, WF-004 (ultimo `a0aa96f`).
+Non pushare senza richiesta del PO. Il tracker `.wayfinder/` è escluso da
+`.git/info/exclude` ma i file esistenti sono tracciati: i ticket già nel repo
+si committano con `git add` normale.
+
+### What Worked
+
+- Leggere il ticket, fare 3-4 domande a scelta multipla con raccomandazione e
+  registrare solo risposte vere del PO (regola del tracker: niente ipotesi).
+- Chiarire in una frase le domande che il PO non capisce («perché
+  cifratura?», «cosa si migra?») e riproporle: le risposte successive sono
+  arrivate subito.
+- `ssh hermes` funziona senza password; `docker` utilizzabile dall'utente
+  hermes. Il volume Docker è root-only sull'host: accedere dal container.
+- Testare il comando di backup in un container usa-e-getta con la stessa
+  immagine (`nutripro-frontend`) prima di toccare produzione.
+
+### What Didn't Work (non ripetere)
+
+- `AskUserQuestion` accetta **max 4 opzioni** per domanda (la prima chiamata
+  con 5 è stata rifiutata).
+- Il repo Orchestrator su Hermes non ha identità git: il commit è andato con
+  `git -c user.name=… -c user.email=…` presi dal git locale (nessuna modifica
+  alla config).
+- Il PO ha chiarito che **non avremo dati sanitari**; il testo originale dei
+  ticket (art. 9 GDPR) parte dal presupposto opposto. Il PO l'ha tenuto così;
+  la verifica spetta a WF-034.
+- Il PO aveva letto la mia nota «non pushare» come un problema: i commit
+  locali non sono mai stati pushati salvo l'Orchestrator, già autorizzato.
+
+### Next Steps
+
+1. **Chiedere al PO se pushare i 4 commit docs di `dev`** (`[skip ci]`, nessun
+   deploy). Aggiornare questo HANDOFF dopo, con commit separato `[skip ci]`.
+2. **WF-026** persistenza server, migrazioni, backup: ora sbloccato da WF-003 e
+   WF-030 (WF-025 era research, già in mappa). Lo store ha già migrazioni
+   versionate in `server/store.cjs`; la decisione riguarda soprattutto offsite
+   (il PO ha detto che non serve per dati sanitari: «lo affronteremo nei ticket»).
+3. **Altri liberi:** WF-031 nome prodotto, WF-032 modello di ricavo, WF-014 date
+   tracking, WF-023 enum pasti, WF-035 Rizzo-PII (filtra nomi nel contenuto del
+   piano prima di Gemini), WF-045 editor piano. A cascata: WF-044 (←WF-034),
+   WF-047 (←WF-045), WF-048 (←WF-042).
+4. **Task con persone:** WF-033 campioni PDF e feedback nutrizionisti; WF-034
+   consulenza legale (il PO sceglie solo il professionista).
+5. **Punti aperti emersi (WF-004):** confrontare i limiti Gemini con le quote
+   gratuite ufficiali di `gemini-3.5-flash-lite` (non verificate); i termini
+   Google chiedono Paid Services per utenti SEE, in conflitto con «nessuna
+   spesa»; il contatore chiamate è in memoria e si azzera al riavvio. Da
+   trattare in WF-010 prima di qualsiasi attivazione.
+6. **Da fare quando ci sono dati:** provare un `restic restore` di un DB
+   NutriPro reale (WF-028).
+7. **Da implementare (conseguenze di WF-030):** riscrivere README e informativa
+   (`landing_page_nutripro/privacy/`: titolare e «Conservazione e diritti»);
+   endpoint di cancellazione ed export JSON; coda di sync offline del tracking
+   (oggi POST fire-and-forget).
+
 ## Decisioni e compiti aperti assegnati a Claudio - 2026-11-15
 
 Stato corrente; prevale su tutto il resto per l'assegnazione dei ticket.
