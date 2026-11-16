@@ -119,6 +119,8 @@ come checklist e per reparto, app installabile.
 
 - [Definire gestione della credenziale Gemini e limiti d'uso](.wayfinder/issues/WF-004-credenziali.md): chiave di progetto solo backend; limiti attuali (5/min, 30/giorno/account, 120/giorno globali); nessuna spesa ammessa, il tetto gratuito non va raggiunto; Gemini spento in produzione finché WF-010 non è verificato; da controllare quote gratuite e compatibilità coi termini SEE.
 
+- [Definire persistenza server, migrazioni e backup](.wayfinder/issues/WF-026-persistenza-migrazioni-backup.md): resta SQLite; migrazioni in transazione, se falliscono il server non parte; backup restic giornaliero (WF-028); waitlist conservata 12 mesi con cancellazione su richiesta; le iscrizioni arrivano per email SMTP (implementato). Candidatura e approvazione del nutrizionista da dashboard admin: WF-050, da fare in seguito.
+
 Le altre raccomandazioni nei ticket non sono decisioni approvate.
 
 ## Not yet specified

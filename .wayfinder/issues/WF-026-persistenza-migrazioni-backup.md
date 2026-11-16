@@ -3,8 +3,8 @@ id: WF-026
 title: Definire persistenza server, migrazioni e backup
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: claudio
 assignment_mode: flexible
 blocked_by: [WF-003, WF-025, WF-030]
@@ -75,3 +75,34 @@ garanzie si decide in
 [Definire la conservazione sul server dei dati dei pazienti](WF-030-conservazione-dati-lato-server.md),
 che ora blocca questo ticket. Di conseguenza anche database, migrazioni e
 backup diventano un requisito di prodotto e non solo operativo.
+
+## Resolution comment
+
+2026-11-16 — risposte reali del PO (Manu/Claudio) in sessione di grilling,
+dopo la chiusura di [WF-030](WF-030-conservazione-dati-lato-server.md) e
+[WF-003](WF-003-dati.md).
+
+1. **Cosa resta fuori dal server:** superata da WF-030 (piani, storico, spunte,
+   acqua, olio sul server; PDF originale no).
+2. **Database:** resta SQLite (`node:sqlite`, un file su volume `/data`) anche
+   con i dati dei pazienti. PostgreSQL solo se serviranno più istanze o carico alto.
+3. **Migrazioni:** file numerati in transazione con registro delle versioni
+   (già in `server/store.cjs`). Se una migrazione fallisce: rollback e **il
+   server non parte** (deploy visibilmente rosso, DB intatto). Per modifiche
+   irreversibili: copia del file prima di migrare.
+4. **Backup:** già fatto in [WF-028](WF-028-backup-volume-waitlist.md) (restic
+   giornaliero 02:00 su SSD esterno, cifrato, tutti gli snapshot). Copia fuori
+   host non richiesta (dati non sanitari, WF-030).
+5. **Conservazione waitlist:** 12 mesi, poi eliminazione; cancellazione di una
+   persona su richiesta, manuale.
+6. **Lettura/esportazione della waitlist:** ogni iscrizione arriva per **email
+   SMTP** all'indirizzo del progetto (implementato, commit `8646b28`,
+   `WAITLIST_NOTIFY_TO`/`SMTP_*` in `.env.example`); si gestisce da lì. Nessuna
+   pagina né script. In seguito: candidatura del nutrizionista gestita da una
+   dashboard amministrativa, vedi [WF-050](WF-050-candidatura-nutrizionista-dashboard-admin.md).
+
+**Da fare, non decisioni:** testo di conservazione a 12 mesi nella privacy
+(`landing_page_nutripro/privacy/`); procedura di cancellazione su richiesta
+scritta; configurare `SMTP_*` e `WAITLIST_NOTIFY_TO` su Hermes e provare l'invio
+reale (non verificato, solo trasporto simulato nei test).
+
