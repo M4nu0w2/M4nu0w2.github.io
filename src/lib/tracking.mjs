@@ -5,6 +5,11 @@ const OIL_MAX_GRAMS = 200;
 const itemKey = (item, mealIndex, itemIndex) => item.id || `${mealIndex}_${itemIndex}`;
 const isOil = item => /^olio\b/i.test(String(item?.name || '').trim());
 
+// A composite dish's parent row (followed by isSubItem rows) is never itself ticked: only its
+// sub-items count toward compliance, so it must not inflate the denominator or numerator (WF-036).
+// Same rule, kept in sync by hand with complianceFor in server/app.cjs.
+const isCountedItem = (item, index, items) => item.isSubItem || !items[index + 1]?.isSubItem;
+
 function gramsOf(qty) {
   const match = String(qty || '').trim().match(/^(\d+(?:[,.]\d+)?)\s*g$/i);
   return match ? Number(match[1].replace(',', '.')) : null;
@@ -54,4 +59,4 @@ function displayQty(food, units) {
   return { qty: food.rawQty, note: `= ${food.qty}${rule ? ` · ${rule}` : ''}` };
 }
 
-export { itemKey, isOil, gramsOf, dayOil, stepOil, formatOil, displayQty, OIL_GRAMS_PER_TEASPOON, OIL_STEP_GRAMS };
+export { itemKey, isOil, isCountedItem, gramsOf, dayOil, stepOil, formatOil, displayQty, OIL_GRAMS_PER_TEASPOON, OIL_STEP_GRAMS };

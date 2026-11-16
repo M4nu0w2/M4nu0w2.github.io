@@ -3,8 +3,8 @@ id: WF-036
 title: Correggere il calcolo della compliance dei piatti composti
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
-assignee: null
+status: closed
+assignee: claude
 assignment: null
 assignment_mode: flexible
 blocked_by: []
@@ -42,6 +42,12 @@ Nessuna delle due logiche di compliance replica questa coerenza.
 - Non toccare le spunte già salvate (`plan.checked`): la correzione riguarda
   solo come si **contano**, non cosa viene salvato.
 
+## Decisione del PO - 2026-11-16
+
+Confermata la proposta di partenza: la riga madre di un piatto composto
+(seguita da righe `isSubItem`) non viene contata; contano solo le sue
+sottovoci. Un piatto con 2 ingredienti pesa 2, non 3.
+
 ## Acceptance criteria
 
 - Regola di conteggio definita e annotata in questo ticket prima
@@ -56,3 +62,19 @@ Nessuna delle due logiche di compliance replica questa coerenza.
 
 - Cambiare come `dayOil` tratta madre e figli: è già coerente, resta invariato.
 - Qualsiasi modifica al formato dei dati del piano (`dietEngine.mjs`).
+
+## Resolution comment
+
+2026-11-16 — implementato. Regola `isCountedItem` (riga madre esclusa se
+seguita da una riga `isSubItem`) aggiunta in
+[src/lib/tracking.mjs](../../src/lib/tracking.mjs) e applicata in
+`Dashboard`/`Meals` ([src/App.jsx](../../src/App.jsx)) e nel dettaglio
+nutrizionista ([PatientDetail.jsx](../../src/components/nutritionist/PatientDetail.jsx)).
+Stessa regola duplicata a mano, non importata, in `complianceFor`
+([server/app.cjs](../../server/app.cjs)): client ESM e server CJS restano
+separati, come già per `itemKey`/`isOil`; i due punti si richiamano a
+vicenda nei commenti. `dayOil` non toccato, era già coerente. Test di
+fixture con piatto composto (riga madre + 2 sottovoci) in
+[tests/nutritionist.test.cjs](../../tests/nutritionist.test.cjs): la riga
+madre spuntata da sola non conta, una sottovoce spuntata pesa 1/2 non 2/3.
+`npm test` 100/100, `npm run test:browser` 20/20 verdi.

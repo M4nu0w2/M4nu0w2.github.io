@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNutriApi, useLoader } from './api.mjs';
 import { CopyInvite } from './CopyInvite.jsx';
 import { PlanUpload } from './PlanUpload.jsx';
+import { isCountedItem } from '../../lib/tracking.mjs';
 
 const itemKey = (item, mealIndex, itemIndex) => item.id || `${mealIndex}_${itemIndex}`;
 
@@ -26,7 +27,7 @@ function PatientDetail({ patient, csrf, refreshList }) {
         <div className="day-tabs" role="group" aria-label="Giorno">{Object.entries(plan.data.days).map(([key, value]) => <button key={key} className={`day-tab ${day === key ? 'active' : ''}`} aria-pressed={day === key} onClick={() => setDay(key)}>{(value.dayName || key).slice(0, 3)}</button>)}</div>
         <p className="muted">{day === detail.day ? 'Oggi' : plan.data.days[day].dayName || day} · Acqua: {water} bicchieri ({(water * .2).toLocaleString('it-IT')} L)</p>
         <div className="nutri-meals">{(plan.data.days[day].meals || []).map((meal, mi) => <section className="meal-card" key={meal.id || mi}>
-          <div className="meal-heading"><h3>{meal.icon || '◷'} {meal.name || meal.mealName || 'Pasto'}</h3><span className="badge">{meal.items.filter((item, ii) => checked[itemKey(item, mi, ii)]).length}/{meal.items.length}</span></div>
+          <div className="meal-heading"><h3>{meal.icon || '◷'} {meal.name || meal.mealName || 'Pasto'}</h3><span className="badge">{meal.items.filter((item, ii) => isCountedItem(item, ii, meal.items) && checked[itemKey(item, mi, ii)]).length}/{meal.items.filter((item, ii) => isCountedItem(item, ii, meal.items)).length}</span></div>
           {meal.items.map((item, ii) => { const key = itemKey(item, mi, ii); const eaten = !!checked[key]; return <div className={`food-row ${eaten ? 'checked' : ''}`} key={key}><span className={`nutri-tick ${eaten ? 'done' : ''}`} aria-hidden="true">{eaten ? '✓' : '○'}</span><div className="food-content"><div className="food-name">{item.isSubItem && '↳ '}{item.name}</div></div><span className="food-qty">{item.qty}</span><span className="sr-only">{eaten ? 'consumato' : 'non consumato'}</span></div>; })}
         </section>)}</div>
       </>}

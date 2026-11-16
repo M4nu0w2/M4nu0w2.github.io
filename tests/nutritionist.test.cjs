@@ -143,3 +143,28 @@ test('plan upload reaches the patient and tracking flows back as compliance', as
   const second = await (await doc.post(`/api/nutritionist/patients/${anna.id}/plan`, { name: 'piano-v2.pdf', data: PLAN })).json();
   assert.equal((await (await annaAuth.get('/api/plan')).json()).plan.id, second.planId);
 });
+
+test('compliance counts only the sub-items of a composite dish, never its parent row (WF-036)', async t => {
+  const f = await startFixture(); t.after(() => f.close());
+  f.store.assignRole('google-doc', 'nutritionist');
+  const doc = await authed(f, { sub: 'google-doc', email: 'doc@example.test', name: 'Doc' });
+  const anna = await (await doc.post('/api/nutritionist/patients', { name: 'Anna', email: 'anna@example.test' })).json();
+  const COMPOSITE_PLAN = { days: { [TODAY]: { dayName: 'Oggi', meals: [
+    { name: 'Pranzo', items: [
+      { name: 'Pasta e lenticchie', qty: '' },
+      { name: 'Pasta', qty: '80 g', isSubItem: true },
+      { name: 'Lenticchie', qty: '200 g', isSubItem: true }
+    ] }
+  ] } } };
+  await doc.post(`/api/nutritionist/patients/${anna.id}/plan`, { name: 'piano.pdf', data: COMPOSITE_PLAN });
+  const annaAuth = await authed(f, { sub: 'google-anna', email: 'anna@example.test', name: 'Anna' });
+  const { plan } = await (await annaAuth.get('/api/plan')).json();
+  // Ticking the composite's parent row alone must not count as progress: it weighs 0 of 2, not 1 of 3.
+  await annaAuth.post('/api/tracking', { planId: plan.id, day: TODAY, field: 'checked', value: { '0_0': true } });
+  let list = await (await doc.get('/api/nutritionist/patients')).json();
+  assert.deepEqual(list.patients[0].compliance, { done: 0, total: 2 });
+  // Ticking a sub-item counts it; the parent row never inflates the denominator.
+  await annaAuth.post('/api/tracking', { planId: plan.id, day: TODAY, field: 'checked', value: { '0_0': true, '0_1': true } });
+  list = await (await doc.get('/api/nutritionist/patients')).json();
+  assert.deepEqual(list.patients[0].compliance, { done: 1, total: 2 });
+});

@@ -34,9 +34,12 @@ const equal = (a, b) => {
 };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 // Ticked items for one day of a plan, keyed like the client: item.id or `${meal}_${item}`.
+// A composite dish's parent row (followed by isSubItem rows) is never itself ticked: only its
+// sub-items count, so it must not inflate the denominator or numerator either (WF-036).
 function complianceFor(data, checked, day) {
   let total = 0, done = 0;
-  (data?.days?.[day]?.meals || []).forEach((meal, mi) => (meal.items || []).forEach((item, ii) => {
+  (data?.days?.[day]?.meals || []).forEach((meal, mi) => (meal.items || []).forEach((item, ii, items) => {
+    if (!item.isSubItem && items[ii + 1]?.isSubItem) return;
     total++;
     if (checked?.[item.id || `${mi}_${ii}`]) done++;
   }));
