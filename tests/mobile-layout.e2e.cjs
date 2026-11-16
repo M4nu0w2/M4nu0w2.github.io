@@ -27,12 +27,17 @@ test('mobile layout keeps a compact header, a bottom tab bar and one row of days
   const bar = await nav.boundingBox();
   assert.equal(Math.round(bar.y + bar.height), 844);
 
-  const days = page.getByRole('group', { name: 'Giorno del piano' }).getByRole('button');
+  const days = page.getByRole('tablist', { name: 'Giorno del piano' }).getByRole('tab');
   assert.equal(await days.count(), 7);
   const rows = new Set(await days.evaluateAll(buttons => buttons.map(button => Math.round(button.getBoundingClientRect().top))));
   assert.equal(rows.size, 1);
-  await page.getByRole('button', { name: 'Mercoledì' }).click();
-  assert.equal(await page.getByRole('button', { name: 'Mercoledì' }).getAttribute('aria-pressed'), 'true');
+  await page.getByRole('tab', { name: 'Mercoledì' }).click();
+  assert.equal(await page.getByRole('tab', { name: 'Mercoledì' }).getAttribute('aria-selected'), 'true');
+  // WF-040: arrow-key navigation on the day tablist moves selection and focus together.
+  await page.keyboard.press('ArrowRight');
+  const thursday = page.getByRole('tab', { name: 'Giovedì' });
+  assert.equal(await thursday.getAttribute('aria-selected'), 'true');
+  assert.ok(await thursday.evaluate(el => el === document.activeElement));
 
   const grid = await page.locator('.stats-grid').boundingBox();
   const orphan = await page.locator('.stats-grid > :last-child').boundingBox();

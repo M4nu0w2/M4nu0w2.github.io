@@ -32,6 +32,8 @@ test('full flow: nutritionist adds a patient, assigns a plan; the patient tracks
 
   // Add a patient and read the invite link.
   await doc.getByRole('button', { name: '+ Nuovo paziente' }).click();
+  // WF-040: opening the form moves focus into its first field.
+  assert.ok(await doc.getByLabel('Nome e cognome').evaluate(el => el === document.activeElement));
   await doc.getByLabel('Nome e cognome').fill('Anna Verdi');
   await doc.getByLabel("Email dell'account Google").fill('anna@example.test');
   await doc.getByRole('button', { name: 'Crea invito' }).click();
@@ -39,6 +41,8 @@ test('full flow: nutritionist adds a patient, assigns a plan; the patient tracks
   const inviteUrl = await doc.getByLabel('Link di invito').inputValue();
   assert.match(inviteUrl, /\/app\/join\?token=[\w-]{40,}$/);
   await doc.getByRole('button', { name: 'Chiudi' }).click();
+  // WF-040: closing returns focus to the button that opened the form.
+  assert.ok(await doc.getByRole('button', { name: '+ Nuovo paziente' }).evaluate(el => el === document.activeElement));
   await doc.getByRole('button', { name: /Anna Verdi/ }).waitFor();
   assert.match(await doc.locator('.nutri-row').innerText(), /Invito inviato/);
 
@@ -77,11 +81,15 @@ test('full flow: nutritionist adds a patient, assigns a plan; the patient tracks
   const row = doc.locator('.nutri-row');
   assert.match(await row.innerText(), /Attivo/);
   assert.match(await row.innerText(), /100%/);
+  // WF-040: the compliance progress bar carries an explicit text equivalent of its value.
+  assert.equal(await row.locator('progress').getAttribute('aria-valuetext'), '100%');
   await doc.getByRole('button', { name: /Anna Verdi/ }).click();
   await doc.getByText(/Acqua: 1 bicchieri/).waitFor();
   assert.match(await doc.locator('.nutri-meals').innerText(), /Pane/);
   assert.equal(await doc.locator('.nutri-tick.done').count(), 1);
   assert.match(await doc.locator('.meal-heading .badge').innerText(), /1\/1/);
+  // WF-040: the detail's day tabs follow the same tablist pattern as the shared DayPicker.
+  assert.equal(await doc.getByRole('tab', { selected: true }).count(), 1);
 
   // A fresh patient session still sees the server plan without reimporting it.
   await anna.evaluate(() => localStorage.clear());

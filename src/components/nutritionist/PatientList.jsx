@@ -24,7 +24,7 @@ function PatientList({ session }) {
         <span className={`badge ${p.status === 'active' ? 'active' : 'archived'}`}>{p.status === 'active' ? 'Attivo' : 'Invito inviato'}</span>
         <span className="nutri-cell"><span className="muted">Piano</span>{p.planName ? '✓' : '—'}</span>
         <span className="nutri-cell"><span className="muted">Ultimo accesso</span>{seenLabel(p.lastSeenAt)}</span>
-        <span className="nutri-cell nutri-compliance"><span className="muted">Oggi</span>{pct === null ? '—' : <><progress value={p.compliance.done} max={p.compliance.total} aria-label={`Compliance di oggi di ${p.name}`} /> {pct}%</>}</span>
+        <span className="nutri-cell nutri-compliance"><span className="muted">Oggi</span>{pct === null ? '—' : <><progress value={p.compliance.done} max={p.compliance.total} aria-label={`Compliance di oggi di ${p.name}`} aria-valuetext={`${pct}%`} /> {pct}%</>}</span>
         <span className="nutri-caret" aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
       {open && <PatientDetail patient={p} csrf={session.csrf} refreshList={load} />}
