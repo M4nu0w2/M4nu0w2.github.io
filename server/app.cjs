@@ -321,12 +321,15 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
         if (!code || code.length > 4096 || url.searchParams.getAll('code').length !== 1) return loginError(res, 'invalid_login');
         if (activeCallbacks >= 16) return loginError(res, 'too_many_attempts');
         activeCallbacks++;
+        let stage = 'token_exchange';
         try {
           const { tokens } = await client.getToken({ code, codeVerifier: flow.verifier,
             redirect_uri: `${config.origin}/auth/google/callback` });
           if (!tokens.id_token) throw new Error('Missing ID token');
+          stage = 'verify_id_token';
           const ticket = await client.verifyIdToken({ idToken: tokens.id_token, audience: config.clientId });
           const identity = ticket.getPayload();
+          stage = 'identity_check';
           // Signature, expiry, audience and issuer are checked by the Google library.
           // Explicit checks also bind this result to this exact login attempt.
           if (!identity || !equal(identity.nonce, flow.nonce) || identity.email_verified !== true ||
@@ -335,6 +338,7 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
               !['accounts.google.com', 'https://accounts.google.com'].includes(identity.iss) ||
               !Number.isFinite(identity.exp) || identity.exp * 1000 <= now()) throw new Error('Invalid identity');
           const email = identity.email.toLowerCase();
+          stage = 'store';
           let role = store.roleOf(identity.sub);
           if (!role) {
             // Invite link first, then a pending patient row with the same email, then an admin grant.
@@ -354,8 +358,12 @@ function createAuthServer(config, { oauthClient, now = Date.now, geminiService, 
           res.setHeader('Set-Cookie', [cookie(flowName, '', 0), cookie(joinName, '', 0), cookie(sessionName, value, config.sessionTtl)]);
           log.info('login_ok', { role: role || 'none' });
           return redirect(res, role === 'nutritionist' ? `${APP}/nutritionist/` : `${APP}/`);
-        } catch {
-          // Do not log provider responses, codes, tokens or personal data.
+        } catch (err) {
+          // Log only the stage and a short error kind: never provider responses, codes, tokens or personal data.
+          const raw = err && err.response && err.response.data && err.response.data.error;
+          const kind = String(typeof raw === 'string' ? raw : (err && (err.code || err.name)) || 'unknown')
+            .replace(/[^\w.-]/g, '').slice(0, 40);
+          log.warn('login_error', { stage, kind });
           return loginError(res, 'invalid_login');
         } finally {
           activeCallbacks--;
