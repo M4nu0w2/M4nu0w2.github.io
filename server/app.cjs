@@ -81,7 +81,8 @@ function configFromEnv(env) {
     mail: mailConfigFromEnv(env),
     landingDir: env.LANDING_DIR || [path.join(__dirname, '..', 'landing'), path.join(__dirname, '..', 'landing_page_nutripro', 'dist')].find(dir => fs.existsSync(path.join(dir, 'index.html'))) || '',
     waitlistDb: env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'waitlist.sqlite'),
-    appDb: env.APP_DB_PATH || path.join(__dirname, '..', 'data', 'nutra.sqlite')
+    // Default next to the waitlist DB: the Orchestrator image only sets WAITLIST_DB_PATH (the writable /data volume).
+    appDb: env.APP_DB_PATH || path.join(path.dirname(env.WAITLIST_DB_PATH || path.join(__dirname, '..', 'data', 'x')), 'nutra.sqlite')
   };
 }
 
