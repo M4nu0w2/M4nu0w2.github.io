@@ -83,6 +83,8 @@ come checklist e per reparto, app installabile.
 
 ## Decisions so far
 
+- [Tracking per data reale](.wayfinder/issues/WF-014-date-tracking.md): spunte, acqua e olio separati per data italiana, in locale e sul server.
+
 - [Archivio e gestione dei piani](.wayfinder/issues/WF-001-archivio.md): nuovo
   piano conserva il precedente inattivo; sostituzione con doppia conferma;
   un solo piano attivo, con tracking distinto per piano.
@@ -115,7 +117,8 @@ come checklist e per reparto, app installabile.
 
 - [Definire la conservazione sul server dei dati dei pazienti](.wayfinder/issues/WF-030-conservazione-dati-lato-server.md): dati non sanitari (rischio annotato, verifica con WF-034); si conservano piano + storico + spunte/acqua/olio, non il PDF; visibili a paziente e suo nutrizionista; nutrizionista titolare, NutriPro responsabile; Hermes con backup restic, solo HTTPS; cancellazione su richiesta + export JSON; nessuna migrazione dal locale; offline con sync.
 
-- [Definire persistenza e dati condivisi con l'assistente](.wayfinder/issues/WF-003-dati.md): a Gemini solo pasti, alimenti e quantità del piano di riferimento (con interruttore per conversazione), mai identità, né alternative/ricette/spunte/metadati PDF; conversazioni non conservate; resta aperto il filtro dei nomi nel contenuto (WF-035).
+- [Definire persistenza e dati condivisi con l'assistente](.wayfinder/issues/WF-003-dati.md): a Gemini solo pasti, alimenti e quantità del piano di riferimento (con interruttore per conversazione), mai identità, né alternative/ricette/spunte/metadati PDF; conversazioni non conservate.
+- [Importare il piano minimizzando i dati alla fonte](.wayfinder/issues/WF-035-anonimizzazione-rizzo-pii.md): controllo dimensione, compressione e lettura nel browser; anteprima e salvataggio dei soli campi necessari.
 
 - [Definire gestione della credenziale Gemini e limiti d'uso](.wayfinder/issues/WF-004-credenziali.md): chiave di progetto solo backend; limiti attuali (5/min, 30/giorno/account, 120/giorno globali); nessuna spesa ammessa, il tetto gratuito non va raggiunto; Gemini spento in produzione finché WF-010 non è verificato; da controllare quote gratuite e compatibilità coi termini SEE.
 

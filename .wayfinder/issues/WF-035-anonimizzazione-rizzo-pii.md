@@ -3,7 +3,7 @@ id: WF-035
 title: Decidere dove e come usare Rizzo-PII per anonimizzare i dati prima che escano dal dispositivo
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
+status: closed
 assignee: null
 assignment: claudio
 assignment_mode: flexible
@@ -139,3 +139,18 @@ server arriva solo il JSON già interpretato, mai il testo grezzo del PDF —
 quindi non diverso, ai fini di questo ticket, dal caso già coperto "il
 lettore dei PDF non ne ha bisogno". Lo annoto qui solo perché è una nuova
 via di ingresso dei dati, non perché cambi le decisioni aperte.
+
+## Resolution comment
+
+2026-11-26 — decisione confermata dal PO in sessione. Per l'importazione del
+piano, il PDF originale e la copia compressa restano nel browser. Il browser
+controlla la dimensione prima della lettura, comprime quando serve, estrae il
+piano e mostra un'anteprima. Dopo conferma, il server valida e salva solo i
+campi necessari, associati all'account. Il piano resta un dato personale.
+Rizzo-PII e Gemini non fanno parte di questo flusso.
+
+Prove di implementazione: compressione sopra 5 MB e rifiuto sopra 25 MB come
+soglie iniziali da verificare su smartphone; preservare testo, dosi, unità e
+alternative. Se il documento resta troppo pesante o illeggibile, chiedere una
+nuova esportazione e mantenere il piano attivo. La verifica GDPR resta in WF-034.
+Questa decisione non abilita il ripiego Gemini trattato separatamente in WF-021.

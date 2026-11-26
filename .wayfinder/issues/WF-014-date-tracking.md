@@ -3,7 +3,7 @@ id: WF-014
 title: Definire come conservare le date reali del tracking
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
+status: closed
 assignee: null
 assignment: claudio
 assignment_mode: flexible
@@ -64,3 +64,23 @@ Non ho deciso nulla al posto del PO: ho aperto
 bloccato da questo ticket, che aspetta la decisione qui annotata prima di
 procedere. Il perimetro di questo ticket (solo locale, o anche server) resta
 una decisione del PO da aggiornare in questo stesso ticket.
+
+## Progress note - 2026-11-27
+
+Il PO ha chiarito che ogni data dell'anno ha spunte proprie, indipendenti
+anche da altre date con lo stesso giorno della settimana. Ha confermato
+che acqua e olio seguono la stessa regola, con contatori separati per data.
+Restano da decidere fuso orario, dati esistenti senza data, conservazione e
+perimetro locale/server. Il ticket rimane aperto.
+
+2026-11-27 — Il PO conferma la data italiana anche all’estero. Le vecchie
+spunte senza data restano conservate senza attribuzione a una data.
+
+## Resolution comment
+
+2026-11-27 — Il PO conferma tracking per data reale sia locale sia server.
+Spunte, acqua e olio sono distinti per ogni data italiana, anche all’estero.
+Le vecchie spunte senza data restano conservate senza attribuzione a date.
+Lo storico si conserva fino a richiesta di cancellazione; il limite tecnico
+della copia locale va verificato in implementazione. Il tracking resta
+associato al piano su cui è stato registrato.

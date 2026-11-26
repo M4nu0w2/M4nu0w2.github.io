@@ -1,3 +1,27 @@
+# Handoff sessione decisioni — 2026-11-27
+
+Stato più recente rispetto alle sezioni precedenti. Sessione di decisioni del PO,
+nessuna implementazione, commit o push richiesti. Verificare `git status` prima
+di lavorare: le modifiche al tracker e alla mappa sono locali.
+
+- WF-035 chiuso: PDF e copia compressa restano nel browser; controllo della
+  dimensione, compressione, estrazione, anteprima e conferma, poi salvataggio
+  dei soli campi necessari associati all’account. Rizzo e Gemini non fanno parte
+  di questo flusso. Soglie iniziali proposte 5 MB / 25 MB e fattibilità della
+  compressione senza perdita di testo e dosi da verificare. GDPR rimane WF-034.
+  L’implementazione del flusso resta da organizzare; la decisione non modifica
+  automaticamente il ripiego Gemini di WF-021.
+- WF-014 chiuso: spunte, acqua e olio indipendenti per ogni data italiana anche
+  all’estero, in locale e server. Vecchie spunte senza data conservate senza
+  attribuzione. Storico conservato fino a richiesta di cancellazione; verificare
+  limite tecnico locale. WF-042 è sbloccato. Il ticket e WAYFINDER sono aggiornati.
+- Prossima conversazione WF-023, tipi di pasto: proposta appena presentata al PO,
+  **nessuna risposta ancora**. Valori proposti colazione, spuntino mattina,
+  pranzo, spuntino pomeriggio, cena, serale, arco della giornata, più altro con
+  nome originale; spuntino ambiguo in altro da classificare; ordine e nomi PDF,
+  compatibilità spunte e lista condivisa. Chiedere risposta, non trattare la
+  proposta come decisione.
+- Preferenza attiva `/caveman ultra`: risposte concise in italiano.
 # HANDOFF — NutriPro
 
 ## Sei ticket implementation della dashboard nutrizionista chiusi e pushati - 2026-11-16 (notte)
