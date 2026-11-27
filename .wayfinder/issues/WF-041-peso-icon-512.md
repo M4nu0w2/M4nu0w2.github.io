@@ -42,3 +42,9 @@ separato.
 ## Out of scope
 
 - Ridisegnare l'icona: solo ottimizzazione del file esistente.
+
+## Progress note - 2026-11-27
+
+Il PO ha deciso in [WF-019](WF-019-pwa-installabile.md) di sostituire
+`icon-512.png` con un ritaglio provvisorio dell'emblema, in PNG reale sotto
+100 KB: questo ticket si chiude con l'implementazione di WF-019.

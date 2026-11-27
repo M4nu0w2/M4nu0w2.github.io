@@ -51,3 +51,21 @@ insieme al deploy di questo ticket.
 - `npm test` e `npm run test:browser` verdi.
 - Ogni push su `dev` fa deploy automatico: l'ultimo commit di un push che
   contiene codice non deve avere `[skip ci]`.
+
+## PO answers - 2026-11-27
+
+Risposte reali del PO (Manu/Claudio) alle `Open questions for PO`.
+
+- **Nome sotto l'icona: «Nutrà» per ora**, come la landing e il manifest
+  attuale (`name`/`short_name` già «Nutrà»). Il nome definitivo resta a
+  [WF-031](WF-031-nome-del-prodotto.md): quando cambia, si aggiorna in un
+  punto solo.
+- **Icona: ritaglio provvisorio dell'emblema** (cerchio foglia/avocado) da
+  `icon-512.png`, senza testo, su sfondo pieno. Fatto verificato il
+  2026-11-27: l'attuale `icon-512.png` è un mockup (telefono con altre app
+  sullo sfondo e scritta «NutriPro» incorporata), non un'icona usabile così
+  com'è. Grafica definitiva insieme al nome di WF-031.
+
+Conseguenze per l'implementazione: icone 192 px, 512 px e maskable (area
+sicura), PNG reali sotto 100 KB ciascuna; questo copre anche
+[WF-041](WF-041-peso-icon-512.md).
