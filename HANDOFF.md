@@ -1,8 +1,94 @@
-# Handoff sessione decisioni — 2026-11-27
+# HANDOFF — NutriPro
 
-Stato più recente rispetto alle sezioni precedenti. Sessione di decisioni del PO,
-nessuna implementazione, commit o push richiesti. Verificare `git status` prima
-di lavorare: le modifiche al tracker e alla mappa sono locali.
+## Sessione decisioni del PO, giorno - 2026-11-27
+
+Stato più recente: prevale su tutte le sezioni sotto, compresa quella della
+notte del 2026-11-27 subito dopo (che resta valida per WF-035 e WF-014, ma
+**non** per WF-023, ora chiuso con decisioni diverse dalla proposta lì
+descritta).
+
+### Goal
+
+Smaltire le decisioni di prodotto aperte nel tracker `.wayfinder/` con il PO
+(grilling: domande a scelta multipla, solo risposte reali registrate), poi
+passare all'implementazione dei ticket sbloccati.
+
+### Current Progress
+
+Tutto **committato e pushato** su `dev` (solo documentazione, `[skip ci]`,
+nessun deploy). Ultimo commit `3d24cfc`. Working tree pulito salvo
+`.impeccable/` (non tracciato, non nostro: non toccarlo né committarlo).
+
+- **WF-014** (date reali del tracking): già chiuso nella sessione della notte.
+  Questa sessione aveva raccolto risposte diverse; il PO ha poi confermato
+  **la versione della notte**: spunte vecchie senza data conservate senza
+  attribuzione, conservazione fino a richiesta di cancellazione, **nessun**
+  limite alla modifica dei giorni passati. Perimetro locale + server,
+  Europe/Rome, tracking legato al piano.
+- **WF-042** rinominato «Tracking per data reale, locale e server», esteso
+  alla migrazione del localStorage (`Scope update` nel ticket). Sbloccato.
+- **WF-049** chiuso: il refactor era in `b13ac1c`, mancava solo `status`.
+- **WF-023** (tipi di pasto) **chiuso**: quattro tipi Colazione, Spuntino,
+  Pranzo, Cena; nessun «altro»; nomi sconosciuti scartati con avviso;
+  «arco della giornata» = blocco di indicazioni, non un pasto; id salvati
+  invariati (`meta_mattina`, `merenda`, `spuntino_serale`,
+  `pasto_aggiuntivo_N` → tipo Spuntino); ordine del PDF; elenco unico anche
+  per lo schema Gemini (WF-021). **Resolution update**: nome degli spuntini
+  calcolato dalla posizione — prima del pranzo «Spuntino mattutino», tra
+  pranzo e cena «pomeridiano», dopo cena «serale», numerati se più di uno
+  nella stessa fascia; giorno senza pranzo riferito a colazione/cena; per gli
+  spuntini il nome generato sostituisce quello del PDF (originale conservato
+  nel dato), Colazione/Pranzo/Cena col nome del PDF.
+- **WF-051** creato (implementation): implementare i quattro tipi e i nomi
+  calcolati degli spuntini. Sbloccato.
+- **WF-019** (app installabile): risposte del PO registrate (`PO answers`),
+  ticket ancora `open` perché è implementation. Nome sotto l'icona «Nutrà»
+  per ora (manifest già così; definitivo in WF-031). Icona: ritaglio
+  provvisorio dell'emblema foglia/avocado senza testo, 192/512/maskable, PNG
+  reali < 100 KB. Chiude anche **WF-041** (nota aggiunta lì).
+
+Commit non documentati altrove, del 2026-11-17 (prima di questa sessione):
+`2521e36` log di stage/tipo errore nel callback OAuth, `7638215` DB dell'app
+accanto alla waitlist se `APP_DB_PATH` manca. Il motivo non è annotato.
+
+### What Worked
+
+- Leggere il ticket e il codice prima di chiedere; 3-4 domande per chiamata
+  `AskUserQuestion` (max 4 opzioni), raccomandazione come prima opzione.
+- Quando le risposte del PO si contraddicono (es. «Spuntino» unico ma «chiedere
+  se mattina o pomeriggio»; «non fare altro» ambiguo), fermarsi e chiedere un
+  chiarimento prima di registrare.
+- `git fetch` e controllo di `HEAD..origin/dev` **prima** di chiudere un
+  ticket: un'altra sessione (utente git `Thegoldendice`) lavora sullo stesso
+  tracker.
+- Icona: guardare l'immagine con lo strumento di lettura prima di decidere
+  (ha rivelato che era un mockup).
+
+### What Didn't Work (non ripetere)
+
+- Chiudere WF-014 senza fare fetch: era già stato chiuso nella notte con
+  risposte diverse; push rifiutato, lavoro rifatto. **Sempre fetch prima di
+  lavorare un ticket.**
+- `sed -i` su un file senza cambiare nulla riscrive i fine riga (LF/CRLF) e lo
+  fa risultare modificato: evitare sed «a vuoto», controllare `git status`.
+- La proposta di WF-023 della notte (sette valori + «altro») non è stata
+  accettata: il PO preferisce modelli più semplici di quelli proposti.
+
+### Next Steps
+
+1. Il PO deve scegliere: **implementare WF-019** (ritaglio icone, manifest,
+   meta iOS; verificare CSP/`manifest-src` nel repo Orchestrator; prova reale
+   di installazione su Android e iOS sul dominio), oppure **WF-051** o
+   **WF-042** (sbloccati), oppure proseguire con le decisioni.
+2. Decisioni ancora aperte: WF-017 e WF-018 (spesa: checklist e reparti,
+   domande nei ticket), WF-031 nome, WF-032 ricavo, WF-045 editor piano,
+   WF-050 dashboard admin (6 decisioni). Task: WF-033, WF-034.
+3. Ogni push con codice senza `[skip ci]` nell'ultimo commit fa deploy in
+   produzione: commit locale e review del PO prima di pushare codice.
+4. Preferenza attiva: `/caveman ultra`, risposte concise in italiano; codice,
+   commit e documenti in forma normale.
+
+## Handoff sessione decisioni, notte - 2026-11-27
 
 - WF-035 chiuso: PDF e copia compressa restano nel browser; controllo della
   dimensione, compressione, estrazione, anteprima e conferma, poi salvataggio
@@ -22,7 +108,6 @@ di lavorare: le modifiche al tracker e alla mappa sono locali.
   compatibilità spunte e lista condivisa. Chiedere risposta, non trattare la
   proposta come decisione.
 - Preferenza attiva `/caveman ultra`: risposte concise in italiano.
-# HANDOFF — NutriPro
 
 ## Sei ticket implementation della dashboard nutrizionista chiusi e pushati - 2026-11-16 (notte)
 
