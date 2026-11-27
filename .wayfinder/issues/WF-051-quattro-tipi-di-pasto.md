@@ -52,3 +52,16 @@ pasti già salvati.
 - Interpretazione del PDF con Gemini (WF-021).
 - Scenari 11, 12, 13, 19, 20 di WF-023, salvo che l'implementazione li tocchi:
   in quel caso segnalarli al PO, non decidere.
+
+## Requirement update - 2026-11-27
+
+Vedi `Resolution update` di WF-023: nome degli spuntini **calcolato** dalla
+posizione (mattutino prima del pranzo, pomeridiano tra pranzo e cena, serale
+dopo cena; numerati se più di uno nella stessa fascia; giorno senza pranzo
+riferito a colazione e cena). Il nome originale del PDF resta nel dato, non
+mostrato. Colazione, Pranzo e Cena con il nome del PDF.
+
+Criteri aggiuntivi:
+- test sui nomi calcolati: un solo spuntino per fascia, due nella stessa
+  fascia, spuntino dopo cena, giorno senza pranzo;
+- piani già salvati mostrano i nomi calcolati senza migrazione degli id.

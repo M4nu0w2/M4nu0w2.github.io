@@ -158,3 +158,24 @@ riconosciuti per ciascun tipo (es. «Prima colazione», «Breakfast»,
 mostrato al PO nella review.
 
 Implementazione: [Implementare i quattro tipi di pasto](WF-051-quattro-tipi-di-pasto.md).
+
+## Resolution update - 2026-11-27
+
+Proposta del PO nella stessa sessione, confermata con le sue risposte.
+**Modifica le righe 4 e 8** della tabella sopra, solo per gli spuntini.
+
+- Il tipo resta uno solo, **Spuntino**; cambia solo il **nome mostrato**,
+  calcolato automaticamente dalla posizione nella giornata:
+  - prima del pranzo → **Spuntino mattutino**;
+  - tra pranzo e cena → **Spuntino pomeridiano**;
+  - dopo cena → **Spuntino serale**.
+- Più spuntini nella stessa fascia si **numerano** («Spuntino pomeridiano 1»,
+  «Spuntino pomeridiano 2»); uno solo resta senza numero.
+- **Giorno senza pranzo**: riferimento a colazione e cena; tra le due il primo
+  spuntino è mattutino e i successivi pomeridiani. Senza riferimenti utili,
+  «Spuntino» semplice numerato.
+- **Nome del PDF**: per gli spuntini il nome generato sostituisce quello del
+  PDF («Merenda», «Spuntino metà mattina»); il nome originale resta nel dato
+  del piano, non mostrato. Colazione, Pranzo e Cena mantengono il nome del PDF.
+- Nessun impatto sugli id salvati: il nome è calcolato, non memorizzato come
+  chiave.
