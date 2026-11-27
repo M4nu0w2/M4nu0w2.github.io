@@ -3,7 +3,7 @@ id: WF-049
 title: Scomporre NutritionistPage e centralizzare il caricamento dati
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
-status: open
+status: closed
 assignee: null
 assignment: null
 assignment_mode: flexible
@@ -60,3 +60,13 @@ e
 [Andamento compliance e idratazione nel dettaglio paziente](WF-043-andamento-compliance-dettaglio.md):
 farlo prima riduce il lavoro di quei due ticket, ma non li blocca
 formalmente.
+
+## Resolution comment
+
+2026-11-16 — implementato (commit `b13ac1c`): `NutritionistPage.jsx` ridotto a
+14 righe; `CopyInvite`, `AddPatientForm`, `PlanUpload`, `PatientDetail`,
+`PatientList` in [src/components/nutritionist/](../../src/components/nutritionist/),
+caricamento condiviso in `api.mjs` (`useNutriApi`/`useLoader`). Nessun cambio
+visivo o di comportamento: 98/98 `npm test`, 20/20 `npm run test:browser`.
+Stato `closed` registrato il 2026-11-27: la chiusura era già nella mappa
+(commit `6fb9933`) ma il ticket era rimasto `open`.

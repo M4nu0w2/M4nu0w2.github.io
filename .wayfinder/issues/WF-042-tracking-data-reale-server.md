@@ -1,6 +1,6 @@
 ---
 id: WF-042
-title: Tracking per data reale anche sul server
+title: Tracking per data reale, locale e server
 parent: WF-MAP-001
 labels: [wayfinder:implementation]
 status: open
@@ -10,7 +10,7 @@ assignment_mode: flexible
 blocked_by: [WF-014]
 ---
 
-# Tracking per data reale anche sul server
+# Tracking per data reale, locale e server
 
 ## Requirement comment
 
@@ -57,3 +57,16 @@ la decisione sul perimetro resta al PO.
 - Il formato della data e il fuso orario (WF-014).
 - Vista di calendario, streak o badge (WF-015, WF-016, WF-043): questo ticket
   prepara solo i dati.
+
+## Scope update - 2026-11-27
+
+[WF-014](WF-014-date-tracking.md) chiuso dal PO: perimetro **locale + server**,
+spunte/acqua/olio distinti per data italiana (Europe/Rome, anche all'estero),
+tracking legato al piano su cui è registrato, storico conservato fino a
+richiesta di cancellazione. Questo ticket copre ora anche la migrazione del
+localStorage (`checked[day]`/`water[day]` in `diet_plan_archive:<sub>`).
+Le spunte esistenti senza data **restano conservate senza attribuzione a una
+data** (né in locale né in `plan_tracking`), fuori dal calendario. Nessun
+limite alla modifica dei giorni passati (confermato dal PO il 2026-11-27).
+Limite tecnico della copia locale da verificare qui. Le voci «formato della
+data e fuso» in `Out of scope` sono ora decise in WF-014.
