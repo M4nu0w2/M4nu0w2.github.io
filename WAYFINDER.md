@@ -85,6 +85,8 @@ come checklist e per reparto, app installabile.
 
 - [Tracking per data reale](.wayfinder/issues/WF-014-date-tracking.md): spunte, acqua e olio separati per data italiana, in locale e sul server.
 
+- [Tipi di pasto](.wayfinder/issues/WF-023-tipi-di-pasto-enum.md): quattro tipi (Colazione, Spuntino, Pranzo, Cena), nessun «altro»; nomi sconosciuti scartati con avviso; più spuntini restano separati; «arco della giornata» è un blocco di indicazioni, non un pasto; id salvati invariati; nome e ordine del PDF; elenco unico anche per Gemini. Implementazione: WF-051.
+
 - [Archivio e gestione dei piani](.wayfinder/issues/WF-001-archivio.md): nuovo
   piano conserva il precedente inattivo; sostituzione con doppia conferma;
   un solo piano attivo, con tracking distinto per piano.

@@ -3,7 +3,7 @@ id: WF-023
 title: Definire l'enum dei tipi di pasto e coprirne tutti gli scenari
 parent: WF-MAP-001
 labels: [wayfinder:grilling]
-status: open
+status: closed
 assignee: null
 assignment: claudio
 assignment_mode: flexible
@@ -129,3 +129,32 @@ Una striscia «Ogni giorno · Metà mattina: … · Acqua …: …» viene distr
 i giorni. **Non è la decisione del ticket**: restano aperti i sei punti per il PO
 (valore di ripiego «altro», spuntino ambiguo, nomi sconosciuti, piani con pasti
 diversi, uno o due spuntini, destino di `spuntino_serale` e `arco_giornata`).
+
+## Resolution comment
+
+2026-11-27 — risposte reali del PO (Manu/Claudio) in sessione di grilling.
+Supera la proposta presentata nella sessione precedente (sette valori più
+«altro»), a cui il PO non aveva risposto.
+
+| # | Decisione | Risposta |
+| :-- | :-- | :-- |
+| 1 | Insieme dei valori | **Quattro tipi: Colazione, Spuntino, Pranzo, Cena.** Nessun tipo «altro» |
+| 2 | Nomi sconosciuti | **Scartati con avviso** all'utente (es. «Brunch», «Pasto libero», nome straniero non riconosciuto) |
+| 3 | Più spuntini nello stesso giorno | **Pasti separati, tutti di tipo Spuntino**, nell'ordine del PDF (metà mattina, merenda, dopocena…) |
+| 4 | Spuntino ambiguo | Non serve più una regola: esiste un solo tipo Spuntino. (Il PO aveva risposto «chiedere all'import» quando la domanda presupponeva mattina/pomeriggio separati) |
+| 5 | «Arco della giornata» | **Non è un pasto**: resta un blocco a parte di indicazioni giornaliere (acqua, olio, condimenti), fuori dall'elenco dei tipi |
+| 6 | Pasti aggiuntivi numerati | **Diventano Spuntino** |
+| 7 | Piani salvati | **Gli id restano** (`colazione`, `meta_mattina`, `merenda`, `spuntino_serale`, `pasto_aggiuntivo_N`…): spunte salve, nessuna migrazione. Si aggiunge solo il tipo: `meta_mattina`/`merenda`/`spuntino_serale`/`pasto_aggiuntivo_N` → Spuntino |
+| 8 | Nome mostrato | **Nome del PDF**; il tipo serve per icona, ordine e raggruppamenti |
+| 9 | Ordine | **Ordine del PDF** |
+| 10 | Ambito | **Un solo elenco condiviso** da parser, interfaccia, spesa, tracking e, in futuro, schema di risposta di Gemini ([WF-021](WF-021-comprensione-pdf-gemini.md)); un valore fuori elenco da Gemini si scarta con avviso, come nel parser |
+
+**Scenari non discussi**, da trattare in implementazione e riportare al PO
+se richiedono una scelta di prodotto: voci senza intestazione (11),
+intestazione che coincide con un alimento (12), piano alternato settimana A/B
+(13), più lingue (19), aggiunta di un tipo futuro (20). I sinonimi
+riconosciuti per ciascun tipo (es. «Prima colazione», «Breakfast»,
+«Merenda», «Break») sono un dettaglio di implementazione: l'elenco va
+mostrato al PO nella review.
+
+Implementazione: [Implementare i quattro tipi di pasto](WF-051-quattro-tipi-di-pasto.md).
